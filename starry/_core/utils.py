@@ -1,26 +1,27 @@
 # -*- coding: utf-8 -*-
 from .. import config
+from ..compat import Node, change_flags
 import theano
 import theano.tensor as tt
 import numpy as np
-from theano.configparser import change_flags
 from inspect import getmro
 from functools import wraps
 import logging
+import sys
 
 logger = logging.getLogger("starry.ops")
 
-__all__ = ["logger", "autocompile"]
+__all__ = ["logger", "autocompile", "is_theano", "clear_cache"]
 
 
-integers = (int, np.int, np.int16, np.int32, np.int64)
+integers = (int, np.int16, np.int32, np.int64)
 
 
 def is_theano(*objs):
     """Return ``True`` if any of ``objs`` is a ``Theano`` object."""
     for obj in objs:
         for c in getmro(type(obj)):
-            if c is theano.gof.graph.Node:
+            if c is Node:
                 return True
     return False
 
@@ -110,7 +111,9 @@ def autocompile(func):
             arg_types = tuple([_get_type(arg) for arg in args])
 
             # Get a unique name for the compiled function
-            cname = "{}_{}".format(func.__name__, hex(hash(arg_types)))
+            cname = "__{}_{}".format(
+                func.__name__, hex(hash(arg_types) % ((sys.maxsize + 1) * 2))
+            )
 
             # Compile the function if needed & cache it
             if not hasattr(instance, cname):
@@ -133,3 +136,15 @@ def autocompile(func):
             return getattr(instance, cname)(*args)
 
     return wrapper
+
+
+def clear_cache(instance, func):
+    """
+    Clear the compiled function cache for method `func` of a class
+    instance `instance`.
+
+    """
+    basename = "__{}_".format(func.__name__)
+    for key in list(instance.__dict__.keys()):
+        if key.startswith(basename):
+            delattr(instance, key)

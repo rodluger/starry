@@ -25,11 +25,10 @@ documentation of the API, and more.
    :caption: Contents:
 
     Installation <install>
-    New in version 1.0 <changes>
+    Recent changes <changes>
     Examples & tutorials <tutorials>
     API <api>
     Extensions <extensions>
-    Developer <developer>
     Github <https://github.com/rodluger/starry>
     Submit an issue <https://github.com/rodluger/starry/issues>
     Papers <https://ui.adsabs.harvard.edu/public-libraries/b0KqtPtYRj6I7T8eAZc5Ig>

@@ -8,6 +8,8 @@ import sys
 import os
 import glob
 
+# Are we on ReadTheDocs?
+on_rtd = os.getenv("READTHEDOCS") == "True"
 
 # Custom compiler flags
 macros = dict(
@@ -48,7 +50,7 @@ if debug:
 # Numerical override at high l?
 if bool(int(os.getenv("STARRY_KL_NUMERICAL", 0))):
     macros["STARRY_KL_NUMERICAL"] = 1
-    
+
 # Compute the Oren-Nayar (1994) expansion if the user requests it
 deg = os.getenv("STARRY_OREN_NAYAR_DEG", None)
 Nb = os.getenv("STARRY_OREN_NAYAR_NB", None)
@@ -92,28 +94,6 @@ class get_pybind_include(object):
         import pybind11
 
         return pybind11.get_include(self.user)
-
-
-if int(macros["STARRY_NDIGITS"]) > 16:
-    include_dirs = ["starry/_core/ops/lib/vendor/boost_1_66_0"]
-else:
-    include_dirs = []
-ext_modules = [
-    Extension(
-        "starry._c_ops",
-        ["starry/_core/ops/lib/include/interface.cpp"],
-        include_dirs=include_dirs
-        + [
-            # Path to pybind11 headers
-            get_pybind_include(),
-            get_pybind_include(user=True),
-            "starry/_core/ops/lib/include",
-            "starry/_core/ops/lib/vendor/eigen_3.3.5",
-        ],
-        language="c++",
-        define_macros=[(key, value) for key, value in macros.items()],
-    )
-]
 
 
 # As of Python 3.6, CCompiler has a `has_flag` method.
@@ -190,6 +170,33 @@ class BuildExt(build_ext):
         build_ext.build_extensions(self)
 
 
+if int(macros["STARRY_NDIGITS"]) > 16:
+    include_dirs = ["starry/_core/ops/lib/vendor/boost_1_66_0"]
+else:
+    include_dirs = []
+if on_rtd:
+    ext_modules = []
+    cmdclass = {}
+else:
+    ext_modules = [
+        Extension(
+            "starry._c_ops",
+            ["starry/_core/ops/lib/include/interface.cpp"],
+            include_dirs=include_dirs
+            + [
+                # Path to pybind11 headers
+                get_pybind_include(),
+                get_pybind_include(user=True),
+                "starry/_core/ops/lib/include",
+                "starry/_core/ops/lib/vendor/eigen_3.3.5",
+            ],
+            language="c++",
+            define_macros=[(key, value) for key, value in macros.items()],
+        )
+    ]
+    cmdclass = {"build_ext": BuildExt}
+
+
 setup(
     name="starry",
     author="Rodrigo Luger",
@@ -207,21 +214,44 @@ setup(
     },
     install_requires=[
         "setuptools_scm",
-        "numpy>=1.13.0",
-        "scipy>=1.2.1",
+        "numpy>=1.19.2",
+        "scipy>=1.5.0",
         "astropy>=3.1",
-        "matplotlib>=3.0.2",
-        "pybind11>=2.4",
-        "theano>=1.0.4",
+        "pymc3",
+        "pymc3-ext",
+        "matplotlib>=3.2.2",
         "ipython",
-        "pillow",
-        "exoplanet>=0.2.0",
-        "packaging"
-        # TODO? "healpy>=1.12.8;platform_system!='Windows'",
+        "exoplanet>=0.4.0",
+        "packaging",
     ],
+    extras_require={
+        "tests": [
+            "parameterized",
+            "nose",
+            "pytest",
+            "pytest-dependency",
+            "pytest-env",
+            "pytest-cov",
+            "scikit-image",
+            "pillow",
+            "tqdm",
+        ],
+        "docs": [
+            "sphinx>=1.7.5",
+            "pandoc",
+            "jupyter",
+            "jupytext",
+            "ipywidgets",
+            "nbformat",
+            "nbconvert",
+            "rtds_action",
+            "nbsphinx",
+            "tqdm",
+        ],
+    },
     setup_requires=["setuptools_scm", "pybind11>2.4"],
-    cmdclass={"build_ext": BuildExt},
-    data_files=glob.glob("starry/img/*.jpg"),
+    cmdclass=cmdclass,
+    data_files=glob.glob("starry/img/*.png"),
     include_package_data=True,
     zip_safe=False,
 )

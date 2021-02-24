@@ -3,6 +3,7 @@ from . import config
 from ._constants import *
 from .maps import MapBase, RVBase, ReflectedBase
 from ._core import OpsSystem, math
+from .compat import evaluator
 import numpy as np
 from astropy import units
 from inspect import getmro
@@ -581,6 +582,7 @@ class System(object):
         figsize=(3, 3),
         html5_video=True,
         window_pad=1.0,
+        **kwargs,
     ):
         """Visualize the Keplerian system.
 
@@ -613,6 +615,9 @@ class System(object):
                 "Method not implemented for spectral maps."
             )
 
+        # So we can evaluate stuff in lazy mode
+        get_val = evaluator(**kwargs)
+
         # Render the maps & get the orbital positions
         if self._rv:
             self._primary.map._set_RV_filter()
@@ -632,9 +637,6 @@ class System(object):
             self._primary._map._y,
             self._primary._map._u,
             self._primary._map._f,
-            self._primary._map._alpha,
-            self._primary._map._tau,
-            self._primary._map._delta,
             self._math.to_array_or_tensor(
                 [sec._r for sec in self._secondaries]
             ),
@@ -679,15 +681,6 @@ class System(object):
                 [sec._map._f for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
-                [sec._map._alpha for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
-                [sec._map._tau for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
-                [sec._map._delta for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
                 [sec._map._sigr for sec in self._secondaries]
             ),
         )
@@ -704,13 +697,13 @@ class System(object):
         r = r / self._primary._r
 
         # Evaluate if needed
-        if config.lazy:
-            img_pri = img_pri.eval()
-            img_sec = img_sec.eval()
-            x = x.eval()
-            y = y.eval()
-            z = z.eval()
-            r = r.eval()
+        if self._lazy:
+            img_pri = get_val(img_pri)
+            img_sec = get_val(img_sec)
+            x = get_val(x)
+            y = get_val(y)
+            z = get_val(z)
+            r = get_val(r)
 
         # We need this to be of shape (nplanet, nframe)
         x = x.T
@@ -878,9 +871,6 @@ class System(object):
             self._primary._map._obl,
             self._primary._map._u,
             self._primary._map._f,
-            self._primary._map._alpha,
-            self._primary._map._tau,
-            self._primary._map._delta,
             self._math.to_array_or_tensor(
                 [sec._r for sec in self._secondaries]
             ),
@@ -926,15 +916,6 @@ class System(object):
             ),
             self._math.to_array_or_tensor(
                 [sec._map._f for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
-                [sec._map._alpha for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
-                [sec._map._tau for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
-                [sec._map._delta for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
                 [sec._map._sigr for sec in self._secondaries]
@@ -989,7 +970,68 @@ class System(object):
                 True. If False, returns arrays corresponding to the RV
                 contribution from each body.
 
+        Returns:
+            A vector or matrix of radial velocities in units of meters per
+            second. If ``total`` is ``True``, this returns a vector of the
+            total stellar radial velocity at every point ``t``. This is
+            the sum of all effects: the Keplerian motion of the star due to
+            the planets, the radial velocity anomaly due to spots or
+            features on its surface rotating in and out of view, as well
+            as the Rossiter-McLaughlin effect due to transits by the
+            secondaries.
+            If ``total`` is ``False``, this returns a matrix whose
+            rows are the radial velocity contributions to the measured **stellar**
+            radial velocity from each of the bodies in the system.
+            As a specific example, if there are three bodies in the
+            system (one ``Primary`` and two ``Secondary`` bodies), the
+            first row is the radial velocity anomaly corresponding to the star's
+            own Doppler signals (due to spots rotating in and out of
+            view, or due to the Rossiter-McLaughlin effect of the other
+            two bodies transiting it). The other two rows are the Keplerian
+            contribution from each of the ``Secondary`` bodies, plus any
+            radial velocity anomaly due to spots or occultations of their
+            surfaces.
+            The sum across all rows is equal to the total radial velocity
+            and is the same as what this method would return if ``total=True``.
+
+        Note, importantly, that when ``total=False``, this method does
+        *not* return the radial velocities of each of the bodies; instead,
+        it returns the *contribution to the stellar radial velocity* due
+        to each of the bodies. If you require knowing the radial velocity
+        of the secondary objects, you can compute this from conservation
+        of momentum:
+
+        .. code-block::python
+
+            # Instantiate a system w/ a star and two planets
+            A = starry.Primary(...)
+            b = starry.Secondary(...)
+            c = starry.Secondary(...)
+            sys = starry.System(A, b, c)
+
+            # Get the contribution from each body to the star's RV
+            rv = sys.rv(t, total=False)
+
+            # Conservation of momentum implies the RV of `b`
+            # is proportional to the RV of the star, weighted
+            # by the mass ratio. We can compute the mass ratio
+            # if we're mindful of the (potentially different)
+            # units for the star and the planets:
+            mA_mb = ((A.m * A.mass_unit) / (b.m * b.mass_unit)).decompose()
+            rv_b = -rv[1] * mA_mb
+
+            # Same for planet `c`
+            mA_mc = ((A.m * A.mass_unit) / (b.m * b.mass_unit)).decompose()
+            rv_c = -rv[2] * mAmc
+
+        Note that this method implicitly assumes multi-Keplerian orbits;
+        i.e., the ``Secondary`` bodies are treated as massive *only* when computing
+        their gravitational effect on the ``Primary`` (as opposed to each other).
+        This therefore ignores all ``Secondary``-``Secondary``
+        (i.e., planet-planet) interactions.
+
         """
+        assert self._rv, "Only implemented if `rv=True` for all body maps."
         rv = self.ops.rv(
             self._math.reshape(self._math.to_array_or_tensor(t), [-1])
             * self._time_factor,
@@ -1004,8 +1046,6 @@ class System(object):
             self._primary._map._y,
             self._primary._map._u,
             self._primary._map._alpha,
-            self._primary._map._tau,
-            self._primary._map._delta,
             self._primary._map._veq,
             self._math.to_array_or_tensor(
                 [sec._r for sec in self._secondaries]
@@ -1052,12 +1092,6 @@ class System(object):
             ),
             self._math.to_array_or_tensor(
                 [sec._map._alpha for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
-                [sec._map._tau for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
-                [sec._map._delta for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
                 [sec._map._sigr for sec in self._secondaries]
@@ -1114,8 +1148,8 @@ class System(object):
     def _get_periods(self):
         periods = [None for sec in self._secondaries]
         for i, sec in enumerate(self._secondaries):
-            if sec.porb:
-                periods[i] = sec.porb
+            if sec._porb:
+                periods[i] = sec._porb
             else:
                 periods[i] = (
                     (2 * np.pi)
@@ -1255,7 +1289,8 @@ class System(object):
         for body in self._solved_bodies:
             inds = slice(n, n + body.map.Ny)
             body.map.amp = x[inds][0]
-            body.map[1:, :] = x[inds][1:] / body.map.amp
+            if body.map.ydeg > 0:
+                body.map[1:, :] = x[inds][1:] / body.map.amp
             n += body.map.Ny
 
         # Return the mean and covariance

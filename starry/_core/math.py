@@ -2,7 +2,6 @@
 from .. import config
 from .utils import *
 from .._constants import *
-import theano
 import theano.tensor as tt
 import numpy as np
 from scipy.linalg import block_diag as scipy_block_diag

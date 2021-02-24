@@ -21,7 +21,9 @@ def test_minimize():
     lat = lat[i, j]
     lon = lon[i, j]
     val = image[i, j]
-    lat_m, lon_m, val_m = map.minimize(oversample=2, ntries=2)
+    lat_m, lon_m, val_m, info = map.minimize(
+        oversample=2, ntries=2, return_info=True
+    )
 
     # Check that we did better than the grid search
     assert val_m <= val
@@ -30,15 +32,15 @@ def test_minimize():
 def test_bounded_minimize():
     # Create map with two dark spots
     map = starry.Map(15)
-    map.add_spot(amp=-0.1, relative=False, lat=20, lon=50., sigma=0.01)
+    map.add_spot(amp=-0.1, relative=False, lat=20, lon=50.0, sigma=0.01)
     map.add_spot(amp=-0.05, relative=False, lat=-30, lon=-40, sigma=0.01)
-    
+
     # Render it on a lat-lon grid
     res = 300
     image = map.render(projection="rect", res=res)
-    
+
     # Specify bounds in latitude/longitude
-    bounds = ((-60, 0,), (-60, 0)) #lat and lon
+    bounds = ((-60, 0), (-60, 0))  # lat and lon
 
     # Find the minimum numerically
     lon, lat = np.meshgrid(
@@ -48,15 +50,17 @@ def test_bounded_minimize():
     mask_lon = np.logical_and(lon > bounds[1][0], lon < bounds[1][1])
     mask = np.logical_and(mask_lat, mask_lon)
     min_bounded = image[mask].min()
-    i, j = np.unravel_index(np.argmin(np.abs(image - min_bounded)), image.shape)
+    i, j = np.unravel_index(
+        np.argmin(np.abs(image - min_bounded)), image.shape
+    )
 
     lat = lat[i, j]
     lon = lon[i, j]
     val = image[i, j]
 
     lat_m, lon_m, val_m = map.minimize(oversample=2, ntries=2, bounds=bounds)
-    
-    assert val_m <=val  
+
+    assert val_m <= val
 
 
 def test_sturm():

@@ -86,24 +86,40 @@ def test_compare_to_exoplanet():
         time_unit=u.day,
     )
 
+    # Define the planet
+    c = starry.Secondary(
+        starry.Map(rv=True, veq=0),
+        r=0.1,
+        porb=1.7,
+        m=0.02,
+        t0=0.3,
+        inc=87.0,
+        ecc=0.2,
+        w=70,
+        length_unit=u.Rsun,
+        mass_unit=u.Msun,
+        angle_unit=u.degree,
+        time_unit=u.day,
+    )
+
     # Define the system
-    sys = starry.System(A, b)
+    sys = starry.System(A, b, c)
 
     # Compute with starry
     time = np.linspace(-0.5, 0.5, 1000)
-    rv1 = sys.rv(time, keplerian=True)
+    rv1 = sys.rv(time, keplerian=True, total=True)
 
     # Compute with exoplanet
     orbit = exoplanet.orbits.KeplerianOrbit(
-        period=1.0,
-        t0=0.0,
-        incl=86.0 * np.pi / 180,
-        ecc=0.3,
-        omega=60 * np.pi / 180,
-        m_planet=0.01,
+        period=[1.0, 1.7],
+        t0=[0.0, 0.3],
+        incl=[86.0 * np.pi / 180, 87.0 * np.pi / 180],
+        ecc=[0.3, 0.2],
+        omega=[60 * np.pi / 180, 70 * np.pi / 180],
+        m_planet=[0.01, 0.02],
         m_star=1.0,
         r_star=1.0,
     )
-    rv2 = orbit.get_radial_velocity(time).eval()
+    rv2 = orbit.get_radial_velocity(time).eval().sum(axis=1)
 
     assert np.allclose(rv1, rv2)

@@ -108,3 +108,35 @@ def test_lnlike(L, C, woodbury):
     # Verify that we get the correct radius
     assert rs[np.argmax(ll)] == 0.1
     assert np.allclose(ll[np.argmax(ll)], 981.9091)  # benchmarked
+
+
+def test_solve_with_zero_degree_primary():
+    """
+    Test for https://github.com/rodluger/starry/issues/253.
+
+    """
+    # Random data
+    t = np.linspace(-0.1, 0.1, 100)
+    flux = np.random.randn(len(t))
+    sigma = 1.0
+
+    # Instantiate a primary with ydeg = 0
+    star_0 = starry.Primary(starry.Map(ydeg=0))
+    star_0.map.set_prior(L=1)
+
+    # Instantiate a secondary with ydeg > 0
+    star_1 = starry.Secondary(starry.Map(ydeg=1), porb=1.0)
+
+    # The system
+    sys = starry.System(star_0, star_1)
+
+    # Place a generous prior on the map coefficients
+    star_1.map.set_prior(L=1)
+    sys.set_data(flux, C=sigma ** 2)
+
+    # Solve the linear problem
+    mu, cho_cov = sys.solve(t=t)
+
+    # Check that it didn't fail horribly
+    assert not np.any(np.isnan(mu))
+    assert not np.any(np.isnan(np.tril(cho_cov)))

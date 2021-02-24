@@ -49,8 +49,6 @@ Custom Models
    :maxdepth: 1
 
    notebooks/StarSpots.ipynb
-   notebooks/DifferentialRotation.ipynb
-   notebooks/TimeEvolution.ipynb
    notebooks/ExposureTime.ipynb
    notebooks/LightTravelDelay.ipynb
 
@@ -88,4 +86,3 @@ Miscellaneous
    notebooks/LDNormalization.ipynb
    notebooks/OrbitViz.ipynb
    notebooks/RVDerivation.ipynb
-   notebooks/TimingTests.ipynb

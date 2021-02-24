@@ -8,7 +8,7 @@ Install the latest release of :py:obj:`starry` using :py:obj:`pip`:
 
 .. code-block:: bash
 
-    pip install starry==1.0.0
+    pip install -U starry
 
 
 .. note ::

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
+from ...compat import Apply
 import numpy as np
 import theano
-from theano import gof
 import theano.tensor as tt
 
 __all__ = ["spotYlmOp"]
@@ -20,9 +20,9 @@ class spotYlmOp(tt.Op):
             outputs = [tt.TensorType(inputs[0].dtype, (False,))()]
         else:
             outputs = [tt.TensorType(inputs[0].dtype, (False, False))()]
-        return gof.Apply(self, inputs, outputs)
+        return Apply(self, inputs, outputs)
 
-    def infer_shape(self, node, shapes):
+    def infer_shape(self, *args):
         if self.nw is None:
             return [(self.Ny,)]
         else:
@@ -44,9 +44,10 @@ class spotYlmGradientOp(tt.Op):
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
         outputs = [i.type() for i in inputs[:-1]]
-        return gof.Apply(self, inputs, outputs)
+        return Apply(self, inputs, outputs)
 
-    def infer_shape(self, node, shapes):
+    def infer_shape(self, *args):
+        shapes = args[-1]
         return shapes[:-1]
 
     def perform(self, node, inputs, outputs):

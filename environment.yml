@@ -1,0 +1,12 @@
+name: starry
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - mkl-service>=2.3.0
+  - numpy>=1.19.2
+  - openblas>=0.3.6
+  - pip>=20.3.3
+  - python>=3.7.3
+  - scipy>=1.5.0
+  - setuptools>=51.3.3

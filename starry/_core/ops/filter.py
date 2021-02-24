@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
-from __future__ import division, print_function
+from ...compat import Apply
 import numpy as np
-from theano import gof
 import theano.tensor as tt
 import theano.sparse as ts
-from ..._c_ops import STARRY_OREN_NAYAR_DEG
+import os
+
+# C extensions are not installed on RTD
+if os.getenv("READTHEDOCS") == "True":
+    STARRY_OREN_NAYAR_DEG = 5
+else:
+    from ..._c_ops import STARRY_OREN_NAYAR_DEG
 
 
 __all__ = ["FOp", "OrenNayarOp"]
@@ -20,9 +25,9 @@ class FOp(tt.Op):
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
         outputs = [tt.TensorType(inputs[-1].dtype, (False, False))()]
-        return gof.Apply(self, inputs, outputs)
+        return Apply(self, inputs, outputs)
 
-    def infer_shape(self, node, shapes):
+    def infer_shape(self, *args):
         return [(self.N, self.Ny)]
 
     def R_op(self, inputs, eval_points):
@@ -44,9 +49,10 @@ class FGradientOp(tt.Op):
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
         outputs = [i.type() for i in inputs[:-1]]
-        return gof.Apply(self, inputs, outputs)
+        return Apply(self, inputs, outputs)
 
-    def infer_shape(self, node, shapes):
+    def infer_shape(self, *args):
+        shapes = args[-1]
         return shapes[:-1]
 
     def perform(self, node, inputs, outputs):
@@ -62,9 +68,10 @@ class OrenNayarOp(tt.Op):
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
         outputs = [tt.TensorType(inputs[-1].dtype, (False, False))()]
-        return gof.Apply(self, inputs, outputs)
+        return Apply(self, inputs, outputs)
 
-    def infer_shape(self, node, shapes):
+    def infer_shape(self, *args):
+        shapes = args[-1]
         return [((STARRY_OREN_NAYAR_DEG + 1) ** 2, shapes[0][0])]
 
     def R_op(self, inputs, eval_points):

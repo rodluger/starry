@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from . import config
+from . import config, legacy
 from ._constants import *
 from ._core import OpsYlm, OpsLD, OpsReflected, OpsRV, math
 from ._core.utils import is_theano
@@ -11,7 +11,7 @@ from ._plotting import (
     get_moll_longitude_lines,
     get_projection,
 )
-from ._sht import image2map, healpix2map, array2map
+from .compat import evaluator
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -20,7 +20,9 @@ from matplotlib.animation import FuncAnimation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from IPython.display import HTML
 from astropy import units
+from scipy.ndimage import zoom
 import os
+import sys
 import logging
 
 logger = logging.getLogger("starry.maps")
@@ -74,9 +76,6 @@ class MapBase(object):
         # Basic properties
         self._inc = self._math.cast(0.5 * np.pi)
         self._obl = self._math.cast(0.0)
-        self._alpha = self._math.cast(0.0)
-        self._tau = self._math.cast(0.25)
-        self._delta = self._math.cast(0.25)
         self._sigr = self._math.cast(0.0)
 
         # Units
@@ -302,7 +301,7 @@ class MapBase(object):
         self._L = None
         self._solution = None
 
-        # Check for bad kwargs, with the follwoing exceptions
+        # Check for bad kwargs, with the following exceptions
         kwargs.pop("source_npts", None)
         kwargs.pop("dr_oversample", None)
         kwargs.pop("dr_lam", None)
@@ -359,6 +358,7 @@ class MapBase(object):
 
         """
         # Get kwargs
+        get_val = evaluator(**kwargs)
         cmap = kwargs.pop("cmap", "plasma")
         grid = kwargs.pop("grid", True)
         interval = kwargs.pop("interval", 75)
@@ -382,18 +382,20 @@ class MapBase(object):
 
             # Get the map orientation
             if self.lazy:
-                inc = self._inc.eval()
-                obl = self._obl.eval()
+                inc = get_val(self._inc)
+                obl = get_val(self._obl)
             else:
                 inc = self._inc
                 obl = self._obl
 
             # Get the rotational phase
             if self.lazy:
-                theta = self._math.vectorize(
-                    self._math.cast(kwargs.pop("theta", 0.0))
-                    * self._angle_factor
-                ).eval()
+                theta = get_val(
+                    self._math.vectorize(
+                        self._math.cast(kwargs.pop("theta", 0.0))
+                        * self._angle_factor
+                    )
+                )
             else:
                 theta = np.atleast_1d(
                     np.array(kwargs.pop("theta", 0.0)) * self._angle_factor
@@ -417,39 +419,26 @@ class MapBase(object):
                 res = kwargs.pop("res", 300)
 
                 # Evaluate the variables
-                u = self._u.eval()
+                u = get_val(self._u)
 
                 if not self.__props__["limbdarkened"]:
 
-                    inc = self._inc.eval()
-                    obl = self._obl.eval()
-                    y = self._y.eval()
-                    f = self._f.eval()
-                    alpha = self._alpha.eval()
-                    tau = self._tau.eval()
-                    delta = self._delta.eval()
+                    inc = get_val(self._inc)
+                    obl = get_val(self._obl)
+                    y = get_val(self._y)
+                    f = get_val(self._f)
 
                     # Explicitly call the compiled version of `render`
-                    image = self._amp.eval().reshape(
+                    image = get_val(self._amp).reshape(
                         -1, 1, 1
                     ) * self.ops.render(
-                        res,
-                        projection,
-                        theta,
-                        inc,
-                        obl,
-                        y,
-                        u,
-                        f,
-                        alpha,
-                        tau,
-                        delta,
+                        res, projection, theta, inc, obl, y, u, f
                     )
 
                 else:
 
                     # Explicitly call the compiled version of `render`
-                    image = self._amp.eval().reshape(
+                    image = get_val(self._amp).reshape(
                         -1, 1, 1
                     ) * self.ops.render_ld(res, u)
 
@@ -912,7 +901,8 @@ class MapBase(object):
         # Set the amplitude and coefficients
         x, _ = self._solution
         self.amp = x[0]
-        self[1:, :] = x[1:] / self.amp
+        if self.ydeg > 0:
+            self[1:, :] = x[1:] / self.amp
 
         # Return the mean and covariance
         return self._solution
@@ -1016,7 +1006,7 @@ class MapBase(object):
         self[1:, :] = x[1:] / self.amp
 
 
-class YlmBase(object):
+class YlmBase(legacy.YlmBase):
     """The default ``starry`` map class.
 
     This class handles light curves and phase curves of objects in
@@ -1040,21 +1030,6 @@ class YlmBase(object):
         else:
             self._obl = self._math.cast(0.0)
 
-        if kwargs.get("alpha", None) is not None:
-            self.alpha = kwargs.pop("alpha")
-        else:
-            self._alpha = self._math.cast(0.0)
-
-        if kwargs.get("tau", None) is not None:
-            self.tau = kwargs.pop("tau")
-        else:
-            self._tau = self._math.cast(0.25)
-
-        if kwargs.get("delta", None) is not None:
-            self.delta = kwargs.pop("delta")
-        else:
-            self._delta = self._math.cast(0.25)
-
         super(YlmBase, self).reset(**kwargs)
 
     @property
@@ -1074,69 +1049,6 @@ class YlmBase(object):
     @obl.setter
     def obl(self, value):
         self._obl = self._math.cast(value) * self._angle_factor
-
-    @property
-    def alpha(self):
-        """The rotational shear coefficient, a number in the range ``[0, 1]``.
-
-        The parameter :math:`\\alpha` is used to model linear differential
-        rotation. The angular velocity at a given latitude :math:`\\theta`
-        is
-
-        :math:`\\omega = \\omega_{eq}(1 - \\alpha \\sin^2\\theta)`
-
-        where :math:`\\omega_{eq}` is the equatorial angular velocity of
-        the object.
-
-        """
-        return self._alpha
-
-    @alpha.setter
-    def alpha(self, value):
-        self._alpha = self._math.cast(value)
-
-    @property
-    def tau(self):
-        """The damping coefficient of the map when differential rotation is enabled.
-
-        This parameter is a unitless damping timescale for the `l > 0` features
-        when :py:attr:`alpha` is nonzero. `tau` is measured as a fraction of the
-        winding timescale, i.e., the time it takes for a feature at the equator
-        to lap a feature at the pole. The defualt value is `0.25`, meaning
-        that features will damp on a timescale corresponding to a quarter of a winding
-        timescale.
-
-        .. warning::
-
-            This is an experimental feature.
-
-        """
-        return self._tau
-
-    @tau.setter
-    def tau(self, value):
-        self._tau = self._math.cast(value)
-
-    @property
-    def delta(self):
-        """The lag coefficient of the map when differential rotation is enabled.
-
-        This parameter is a unitless lag for the damping applied to `l > 0`
-        features measured as a fraction of the winding timescale
-        (see :py:attr:`tau`). The default value is `0.25`, meaning the features
-        will have the largest amplitude a quarter of a winding timescale
-        *after* `theta=0`.
-
-        .. warning::
-
-            This is an experimental feature.
-
-        """
-        return self._delta
-
-    @delta.setter
-    def delta(self, value):
-        self._delta = self._math.cast(value)
 
     def design_matrix(self, **kwargs):
         r"""Compute and return the light curve design matrix :math:`A`.
@@ -1165,18 +1077,7 @@ class YlmBase(object):
 
         # Compute & return
         return self.ops.X(
-            theta,
-            xo,
-            yo,
-            zo,
-            ro,
-            self._inc,
-            self._obl,
-            self._u,
-            self._f,
-            self._alpha,
-            self._tau,
-            self._delta,
+            theta, xo, yo, zo, ro, self._inc, self._obl, self._u, self._f
         )
 
     def intensity_design_matrix(self, lat=0, lon=0):
@@ -1240,9 +1141,6 @@ class YlmBase(object):
             self._y,
             self._u,
             self._f,
-            self._alpha,
-            self._tau,
-            self._delta,
         )
 
     def intensity(self, lat=0, lon=0, **kwargs):
@@ -1281,16 +1179,7 @@ class YlmBase(object):
 
         # Compute & return
         return self.amp * self.ops.intensity(
-            lat,
-            lon,
-            self._y,
-            self._u,
-            self._f,
-            theta,
-            self._alpha,
-            self._tau,
-            self._delta,
-            ld,
+            lat, lon, self._y, self._u, self._f, theta, ld
         )
 
     def render(self, res=300, projection="ortho", theta=0.0):
@@ -1352,9 +1241,6 @@ class YlmBase(object):
             self._y,
             self._u,
             self._f,
-            self._alpha,
-            self._tau,
-            self._delta,
         )
 
         # Squeeze?
@@ -1395,81 +1281,102 @@ class YlmBase(object):
     def load(
         self,
         image,
-        healpix=False,
-        nside=32,
-        max_iter=3,
-        sigma=None,
+        extent=(-180, 180, -90, 90),
+        smoothing=None,
+        fac=1.0,
+        eps=1e-12,
         force_psd=False,
         **kwargs
     ):
-        """Load an image, array, or ``healpix`` map.
+        """Load an image or ndarray.
 
-        This routine uses various routines in ``healpix`` to compute the
-        spherical harmonic expansion of the input image and sets the map's
-        :py:attr:`y` coefficients accordingly.
+        This routine performs a simple spherical harmonic transform (SHT)
+        to compute the spherical harmonic expansion corresponding to
+        an input image file or ``numpy`` array on a lat-lon grid.
+        The resulting coefficients are ingested into the map.
 
         Args:
-            image: A path to an image file, a two-dimensional ``numpy``
-                array, or a ``healpix`` map array (if ``healpix`` is True).
-            healpix (bool, optional): Treat ``image`` as a ``healpix`` array?
-                Default is False.
-            sigma (float, optional): If not None, apply gaussian smoothing
-                with standard deviation ``sigma`` to smooth over
-                spurious ringing features. Smoothing is performed with
-                the ``healpix.sphtfunc.smoothalm`` method.
-                Default is None.
+            image: A path to an image PNG file or a two-dimensional ``numpy``
+                array on a latitude-longitude grid.
+            extent (tuple, optional): The lat-lon values corresponding to the
+                edges of the image in degrees, ``(lat0, lat1, lon0, lon1)``.
+                Default is ``(-180, 180, -90, 90)``.
+            smoothing (float, optional): Gaussian smoothing strength.
+                Increase this value to suppress ringing or explicitly set to zero to
+                disable smoothing. Default is ``1/self.ydeg``.
+            fac (float, optional): Factor by which to oversample the image
+                when applying the SHT. Default is ``1.0``. Increase this
+                number for higher fidelity (at the expense of increased
+                computational time).
+            eps (float, optional): Regularization strength for the spherical
+                harmonic transform. Default is ``1e-12``.
             force_psd (bool, optional): Force the map to be positive
                 semi-definite? Default is False.
-            nside (int, optional): The ``NSIDE`` argument to a Healpix
-                map. This controls the angular resolution of the image; increase
-                this for maps with higher fidelity, at the expense of extra
-                compute time. Default is 32.
-            max_iter (int, optional): Maximum number of iterations in trying
-                to convert the map to a Healpix array. Each iteration, the
-                input array is successively doubled in size in order to
-                increase the angular coverage of the input. Default is 3. If
-                the number of iterations exceeds this value, an error will
-                be raised.
             kwargs (optional): Any other kwargs passed directly to
                 :py:meth:`minimize` (only if ``psd`` is True).
         """
         # Not implemented for spectral
         self._no_spectral()
 
+        # Function to get tensor values
+        get_val = evaluator(**kwargs)
+
         # Is this a file name?
         if type(image) is str:
-            y = image2map(
-                image,
-                lmax=self.ydeg,
-                sigma=sigma,
-                nside=nside,
-                max_iter=max_iter,
+            # Get the full path
+            if not os.path.exists(image):
+                image = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)), "img", image
+                )
+                if not image.endswith(".png"):
+                    image += ".png"
+                if not os.path.exists(image):
+                    raise ValueError("File not found: %s." % image)
+
+            # Load the image into an ndarray
+            image = plt.imread(image)
+
+            # Convert to grayscale
+            if len(image.shape) == 3:
+                image = np.mean(image[:, :, :3], axis=-1)
+
+            # Re-orient
+            image = np.flipud(image)
+
+        # Downsample the image to Nyquist-ish
+        factor = fac * 4 * self.ydeg / image.shape[1]
+        if factor < 1:
+            image = zoom(image, factor, mode="nearest")
+
+        # Get the lat-lon grid
+        nlat, nlon = image.shape
+        lon = np.linspace(extent[0], extent[1], nlon) * np.pi / 180
+        lat = np.linspace(extent[2], extent[3], nlat) * np.pi / 180
+        lon, lat = np.meshgrid(lon, lat)
+        lon = lon.flatten()
+        lat = lat.flatten()
+
+        # Compute the cos(lat)-weighted SHT
+        w = np.cos(lat)
+        P = self.ops.P(lat, lon)
+        PTSinv = P.T * (w ** 2)[None, :]
+        Q = np.linalg.solve(PTSinv @ P + eps * np.eye(P.shape[1]), PTSinv)
+        if smoothing is None:
+            smoothing = 1.0 / self.ydeg
+        if smoothing > 0:
+            l = np.concatenate(
+                [np.repeat(l, 2 * l + 1) for l in range(self.ydeg + 1)]
             )
-        # or is it an array?
-        elif type(image) is np.ndarray:
-            if healpix:
-                y = healpix2map(
-                    image,
-                    lmax=self.ydeg,
-                    sigma=sigma,
-                    nside=nside,
-                    max_iter=max_iter,
-                )
-            else:
-                y = array2map(
-                    image,
-                    lmax=self.ydeg,
-                    sigma=sigma,
-                    nside=nside,
-                    max_iter=max_iter,
-                )
-        else:
-            raise ValueError("Invalid `image` value.")
+            s = np.exp(-0.5 * l * (l + 1) * smoothing ** 2)
+            Q *= s[:, None]
+
+        # The Ylm coefficients are just a linear op on the image
+        y = Q @ image.flatten()
 
         # Ingest the coefficients w/ appropriate normalization
         # This ensures the map intensity will have the same normalization
         # as that of the input image
-        y /= 2 * np.sqrt(np.pi)
+        y /= np.pi
         self._y = self._math.cast(y / y[0])
         self.amp = self._math.cast(y[0] * np.pi)
 
@@ -1483,7 +1390,7 @@ class YlmBase(object):
             # Find the minimum
             _, _, I = self.minimize(**kwargs)
             if self.lazy:
-                I = I.eval()
+                I = get_val(I)
 
             # Scale the coeffs?
             if I < 0:
@@ -1521,107 +1428,106 @@ class YlmBase(object):
         else:
             self._y = self._math.transpose(y)
 
-    def add_spot(
-        self,
-        amp=None,
-        intensity=None,
-        relative=True,
-        sigma=0.1,
-        lat=0.0,
-        lon=0.0,
-    ):
-        r"""Add the expansion of a gaussian spot to the map.
+    def spot(self, *, contrast=1.0, radius=None, lat=0.0, lon=0.0, **kwargs):
+        r"""Add the expansion of a circular spot to the map.
 
-        This function adds a spot whose functional form is the spherical
-        harmonic expansion of a gaussian in the quantity
-        :math:`\cos\Delta\theta`, where :math:`\Delta\theta`
-        is the angular separation between the center of the spot and another
-        point on the surface. The spot brightness is controlled by either the
-        parameter ``amp``, defined as the fractional change in the
-        total luminosity of the object due to the spot, or the parameter
-        ``intensity``, defined as the fractional change in the
+        This function adds a spot whose functional form is a top
+        hat in :math:`\Delta\theta`, the
+        angular separation between the center of the spot and another
+        point on the surface. The spot intensity is controlled by the
+        parameter ``contrast``, defined as the fractional change in the
         intensity at the center of the spot.
 
         Args:
-            amp (scalar or vector, optional): The amplitude of the spot. This
-                is equal to the fractional change in the luminosity of the map
-                due to the spot. If the map has more than one wavelength bin,
-                this must be a vector of length equal to the number of
-                wavelength bins. Default is None.
-                Either ``amp`` or ``intensity`` must be given.
-            intensity (scalar or vector, optional): The intensity of the spot.
+            contrast (scalar or vector, optional): The contrast of the spot.
                 This is equal to the fractional change in the intensity of the
-                map at the *center* of the spot. If the map has more than one
+                map at the *center* of the spot relative to the baseline intensity
+                of an unspotted map. If the map has more than one
                 wavelength bin, this must be a vector of length equal to the
-                number of wavelength bins. Default is None.
-                Either ``amp`` or ``intensity`` must be given.
-            relative (bool, optional): If True, computes the spot expansion
-                assuming the fractional `amp` or `intensity` change is relative
-                to the **current** map amplitude/intensity. If False, computes
-                the spot expansion assuming the fractional change is relative
-                to the **original** map amplitude/intensity (i.e., that of
-                a featureless map). Defaults to True. Note that if True,
-                adding two spots with the same values of `amp` or `intensity`
-                will generally result in *different* intensities at their
-                centers, since the first spot will have changed the map
-                intensity everywhere! Defaults to True.
-            sigma (scalar, optional): The standard deviation of the gaussian.
-                Defaults to 0.1.
+                number of wavelength bins. Positive values of the contrast
+                result in dark spots; negative values result in bright
+                spots. Default is ``1.0``, corresponding to a spot with
+                central intensity close to zero.
+            radius (scalar, optional): The angular radius of the spot in
+                units of :py:attr:`angle_unit`. Defaults to ``20.0`` degrees.
             lat (scalar, optional): The latitude of the spot in units of
-                :py:attr:`angle_unit`. Defaults to 0.0.
+                :py:attr:`angle_unit`. Defaults to ``0.0``.
             lon (scalar, optional): The longitude of the spot in units of
-                :py:attr:`angle_unit`. Defaults to 0.0.
+                :py:attr:`angle_unit`. Defaults to ``0.0``.
+
+        .. note::
+
+            Keep in mind that things are normalized in ``starry`` such that
+            the disk-integrated *flux* (not the *intensity*!)
+            of an unspotted body is unity. The default intensity of an
+            unspotted map is ``1.0 / np.pi`` everywhere (this ensures the
+            integral over the unit disk is unity).
+            So when you instantiate a map and add a spot of contrast ``c``,
+            you'll see that the intensity at the center is actually
+            ``(1 - c) / np.pi``. This is expected behavior, since that's
+            a factor of ``1 - c`` smaller than the baseline intensity.
+
+        .. note::
+
+            This function computes the spherical harmonic expansion of a
+            circular spot with uniform contrast. At finite spherical
+            harmonic degree, this will return an *approximation* that
+            may be subject to ringing. Users can control the amount of
+            ringing and the smoothness of the spot profile (see below).
+            In general, however, at a given spherical harmonic degree
+            ``ydeg``, there is always minimum spot radius that can be
+            modeled well. For ``ydeg = 15``, for instance, that radius
+            is about ``10`` degrees. Attempting to add a spot smaller
+            than this will in general result in a large amount of ringing and
+            a smaller contrast than desired.
+
+        There are a few additional under-the-hood keywords
+        that control the behavior of the spot expansion. These are
+
+        Args:
+            spot_pts (int, optional): The number of points in the expansion
+                of the (1-dimensional) spot profile. Default is ``1000``.
+            spot_eps (float, optional): Regularization parameter in the
+                expansion. Default is ``1e-9``.
+            spot_smoothing (float, optional): Standard deviation of the
+                Gaussian smoothing applied to the spot to suppress
+                ringing (unitless). Default is ``2.0 / self.ydeg``.
+            spot_fac (float, optional): Parameter controlling the smoothness
+                of the spot profile. Increasing this parameter increases
+                the steepness of the profile (which approaches a top hat
+                as ``spot_fac -> inf``). Decreasing it results in a smoother
+                sigmoidal function. Default is ``300``. Changing this
+                parameter is not recommended; change ``spot_smoothing``
+                instead.
+
+        .. note::
+
+            These last four parameters are cached. That means that
+            changing their value in a call to ``spot`` will result in
+            all future calls to ``spot`` "remembering" those settings,
+            unless you change them back!
 
         """
-        # Parse the amplitude
-        if (amp is None and intensity is None) or (
-            amp is not None and intensity is not None
-        ):
-            raise ValueError("Please provide either `amp` or `intensity`.")
-        elif amp is not None:
-            amp, _ = self._math.vectorize(
-                self._math.cast(amp), np.ones(self.nw)
-            )
-            # Normalize?
-            if not relative:
-                amp /= self.amp
+        # Set up (if kwargs changed)
+        self.ops._spot_setup(**kwargs)
+
+        # Check inputs
+        if radius is None:
+            radius = self._math.cast(20 * np.pi / 180)
         else:
-            # Vectorize if needed
-            intensity, _ = self._math.vectorize(
-                self._math.cast(intensity), np.ones(self.nw)
-            )
-            # Normalize?
-            if not relative:
-                baseline = 1.0 / np.pi
-            else:
-                baseline = self.intensity(lat=lat, lon=lon, limbdarken=False)
-            DeltaI = baseline * intensity
-            # The integral of the gaussian in cos(Delta theta) over the
-            # surface of the sphere is sigma * sqrt(2 * pi^3). Combining
-            # this with the normalization convention of starry (a factor of 4),
-            # the corresponding spot amplitude is...
-            amp = sigma * np.sqrt(2 * np.pi ** 3) * DeltaI / 4
-            if not relative:
-                amp /= self.amp
+            radius = self._math.cast(radius) * self._angle_factor
+        lat = self._math.cast(lat) * self._angle_factor
+        lon = self._math.cast(lon) * self._angle_factor
+        if self.nw is None:
+            contrast = self._math.cast(contrast)
+        else:
+            contrast = self._math.cast(contrast) * self._math.ones(self.nw)
 
-        # Parse remaining kwargs
-        sigma, lat, lon = self._math.cast(sigma, lat, lon)
-
-        # Get the Ylm expansion of the spot. Note that yspot[0] is not
-        # unity, so we'll need to normalize it before setting self._y
-        yspot = self.ops.expand_spot(
-            amp, sigma, lat * self._angle_factor, lon * self._angle_factor
-        )
-        y_new = self._y + yspot
-        amp_new = self._amp * y_new[0]
-        y_new /= y_new[0]
-
-        # Update the map and the normalizing amplitude
-        self._y = y_new
-        self._amp = amp_new
+        # Add the spot to the map
+        self._y += self.ops.spot(contrast, radius, lat, lon)
 
     def minimize(self, oversample=1, ntries=1, bounds=None, return_info=False):
-        """Find the global (optionally local) minimum of the map intensity. 
+        """Find the global (optionally local) minimum of the map intensity.
 
         Args:
             oversample (int): Factor by which to oversample the initial
@@ -1642,9 +1548,7 @@ class YlmBase(object):
         self._no_spectral()
 
         self.ops._minimize.setup(
-            oversample=oversample,
-            ntries=ntries, 
-            bounds=bounds
+            oversample=oversample, ntries=ntries, bounds=bounds
         )
         lat, lon, I = self.ops.get_minimum(self.y)
         if return_info:  # pragma: no cover
@@ -1948,6 +1852,9 @@ class RVBase(object):
     attributes and methods as :py:class:`starry.maps.YlmBase`, with the
     additions and modifications listed below.
 
+    All velocities are in meters per second, unless otherwise
+    specified via the attribute :py:attr:`_velocity_unit``.
+
     .. note::
         Instantiate this class by calling :py:func:`starry.Map` with
         ``ydeg > 0`` and ``rv`` set to True.
@@ -1958,6 +1865,7 @@ class RVBase(object):
     def reset(self, **kwargs):
         self.velocity_unit = kwargs.pop("velocity_unit", units.m / units.s)
         self.veq = kwargs.pop("veq", 0.0)
+        self.alpha = kwargs.pop("alpha", 0.0)
         super(RVBase, self).reset(**kwargs)
 
     @property
@@ -1970,6 +1878,26 @@ class RVBase(object):
         assert value.physical_type == "speed"
         self._velocity_unit = value
         self._velocity_factor = value.in_units(units.m / units.s)
+
+    @property
+    def alpha(self):
+        """The rotational shear coefficient, a number in the range ``[0, 1]``.
+
+        The parameter :math:`\\alpha` is used to model linear differential
+        rotation. The angular velocity at a given latitude :math:`\\theta`
+        is
+
+        :math:`\\omega = \\omega_{eq}(1 - \\alpha \\sin^2\\theta)`
+
+        where :math:`\\omega_{eq}` is the equatorial angular velocity of
+        the object.
+
+        """
+        return self._alpha
+
+    @alpha.setter
+    def alpha(self, value):
+        self._alpha = self._math.cast(value)
 
     @property
     def veq(self):
@@ -2023,6 +1951,10 @@ class RVBase(object):
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
+
+        Returns:
+            The radial velocity in units of :py:attr:`velocity_unit`.
+
         """
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
@@ -2043,8 +1975,6 @@ class RVBase(object):
             self._u,
             self._veq,
             self._alpha,
-            self._tau,
-            self._delta,
         )
 
     def intensity(self, **kwargs):
@@ -2260,9 +2190,6 @@ class ReflectedBase(object):
             self._obl,
             self._u,
             self._f,
-            self._alpha,
-            self._tau,
-            self._delta,
             self._sigr,
         )
 
@@ -2313,9 +2240,6 @@ class ReflectedBase(object):
             self._y,
             self._u,
             self._f,
-            self._alpha,
-            self._tau,
-            self._delta,
             self._sigr,
         )
 
@@ -2398,9 +2322,6 @@ class ReflectedBase(object):
             zs,
             Rs,
             theta,
-            self._alpha,
-            self._tau,
-            self._delta,
             ld,
             self._sigr,
             on94_exact,
@@ -2492,9 +2413,6 @@ class ReflectedBase(object):
             self._y,
             self._u,
             self._f,
-            self._alpha,
-            self._tau,
-            self._delta,
             xs,
             ys,
             zs,
@@ -2510,12 +2428,12 @@ class ReflectedBase(object):
             return self._math.reshape(image, [res, res])
 
     def show(self, **kwargs):
-
         # If the user supplied an image, let's just show it
         if kwargs.get("image", None) is not None:
             return super(ReflectedBase, self).show(**kwargs)
 
         # Get kwargs
+        get_val = evaluator(**kwargs)
         res = kwargs.pop("res", 300)
         projection = get_projection(kwargs.get("projection", "ortho"))
         theta = self._math.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
@@ -2537,30 +2455,24 @@ class ReflectedBase(object):
 
         if self.lazy:
             # Evaluate the variables
-            theta = theta.eval()
-            xs = xs.eval()
-            ys = ys.eval()
-            zs = zs.eval()
-            Rs = Rs.eval()
-            inc = self._inc.eval()
-            obl = self._obl.eval()
-            y = self._y.eval()
-            u = self._u.eval()
-            f = self._f.eval()
-            alpha = self._alpha.eval()
-            tau = self._tau.eval()
-            delta = self._delta.eval()
-            sigr = self._sigr.eval()
-            amp = amp.eval()
+            theta = get_val(theta)
+            xs = get_val(xs)
+            ys = get_val(ys)
+            zs = get_val(zs)
+            Rs = get_val(Rs)
+            inc = get_val(self._inc)
+            obl = get_val(self._obl)
+            y = get_val(self._y)
+            u = get_val(self._u)
+            f = get_val(self._f)
+            sigr = get_val(self._sigr)
+            amp = get_val(amp)
         else:
             inc = self._inc
             obl = self._obl
             y = self._y
             u = self._u
             f = self._f
-            alpha = self._alpha
-            tau = self._tau
-            delta = self._delta
             sigr = self._sigr
 
         if screen and illuminate:
@@ -2577,9 +2489,6 @@ class ReflectedBase(object):
                 y,
                 u,
                 f,
-                alpha,
-                tau,
-                delta,
                 xs,
                 ys,
                 zs,
@@ -2600,9 +2509,6 @@ class ReflectedBase(object):
                 np.append([1.0], np.zeros(self.Ny - 1)),
                 u,
                 f,
-                alpha,
-                tau,
-                delta,
                 xs,
                 ys,
                 zs,
@@ -2627,9 +2533,6 @@ class ReflectedBase(object):
                 y,
                 u,
                 f,
-                alpha,
-                tau,
-                delta,
                 xs,
                 ys,
                 zs,

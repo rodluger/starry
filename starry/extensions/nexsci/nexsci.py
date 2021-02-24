@@ -1,7 +1,7 @@
 """
 Extension for querying NExSci for real planet systems.
 
-*Created by `Christina Hedges <mailto:christina.l.hedges@nasa.gov>`_ on
+*Created by* `Christina Hedges <mailto:christina.l.hedges@nasa.gov>`_ *on
 November 1, 2019*
 
 Example
@@ -88,7 +88,11 @@ def from_nexsci(name, limb_darkening=[0.4, 0.2]):
         m = 1
         logger.warning("Stellar mass is NaN, setting to 1.")
 
-    star = Primary(Map(udeg=len(limb_darkening), amp=1), r=np.asarray(df.iloc[0]['st_rad']), m=m)
+    star = Primary(
+        Map(udeg=len(limb_darkening), amp=1),
+        r=np.asarray(df.iloc[0]["st_rad"]),
+        m=m,
+    )
     for idx in range(len(limb_darkening)):
         star.map[idx + 1] = limb_darkening[idx]
     planets = []
@@ -130,10 +134,22 @@ def _fill_data(df):
     """
 
     # Supplemental data for some planets
-    sup = pd.read_csv("{}/extensions/nexsci/data/supplement.csv".format(_PACKAGEDIR))
-    for label in ['pl_orbincl', 'pl_eccen', 'pl_trandep', 'pl_tranmid', 'pl_orbper']:
+    sup = pd.read_csv(
+        "{}/extensions/nexsci/data/supplement.csv".format(_PACKAGEDIR)
+    )
+    for label in [
+        "pl_orbincl",
+        "pl_eccen",
+        "pl_trandep",
+        "pl_tranmid",
+        "pl_orbper",
+    ]:
         nan = ~np.isfinite(df[label])
-        vals = np.asarray(df[nan][['stripped_name', 'pl_letter']].merge(sup[['stripped_name', 'pl_letter', label]], how='left')[label])
+        vals = np.asarray(
+            df[nan][["stripped_name", "pl_letter"]].merge(
+                sup[["stripped_name", "pl_letter", label]], how="left"
+            )[label]
+        )
         df.loc[nan, label] = vals
 
     nan = ~np.isfinite(df.pl_orbincl)
@@ -225,6 +241,7 @@ def _retrieve_online_data(guess_masses=False):
         "{}/extensions/nexsci/data/planets.csv".format(_PACKAGEDIR),
         index=False,
     )
+
 
 def _check_data_on_import():
     """Checks whether nexsci data is "fresh" on import.

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-from __future__ import division, print_function
+from ...compat import Apply
 import numpy as np
-from theano import gof
 import theano.tensor as tt
 
 
@@ -17,9 +16,10 @@ class sTOp(tt.Op):
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
         outputs = [tt.TensorType(inputs[-1].dtype, (False, False))()]
-        return gof.Apply(self, inputs, outputs)
+        return Apply(self, inputs, outputs)
 
-    def infer_shape(self, node, shapes):
+    def infer_shape(self, *args):
+        shapes = args[-1]
         return [shapes[0] + (tt.as_tensor(self.N),)]
 
     def R_op(self, inputs, eval_points):
@@ -41,9 +41,10 @@ class sTGradientOp(tt.Op):
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
         outputs = [i.type() for i in inputs[:-1]]
-        return gof.Apply(self, inputs, outputs)
+        return Apply(self, inputs, outputs)
 
-    def infer_shape(self, node, shapes):
+    def infer_shape(self, *args):
+        shapes = args[-1]
         return shapes[:-1]
 
     def perform(self, node, inputs, outputs):
@@ -65,9 +66,10 @@ class rTReflectedOp(tt.Op):
             tt.TensorType(inputs[-1].dtype, (False, False))(),
             tt.TensorType(inputs[-1].dtype, (False, False))(),
         ]
-        return gof.Apply(self, inputs, outputs)
+        return Apply(self, inputs, outputs)
 
-    def infer_shape(self, node, shapes):
+    def infer_shape(self, *args):
+        shapes = args[-1]
         return [
             shapes[0] + (tt.as_tensor(self.N),),
             shapes[0] + (tt.as_tensor(self.N),),
@@ -99,9 +101,10 @@ class rTReflectedGradientOp(tt.Op):
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
         outputs = [i.type() for i in inputs[:2]]
-        return gof.Apply(self, inputs, outputs)
+        return Apply(self, inputs, outputs)
 
-    def infer_shape(self, node, shapes):
+    def infer_shape(self, *args):
+        shapes = args[-1]
         return shapes[:2]
 
     def perform(self, node, inputs, outputs):
@@ -128,9 +131,10 @@ class sTReflectedOp(tt.Op):
             tt.TensorType(inputs[-1].dtype, (False, False))(),
             tt.TensorType(inputs[-1].dtype, (False, False))(),
         ]
-        return gof.Apply(self, inputs, outputs)
+        return Apply(self, inputs, outputs)
 
-    def infer_shape(self, node, shapes):
+    def infer_shape(self, *args):
+        shapes = args[-1]
         return [
             shapes[0] + (tt.as_tensor(self.N),),
             shapes[0] + (tt.as_tensor(self.N),),
@@ -170,9 +174,10 @@ class sTReflectedGradientOp(tt.Op):
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
         outputs = [i.type() for i in inputs[:5]]
-        return gof.Apply(self, inputs, outputs)
+        return Apply(self, inputs, outputs)
 
-    def infer_shape(self, node, shapes):
+    def infer_shape(self, *args):
+        shapes = args[-1]
         return shapes[:5]
 
     def perform(self, node, inputs, outputs):

@@ -1,5 +1,19 @@
+Recent changes
+==============
+
+New in version 1.1
+------------------
+
+Version ``1.1.0`` fixes several bugs, particularly compatibility ones
+between ``theano`` and ``pymc3``, as well as segfaults and
+pickling errors. The dependence on ``healpy`` has been removed, and
+we now have a new ``spot`` method (``add_spot`` is now deprecated).
+This version also implements phase curves and occultations in
+reflected light. See `this tutorial <notebooks/ReflectedLight.ipynb>`_ for more information.
+
+
 New in version 1.0
-==================
+------------------
 
 The first official release version of ``starry`` differs quite a bit from the beta
 (``0.3.0``) version, particularly in how gradients are computed and propagated.
@@ -119,13 +133,3 @@ Doppler maps
 ^^^^^^^^^^^^
 The ``Map`` class can now also model radial velocity observations. This is
 useful for modeling the Rossiter-McLaughlin effect, for example.
-
-Differential rotation (experimental)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Users can now specify the differential rotation parameter ``alpha``
-to model weak differential rotation over short timescales. Unfortunately,
-differential rotation is not a linear operation on the spherical harmonic
-coefficient vector, since the shearing induces higher order modes that
-grow strongly with time. The version implemented in ``starry`` is just a
-low-order approximation to differential rotation that works in cases where
-both ``alpha`` and the number of rotations are small.

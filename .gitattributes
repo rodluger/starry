@@ -8,3 +8,4 @@ notebooks/* linguist-documentation
 # keep the output from these notebooks
 notebooks/EclipsingBinary_FullSolution.ipynb filter= diff=
 notebooks/EclipsingBinary_FullSolution_Painful.ipynb filter= diff=
+notebooks/LDNormalization.ipynb filter= diff=

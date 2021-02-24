@@ -13,6 +13,9 @@ matplotlib.font_manager._log.setLevel(50)
 
 # Disable theano deprecation warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings(
+    "ignore", category=matplotlib.MatplotlibDeprecationWarning
+)
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning, module="theano")
 
@@ -27,8 +30,10 @@ plt.rcParams["text.usetex"] = False
 plt.rcParams["font.family"] = "sans-serif"
 plt.rcParams["font.sans-serif"] = ["Liberation Sans"]
 plt.rcParams["font.cursive"] = ["Liberation Sans"]
-plt.rcParams["mathtext.fontset"] = "cm"
-plt.rcParams["mathtext.fallback_to_cm"] = True
+try:
+    plt.rcParams["mathtext.fallback"] = "cm"
+except KeyError:
+    plt.rcParams["mathtext.fallback_to_cm"] = True
 
 
 # TODO: In case we need to patch some symbols.

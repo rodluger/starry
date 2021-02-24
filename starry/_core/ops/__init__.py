@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from .exceptions import *
-from .diffrot import *
 from .filter import *
 from .integration import *
 from .limbdark import *

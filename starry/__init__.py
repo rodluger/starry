@@ -8,10 +8,8 @@ import os
 _PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
 
 
-# Force double precision
-import theano.tensor as tt
-
-tt.config.floatX = "float64"
+# Theano compatibility hacks
+from . import compat
 
 
 # Import the main interface
@@ -22,7 +20,6 @@ from .kepler import Primary, Secondary, System
 
 
 # Clean up the namespace
-del tt
 del os
 
 
