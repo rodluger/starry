@@ -32,7 +32,7 @@ documentation of the API, and more.
     Github <https://github.com/rodluger/starry>
     Submit an issue <https://github.com/rodluger/starry/issues>
     Papers <https://ui.adsabs.harvard.edu/public-libraries/b0KqtPtYRj6I7T8eAZc5Ig>
-
+    Documentation for older versions <https://luger.dev/legacy/starry>
 
 Indices and tables
 ==================
