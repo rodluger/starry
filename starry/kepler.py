@@ -608,6 +608,16 @@ class System(object):
             window_pad (float, optional): Padding around the primary in units
                 of the primary radius. Bodies outside of this window will be
                 cropped. Default is 1.0.
+
+        .. note::
+            If calling this method on an instance of ``System`` created within
+            a ``pymc3.Model()``, you may specify a ``point`` keyword with
+            the model point at which to evaluate the map. This method also
+            accepts a ``model`` keyword, although this is inferred
+            automatically if called from within a ``pymc3.Model()`` context.
+            If no point is provided, attempts to evaluate the map at
+            ``model.test_point`` and raises a warning.
+
         """
         # Not yet implemented
         if self._primary._map.nw is not None:  # pragma: no cover

@@ -23,10 +23,12 @@ try:
     from theano.graph.op import ExternalCOp as COp
     from theano.graph.op import Op
     from theano.graph.params_type import Params, ParamsType
+    from theano.graph.fg import MissingInputError
 except ImportError:
     from theano.gof.graph import Apply, Node
     from theano.gof.op import COp, Op
     from theano.gof.params_type import Params, ParamsType
+    from theano.gof.fg import MissingInputError
 try:
     import theano
 
@@ -50,6 +52,8 @@ def evaluator(**kwargs):
     """
     if kwargs.get("point", None) is not None:
 
+        # User provided a point
+
         import pymc3 as pm
         import pymc3_ext as pmx
 
@@ -59,6 +63,40 @@ def evaluator(**kwargs):
 
     else:
 
-        get_val = lambda x: x.eval()
+        # No point provided
+
+        def get_val(x):
+
+            try:
+
+                # Try to directly evaluate it
+
+                return x.eval()
+
+            except MissingInputError as e:
+
+                # That didn't work. Perhaps we are in a pymc3 model
+                # context, but the user didn't provide a point?
+
+                import pymc3 as pm
+                import pymc3_ext as pmx
+
+                try:
+                    model = kwargs.get("model", pm.Model.get_context())
+                except TypeError:
+                    raise ValueError(
+                        "Missing input for variable {}, and no pymc3 model found.".format(
+                            x
+                        )
+                    )
+
+                # Warn the user that we're using the test point
+                warnings.warn(
+                    "Detected pymc3 model context, but no point provided. Evaluating at test_point."
+                )
+
+                return pmx.eval_in_model(
+                    x, model=model, point=model.test_point
+                )
 
     return get_val
