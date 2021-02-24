@@ -15,7 +15,7 @@ def test_pixel_transforms():
     lat, lon, Y2P, P2Y, Dx, Dy = map.get_pixel_transforms()
 
     # Check that the back-and-forth transform is the identity (ish)
-    assert np.max(np.abs(P2Y @ Y2P - np.eye(I.shape[0]))) < 1e-6
+    assert np.max(np.abs(P2Y @ Y2P - np.eye(map.Ny))) < 1e-6
 
     # Just check that the derivatives are finite
     assert not np.isnan(np.sum(Dx) + np.sum(Dy))
