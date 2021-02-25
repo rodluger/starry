@@ -50,15 +50,21 @@ def evaluator(**kwargs):
     Lazily imports `pymc3` to minimize overhead.
 
     """
-    if kwargs.get("point", None) is not None:
+    # Store the kwargs
+    kwargs_point = kwargs.pop("point", None)
+    kwargs_model = kwargs.pop("model", None)
+
+    if kwargs_point is not None:
 
         # User provided a point
 
         import pymc3 as pm
         import pymc3_ext as pmx
 
-        point = kwargs.get("point")
-        model = kwargs.get("model", pm.Model.get_context())
+        point = kwargs_point
+        model = kwargs_model
+        if model is None:
+            model = pm.Model.get_context()
         get_val = lambda x: pmx.eval_in_model(x, model=model, point=point)
 
     else:
@@ -82,7 +88,9 @@ def evaluator(**kwargs):
                 import pymc3_ext as pmx
 
                 try:
-                    model = kwargs.get("model", pm.Model.get_context())
+                    model = kwargs_model
+                    if model is None:
+                        model = pm.Model.get_context()
                 except TypeError:
                     raise ValueError(
                         "Missing input for variable {}, and no pymc3 model found.".format(
