@@ -33,7 +33,7 @@ def test_bounded_minimize():
     # Create map with two dark spots
     map = starry.Map(15)
     map.spot(contrast=0.1, lat=20, lon=50.0, radius=20)
-    map.spot(contrast=0.05, lat=-30, lon=-40, sigma=20)
+    map.spot(contrast=0.05, lat=-30, lon=-40, radius=20)
 
     # Render it on a lat-lon grid
     res = 300
