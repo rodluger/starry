@@ -510,7 +510,7 @@ class MapBase(object):
                     for tick in (
                         ax.xaxis.get_major_ticks() + ax.yaxis.get_major_ticks()
                     ):
-                        tick.label.set_fontsize(10)
+                        tick.label1.set_fontsize(10)
                     ax.set_xlabel("Longitude [deg]")
                     ax.set_ylabel("Latitude [deg]")
 
@@ -626,11 +626,9 @@ class MapBase(object):
                 norm = colors.Normalize(vmin=vmin, vmax=vmax)
             elif norm == "rv":
                 try:
-                    norm = colors.DivergingNorm(
-                        vmin=vmin, vcenter=0, vmax=vmax
-                    )
+                    norm = colors.TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
                 except AttributeError:  # pragma: no cover
-                    # DivergingNorm was introduced in matplotlib 3.1
+                    # TwoSlopeNorm was introduced in matplotlib 3.2
                     norm = colors.Normalize(vmin=vmin, vmax=vmax)
 
         img = ax.imshow(
@@ -1391,6 +1389,9 @@ class YlmBase(legacy.YlmBase):
 
         # The Ylm coefficients are just a linear op on the image
         y = Q @ image.flatten()
+
+        # Enforce the starry 1/pi normalization
+        y /= np.pi
 
         # Ingest the coefficients
         self._y = self._math.cast(y / y[0])
