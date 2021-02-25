@@ -2,7 +2,7 @@ name: tests
 
 on:
   push:
-    branches: [master]
+    branches: [master,dev]
   pull_request:
     branches: [master]
 
@@ -106,6 +106,7 @@ jobs:
 
       - name: Coveralls
         uses: AndreMiras/coveralls-python-action@develop
+        if: always()
         with:
           parallel: true
           flag-name: Unit Test
@@ -113,6 +114,7 @@ jobs:
   coveralls_finish:
     needs: tests
     runs-on: ubuntu-latest
+    if: always()
     steps:
     - name: Coveralls Finished
       uses: AndreMiras/coveralls-python-action@develop

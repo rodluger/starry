@@ -720,7 +720,7 @@ class MapBase(object):
                     ani.save(file, dpi=dpi, bitrate=bitrate)
                 if not custom_ax:
                     plt.close()
-            else:  # if not custom_ax:
+            else:  # pragma: no cover
                 try:
                     if "zmqshell" in str(type(get_ipython())):
                         plt.close()

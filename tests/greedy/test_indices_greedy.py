@@ -231,3 +231,16 @@ class TestGettersAndSetters:
     def test_ul_constant_coeff(self, map):
         map.reset()
         assert np.allclose(map[:], [-1, 0, 0])
+
+    def test_set_all(self, map):
+        map.reset()
+        if not map.nw:
+            map[:, :] = 1
+            assert np.allclose(map[:, :], np.ones(map.Ny))
+
+    def test_set_transposed(self, map):
+        map.reset()
+        if map.nw:
+            vals = np.ones((map.nw, map.Ny - 1))
+            map[1:, :, :] = vals
+            assert np.allclose(map[1:, :, :], vals.T)

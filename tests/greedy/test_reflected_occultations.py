@@ -8,18 +8,30 @@ from tqdm import tqdm
 
 
 @pytest.mark.parametrize(
-    "xs,ys,zs",
+    "xs,ys,zs,source_npts",
     [
-        [0, 1, 1],
-        [-1, 0, 1],
-        [0.5, 1, -0.5],
-        [-0.5, -0.5, -0.5],
-        [0.5, -0.5, 0.5],
-        [1e-08, 0, 1],  # almost noon
-        [0, 0, 1],  # exactly noon
+        [0, 1, 1, 1],
+        [-1, 0, 1, 1],
+        [0.5, 1, -0.5, 1],
+        [-0.5, -0.5, -0.5, 1],
+        [0.5, -0.5, 0.5, 1],
+        [1e-08, 0, 1, 1],  # almost noon
+        [0, 0, 1, 1],  # exactly noon
+        [0, 1, 1, 300],
     ],
 )
-def test_X(xs, ys, zs, theta=0, ro=0.1, res=300, ydeg=2, tol=1e-3, plot=False):
+def test_X(
+    xs,
+    ys,
+    zs,
+    source_npts,
+    theta=0,
+    ro=0.1,
+    res=300,
+    ydeg=2,
+    tol=1e-3,
+    plot=False,
+):
     # Params
     npts = 250
     xo = np.linspace(-1.5, 1.5, npts)
@@ -31,7 +43,7 @@ def test_X(xs, ys, zs, theta=0, ro=0.1, res=300, ydeg=2, tol=1e-3, plot=False):
     tol = 1e-3
 
     # Instantiate
-    map = starry.Map(ydeg=ydeg, reflected=True)
+    map = starry.Map(ydeg=ydeg, reflected=True, source_npts=source_npts)
 
     # Analytic
     X = map.amp * map.design_matrix(

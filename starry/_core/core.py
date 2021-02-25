@@ -32,7 +32,7 @@ import exoplanet
 
 
 # C extensions are not installed on RTD
-if os.getenv("READTHEDOCS") == "True":
+if os.getenv("READTHEDOCS") == "True":  # pragma: no cover
     _c_ops = None
 else:
     from .. import _c_ops
