@@ -767,6 +767,8 @@ class MapBase(object):
                 plt.show()
 
         # Check for invalid kwargs
+        kwargs.pop("point", None)
+        kwargs.pop("model", None)
         if self.__props__["rv"]:
             kwargs.pop("rv", None)
         if not self.__props__["limbdarkened"]:
@@ -1345,9 +1347,17 @@ class YlmBase(legacy.YlmBase):
             # Load the image into an ndarray
             image = plt.imread(image)
 
+            # If it's an integer, normalize to [0-1]
+            # (if it's a float, it's already normalized)
+            if np.issubdtype(image.dtype, np.integer):
+                image = image / 255.0
+
             # Convert to grayscale
             if len(image.shape) == 3:
-                image = np.mean(image[:, :, :3], axis=-1)
+                image = np.mean(image[:, :, :3], axis=2)
+            elif len(image.shape) == 4:
+                # ignore any transparency
+                image = np.mean(image[:, :, :3], axis=(2, 3))
 
             # Re-orient
             image = np.flipud(image)
@@ -1382,10 +1392,7 @@ class YlmBase(legacy.YlmBase):
         # The Ylm coefficients are just a linear op on the image
         y = Q @ image.flatten()
 
-        # Ingest the coefficients w/ appropriate normalization
-        # This ensures the map intensity will have the same normalization
-        # as that of the input image
-        y /= np.pi
+        # Ingest the coefficients
         self._y = self._math.cast(y / y[0])
         self.amp = self._math.cast(y[0] * np.pi)
 

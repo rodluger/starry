@@ -1,16 +1,18 @@
 .. :changelog:
 
-1.1.0 (TBD)
+1.1.0 (2021-02-25)
 ++++++++++++++++++
 
 - Implements phase curves and occultations in reflected light
 - Fixes several compatibility issues with ``theano`` and ``pymc3``
-- Removes all dependencies on ``healpy``. Now computing spherical
-  harmonic transforms in-house.
+- Removes all dependencies on ``healpy``; now computing spherical
+  harmonic transforms in-house
 - Deprecates the ``add_spot`` method in favor of a new ``spot`` method
-  adapted from the algorithm developed in ``starry_process``.
+  adapted from the algorithm developed in ``starry_process``
 - Makes ``starry`` ``Map`` objects picklable
-- Fixes several small bugs
+- Allows the ``show`` method to be called within a ``pymc3`` model
+- Fixes an issue with RVs for multi-planet systems
+- Fixes several small bugs, closes several GitHub issues
 
 1.0.0 (2019-12-26)
 ++++++++++++++++++
