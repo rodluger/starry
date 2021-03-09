@@ -2,7 +2,6 @@ name: tests
 
 on:
   push:
-    branches: [master,dev]
   pull_request:
     branches: [master]
 
@@ -66,7 +65,7 @@ jobs:
           python -m pip install -U pip
           python -m pip uninstall -y theano  # so that we know which version we're getting
           python -m pip install ${{ matrix.pymc-version }} ${{ matrix.arviz-version }}
-          python -m pip install -e ".[tests]"
+          STARRY_UNIT_TESTS=1 python -m pip install -e ".[tests]"
           python -c 'import theano; print(theano.__version__)'
 
       - name: Run tests (greedy)

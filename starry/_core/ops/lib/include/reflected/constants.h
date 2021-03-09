@@ -1,6 +1,6 @@
 /**
-\file utils.h
-\brief Miscellaneous utilities and definitions used throughout the code.
+\file constants.h
+\brief Hard-coded constants
 
 */
 
@@ -25,6 +25,36 @@
 // ---------- Fixed ---------
 // --------------------------
 
+// Square root of the desired precision in `el2`
+#ifndef STARRY_EL2_CA
+#define STARRY_EL2_CA 1e-8
+#endif
+
+// Replace `inf` with this value in argument to `el2`
+#ifndef STARRY_HUGE_TAN
+#define STARRY_HUGE_TAN 1e15
+#endif
+
+// Nudge k^2 away from 1 when it gets this close
+#ifndef STARRY_K2_ONE_TOL
+#define STARRY_K2_ONE_TOL 1e-12
+#endif
+
+// Maximum number of iterationswhen computing 2F1
+#ifndef STARRY_2F1_MAXITER
+#define STARRY_2F1_MAXITER 200
+#endif
+
+// Tolerance when computing 2F1
+#ifndef STARRY_2F1_MAXTOL
+#define STARRY_2F1_MAXTOL 1e-15
+#endif
+
+// Tolerance when computing 2F1
+#ifndef STARRY_2F1_MINTOL
+#define STARRY_2F1_MINTOL 1e-12
+#endif
+
 // Integration codes
 #define FLUX_ZERO 0
 #define FLUX_DAY_OCC 1
@@ -39,17 +69,6 @@
 #define FLUX_QUAD_DAY_VIS 10
 #define FLUX_QUAD_NIGHT_VIS 11
 #define FLUX_NOON 12
-
-// Maximum number of iterations & tolerance when computing 2F1
-#define STARRY_2F1_MAXITER 200
-#define STARRY_2F1_MAXTOL 1e-15
-#define STARRY_2F1_MINTOL 1e-12
-
-// Square root of the desired precision in `el2`
-#define STARRY_EL2_CA 1e-8
-
-// Replace `inf` with this value in argument to `el2`
-#define STARRY_HUGE_TAN 1e15
 
 // If |sin(theta)| or |cos(theta)| is less than this, set  0
 #define STARRY_T_TOL 1e-12
@@ -73,9 +92,6 @@
 
 // Tolerance for various functions that calculate phi, xi, and lam
 #define STARRY_ANGLE_TOL 1e-13
-
-// Nudge k^2 away from 1 when it gets this close
-#define STARRY_K2_ONE_TOL 1e-12
 
 // Nudge bo away from ro when it gets this close
 #define STARRY_BO_EQUALS_RO_TOL 1e-8

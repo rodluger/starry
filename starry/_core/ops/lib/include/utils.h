@@ -156,6 +156,7 @@ template <typename T> using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 template <typename T> using UnitVector = Eigen::Matrix<T, 3, 1>;
 template <typename T> using RowVector = Eigen::Matrix<T, 1, Eigen::Dynamic>;
 template <typename T> using OneByOne = Eigen::Matrix<T, 1, 1>;
+template <typename T> using Pair = Eigen::Matrix<T, 2, 1>;
 template <typename T, int StorageOrder = ColMajor>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, StorageOrder>;
 template <typename T, int N>

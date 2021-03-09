@@ -47,6 +47,10 @@ if debug:
     macros["STARRY_O"] = 0
     macros["STARRY_DEBUG"] = 1
 
+# Unit tests for C++ functions?
+if bool(int(os.getenv("STARRY_UNIT_TESTS", 0))):
+    macros["STARRY_UNIT_TESTS"] = 1
+
 # Numerical override at high l?
 if bool(int(os.getenv("STARRY_KL_NUMERICAL", 0))):
     macros["STARRY_KL_NUMERICAL"] = 1
