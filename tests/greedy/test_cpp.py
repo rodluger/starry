@@ -25,23 +25,15 @@ def test_E():
     used in oblate starry.
 
     This function is specially coded to allow negative values of
-    the parameter k^2. It is defined only for
-
-        -3pi/2 <= phi <= pi/2
-
-    which is the domain required by oblate starry.
+    the parameter k^2. It is defined for all real phi.
 
     """
-    angle1s = np.linspace(0, 2 * np.pi, 10)
-    angle2s = np.linspace(0, 2 * np.pi, 100)
+    phi1s = np.linspace(-6 * np.pi, 6 * np.pi, 31)
+    phi2s = np.linspace(-6 * np.pi, 6 * np.pi, 100)
     k2s = [-100, -5.0, -1.5, -1.0, -0.5, 0.0, 1.0, 0.5, 1.5, 5.0, 100]
     for k2 in k2s:
-        for angle1 in angle1s:
-            for angle2 in angle2s:
-
-                # This is the angle 2 * u in the oblate integrals
-                phi1 = 2 * (np.pi - 2 * angle1) / 4
-                phi2 = 2 * (np.pi - 2 * angle2) / 4
+        for phi1 in phi1s:
+            for phi2 in phi2s:
 
                 # Compute using starry
                 E_starry, E_starry_derivs = Ops.E(k2, np.array([phi1, phi2]))
@@ -52,6 +44,6 @@ def test_E():
                 # Check
                 assert np.allclose(
                     E_starry, E_mpmath
-                ), "k2={:0.1f}, angle1={:0.2f}, angle2={:0.2f}: {:0.3f} != {:0.3f}".format(
-                    k2, angle1, angle2, E_starry, E_mpmath
+                ), "k2={:0.1f}, phi1={:0.2f}, phi2={:0.2f}: {:0.3f} != {:0.3f}".format(
+                    k2, phi1, phi2, E_starry, E_mpmath
                 )

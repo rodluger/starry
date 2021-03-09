@@ -255,11 +255,17 @@ protected:
       // Add offsets to account for the limited domain of `el2`
       int sgn = -1;
       for (size_t i = 0; i < 2; ++i) {
-        if (kappa(i) > -pi<T>()) {
-          E += sgn * Ev(i);
-        } else {
-          E += sgn * (-2 * E0 - Ev(i));
-        }
+
+        // A lot of trial and error here. This ensures we match
+        // `mpmath.ellipe` over the entire real line for phi.
+        T term = floor((kappa(i).value() - 3 * pi<T>()) / (4 * pi<T>()));
+        A f1 = 4 * (term + 1) * E0 + Ev(i);
+        A f2 = 4 * (term + 1.5) * E0 - Ev(i);
+        T cond = angle(0.5 * kappa(i).value()) / (2 * pi<T>());
+        if ((cond > 0.25) && (cond < 0.75))
+          E += sgn * f2;
+        else
+          E += sgn * f1;
         sgn *= -1;
       }
 
@@ -276,11 +282,12 @@ protected:
       // Add offsets to account for the limited domain of `el2`
       int sgn = -1;
       for (size_t i = 0; i < 2; ++i) {
-        if (kappa(i) > -pi<T>()) {
-          E += sgn * Ev(i);
-        } else {
-          E += sgn * (-2 * E0 + Ev(i));
-        }
+
+        // A lot of trial and error here. This ensures we match
+        // `mpmath.ellipe` over the entire real line for phi.
+        T term = floor((kappa(i).value() - pi<T>()) / (2 * pi<T>()));
+        A f1 = 2 * (term + 1) * E0 + Ev(i);
+        E += sgn * f1;
         sgn *= -1;
       }
     }
@@ -292,17 +299,6 @@ public:
 
   //! Constructor
   explicit IncompleteEllipticIntegrals(const A &ksq, const Pair<A> &phi) {
-
-    // Domain checks. This class is only verified for -3pi/2 <= phi <= pi/2.
-    if ((phi(0) < -1.5 * pi<T>()) || (phi(0) > 0.5 * pi<T>()) ||
-        (phi(1) < -1.5 * pi<T>()) || (phi(1) > 0.5 * pi<T>())) {
-      std::stringstream args;
-      args << "phi0 = " << phi(0).value() << ", "
-           << "phi1 = " << phi(1).value();
-      throw StarryException(
-          "Angle out of bounds for incomplete elliptic integral E.",
-          "oblate/ellip.h", "IncompleteEllipticIntegrals", args.str());
-    }
 
     // Note that internally we compute things using
     // the algorithm for the reciprocal for legacy reasons...
