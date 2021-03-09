@@ -239,6 +239,7 @@ setup(
             "scikit-image",
             "pillow",
             "tqdm",
+            "mpmath",
         ],
         "docs": [
             "sphinx>=1.7.5",
