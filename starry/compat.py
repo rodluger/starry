@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 import warnings
-from packaging import version
+import aesara_theano_fallback
+from aesara_theano_fallback import aesara as theano
+import aesara_theano_fallback.tensor as tt
+from aesara_theano_fallback import sparse as ts
+from aesara_theano_fallback import change_flags, ifelse
+from aesara_theano_fallback.tensor import slinalg
+from aesara_theano_fallback.graph import basic, op, params_type, fg
 
 __all__ = [
     "theano",
@@ -22,84 +28,20 @@ __all__ = [
 # Suppress third-party deprecation warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="pymc3")
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="theano")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="aesara")
 
-
-# Determine the backend
-try:
-    import aesara
-
-    backend = "aesara"
-    try:
-        import theano
-
-    except:
-        pass
-    else:
-        warnings.warn(
-            "Both `aesara` and `theano` seem to be installed. Defaulting to `aesara` as the backend."
-        )
-except ImportError:
-    try:
-        import theano
-
-        if version.parse(theano.__version__) > version.parse("1.0.5"):
-            backend = "theano-pymc"
-        else:
-            backend = "theano"
-    except ImportError:
-        backend = ""
-
-# Double-precision everywhere
+# Set double precision
 floatX = "float64"
 
-if backend == "aesara":
-    import aesara as theano
-    import aesara.tensor as tt
-    import aesara.sparse as ts
-    from aesara.tensor import slinalg
-    from aesara.ifelse import ifelse
-    from aesara.graph.basic import Apply, Node
-    from aesara.graph.op import ExternalCOp as COp
-    from aesara.graph.op import Op
-    from aesara.graph.params_type import Params, ParamsType
-    from aesara.graph.fg import MissingInputError
-    from aesara.configparser import change_flags
-
-    aesara.config.floatX = floatX
-elif backend == "theano-pymc":
-    import theano
-    import theano.tensor as tt
-    import theano.sparse as ts
-    from theano.tensor import slinalg
-    from theano.ifelse import ifelse
-    from theano.graph.basic import Apply, Node
-    from theano.graph.op import ExternalCOp as COp
-    from theano.graph.op import Op
-    from theano.graph.params_type import Params, ParamsType
-    from theano.graph.fg import MissingInputError
-    from theano.configparser import change_flags
-
-    tt.config.floatX = floatX
-elif backend == "theano":
-    import theano
-    import theano.tensor as tt
-    import theano.sparse as ts
-    from theano.tensor import slinalg
-    from theano.ifelse import ifelse
-    from theano.gof.graph import Apply, Node
-    from theano.gof.op import COp, Op
-    from theano.gof.params_type import Params, ParamsType
-    from theano.gof.fg import MissingInputError
-
-    try:
-        from theano.configparser import change_flags
-    except:
-        change_flags = theano.config.change_flags
-    tt.config.floatX = floatX
-else:
-    raise ImportError(
-        "The `starry` package requires either `theano`, `theano-pymc`, or `aesara`."
-    )
+# Compatibility imports
+Node = basic.Node
+Apply = basic.Apply
+Op = op.Op
+COp = op.ExternalCOp
+Params = params_type.Params
+ParamsType = params_type.ParamsType
+MissingInputError = fg.MissingInputError
+theano.config.floatX = floatX
 
 
 def evaluator(**kwargs):
