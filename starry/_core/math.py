@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
 from .. import config
-from .utils import *
+from ..compat import tt, slinalg, floatX
 from .._constants import *
-import theano.tensor as tt
+from .utils import *
 import numpy as np
 from scipy.linalg import block_diag as scipy_block_diag
-import theano.tensor.slinalg as sla
 import scipy
 
 __all__ = ["lazy_math", "greedy_math", "lazy_linalg", "greedy_linalg"]
 
 
 # Cholesky solve
-_solve_lower = sla.Solve(A_structure="lower_triangular", lower=True)
-_solve_upper = sla.Solve(A_structure="upper_triangular", lower=False)
+_solve_lower = slinalg.Solve(A_structure="lower_triangular", lower=True)
+_solve_upper = slinalg.Solve(A_structure="upper_triangular", lower=False)
 
 
 def _cho_solve(cho_A, b):
@@ -100,7 +99,7 @@ class MathType(type):
 
     def cholesky(cls, *args, **kwargs):
         if cls.lazy:
-            return sla.cholesky(*args, **kwargs)
+            return slinalg.cholesky(*args, **kwargs)
         else:
             return scipy.linalg.cholesky(*args, **kwargs, lower=True)
 
@@ -156,9 +155,9 @@ class MathType(type):
             return cls.to_tensor(*args)
         else:
             if len(args) == 1:
-                return np.array(args[0], dtype=tt.config.floatX)
+                return np.array(args[0], dtype=floatX)
             else:
-                return [np.array(arg, dtype=tt.config.floatX) for arg in args]
+                return [np.array(arg, dtype=floatX) for arg in args]
 
     def to_array_or_tensor(cls, x):
         if cls.lazy:
@@ -170,7 +169,7 @@ class MathType(type):
         if cls.lazy:
             N = [mat.shape[0] for mat in mats]
             Nsum = tt.sum(N)
-            res = tt.zeros((Nsum, Nsum), dtype=tt.config.floatX)
+            res = tt.zeros((Nsum, Nsum), dtype=floatX)
             n = 0
             for mat in mats:
                 inds = slice(n, n + mat.shape[0])
@@ -186,12 +185,9 @@ class MathType(type):
         Converts to tensor regardless of whether `cls.lazy` is True or False.
         """
         if len(args) == 1:
-            return tt.as_tensor_variable(args[0]).astype(tt.config.floatX)
+            return tt.as_tensor_variable(args[0]).astype(floatX)
         else:
-            return [
-                tt.as_tensor_variable(arg).astype(tt.config.floatX)
-                for arg in args
-            ]
+            return [tt.as_tensor_variable(arg).astype(floatX) for arg in args]
 
     def __getattr__(cls, attr):
         if cls.lazy:
@@ -255,11 +251,11 @@ class LinAlgType(type):
             LInvmu = tt.dot(LInv, mu)
 
         # Compute the max like y and its covariance matrix
-        cho_W = sla.cholesky(W)
+        cho_W = slinalg.cholesky(W)
         M = _cho_solve(cho_W, tt.transpose(CInvX))
         yhat = tt.dot(M, flux) + _cho_solve(cho_W, LInvmu)
         ycov = _cho_solve(cho_W, tt.eye(cho_W.shape[0]))
-        cho_ycov = sla.cholesky(ycov)
+        cho_ycov = slinalg.cholesky(ycov)
 
         return yhat, cho_ycov
 
@@ -304,7 +300,7 @@ class LinAlgType(type):
         else:
             gp_cov = C + XLX
 
-        cho_gp_cov = sla.cholesky(gp_cov)
+        cho_gp_cov = slinalg.cholesky(gp_cov)
 
         # Compute the marginal likelihood
         N = X.shape[0]
@@ -358,7 +354,7 @@ class LinAlgType(type):
             W = tt.dot(tt.transpose(X), U) + tt.diag(LInv)
         else:
             W = tt.dot(tt.transpose(X), U) + LInv
-        cho_W = sla.cholesky(W)
+        cho_W = slinalg.cholesky(W)
 
         if CInv.ndim == 0:
             SInv = CInv * tt.eye(U.shape[0]) - tt.dot(

@@ -6,168 +6,196 @@ import matplotlib.pyplot as plt
 import pytest
 
 
-map = starry.Map(ydeg=1, reflected=True)
-_b = tt.dvector("b")
-_theta = tt.dvector("theta")
-_bo = tt.dvector("bo")
-_ro = tt.dscalar("ro")
-_sigr = tt.dscalar("sigr")
-_s = theano.function(
-    [_b, _theta, _bo, _ro, _sigr], map.ops.sT(_b, _theta, _bo, _ro, _sigr)
-)
+@pytest.fixture
+def model():
+    class Model:
+        def __init__(self):
+            self.map = starry.Map(ydeg=1, reflected=True)
+            _b = tt.dvector("b")
+            _theta = tt.dvector("theta")
+            _bo = tt.dvector("bo")
+            _ro = tt.dscalar("ro")
+            _sigr = tt.dscalar("sigr")
+            self._s = theano.function(
+                [_b, _theta, _bo, _ro, _sigr],
+                self.map.ops.sT(_b, _theta, _bo, _ro, _sigr),
+            )
+
+            self._dsdb = [
+                theano.function(
+                    [_b, _theta, _bo, _ro, _sigr],
+                    tt.grad(
+                        self.map.ops.sT(_b, _theta, _bo, _ro, _sigr)[0, n], _b
+                    ),
+                )
+                for n in range(self.map.Ny)
+            ]
+
+            self._dsdtheta = [
+                theano.function(
+                    [_b, _theta, _bo, _ro, _sigr],
+                    tt.grad(
+                        self.map.ops.sT(_b, _theta, _bo, _ro, _sigr)[0, n],
+                        _theta,
+                    ),
+                )
+                for n in range(self.map.Ny)
+            ]
+
+            self._dsdbo = [
+                theano.function(
+                    [_b, _theta, _bo, _ro, _sigr],
+                    tt.grad(
+                        self.map.ops.sT(_b, _theta, _bo, _ro, _sigr)[0, n], _bo
+                    ),
+                )
+                for n in range(self.map.Ny)
+            ]
+
+            self._dsdro = [
+                theano.function(
+                    [_b, _theta, _bo, _ro, _sigr],
+                    tt.grad(
+                        self.map.ops.sT(_b, _theta, _bo, _ro, _sigr)[0, n], _ro
+                    ),
+                )
+                for n in range(self.map.Ny)
+            ]
+
+            self._dsdsigr = [
+                theano.function(
+                    [_b, _theta, _bo, _ro, _sigr],
+                    tt.grad(
+                        self.map.ops.sT(_b, _theta, _bo, _ro, _sigr)[0, n],
+                        _sigr,
+                    ),
+                )
+                for n in range(self.map.Ny)
+            ]
+
+        def s(self, b, theta, bo, ro, sigr, n=0):
+            if hasattr(ro, "__len__"):
+                assert not (
+                    hasattr(b, "__len__")
+                    or hasattr(theta, "__len__")
+                    or hasattr(bo, "__len__")
+                    or hasattr(sigr, "__len__")
+                )
+                return [
+                    self._s([b], [theta], [bo], ro[i], sigr)[0, n]
+                    for i in range(len(ro))
+                ]
+            elif hasattr(sigr, "__len__"):
+                assert not (
+                    hasattr(b, "__len__")
+                    or hasattr(theta, "__len__")
+                    or hasattr(bo, "__len__")
+                    or hasattr(ro, "__len__")
+                )
+                return [
+                    self._s([b], [theta], [bo], ro, sigr[i])[0, n]
+                    for i in range(len(sigr))
+                ]
+            else:
+                assert (
+                    hasattr(b, "__len__")
+                    or hasattr(theta, "__len__")
+                    or hasattr(bo, "__len__")
+                )
+                shaper = (
+                    np.zeros_like(b) + np.zeros_like(bo) + np.zeros_like(theta)
+                )
+                b += shaper
+                theta += shaper
+                bo += shaper
+                return self._s(b, theta, bo, ro, sigr)[:, n]
+
+        def dsdb(self, b, theta, bo, ro, sigr, n=0):
+            b = np.atleast_1d(b)
+            assert not hasattr(theta, "__len__")
+            assert not hasattr(bo, "__len__")
+            assert not hasattr(ro, "__len__")
+            assert not hasattr(sigr, "__len__")
+            return np.array(
+                [
+                    self._dsdb[n]([b[i]], [theta], [bo], ro, sigr)
+                    for i in range(len(b))
+                ]
+            )
+
+        def dsdtheta(self, b, theta, bo, ro, sigr, n=0):
+            theta = np.atleast_1d(theta)
+            assert not hasattr(b, "__len__")
+            assert not hasattr(bo, "__len__")
+            assert not hasattr(ro, "__len__")
+            assert not hasattr(sigr, "__len__")
+            return np.array(
+                [
+                    self._dsdtheta[n]([b], [theta[i]], [bo], ro, sigr)
+                    for i in range(len(theta))
+                ]
+            )
+
+        def dsdbo(self, b, theta, bo, ro, sigr, n=0):
+            bo = np.atleast_1d(bo)
+            assert not hasattr(b, "__len__")
+            assert not hasattr(theta, "__len__")
+            assert not hasattr(ro, "__len__")
+            assert not hasattr(sigr, "__len__")
+            return np.array(
+                [
+                    self._dsdbo[n]([b], [theta], [bo[i]], ro, sigr)
+                    for i in range(len(bo))
+                ]
+            )
+
+        def dsdro(self, b, theta, bo, ro, sigr, n=0):
+            ro = np.atleast_1d(ro)
+            assert not hasattr(b, "__len__")
+            assert not hasattr(theta, "__len__")
+            assert not hasattr(bo, "__len__")
+            assert not hasattr(sigr, "__len__")
+            return np.array(
+                [
+                    self._dsdro[n]([b], [theta], [bo], ro[i], sigr)
+                    for i in range(len(ro))
+                ]
+            )
+
+        def dsdsigr(self, b, theta, bo, ro, sigr, n=0):
+            sigr = np.atleast_1d(sigr)
+            assert not hasattr(b, "__len__")
+            assert not hasattr(theta, "__len__")
+            assert not hasattr(bo, "__len__")
+            assert not hasattr(ro, "__len__")
+            return np.array(
+                [
+                    self._dsdsigr[n]([b], [theta], [bo], ro, sigr[i])
+                    for i in range(len(sigr))
+                ]
+            )
+
+        def grad(self, b, theta, bo, ro, sigr, n=0):
+            if hasattr(b, "__len__"):
+                wrt = b
+            elif hasattr(theta, "__len__"):
+                wrt = theta
+            elif hasattr(bo, "__len__"):
+                wrt = bo
+            elif hasattr(ro, "__len__"):
+                wrt = ro
+            elif hasattr(sigr, "__len__"):
+                wrt = sigr
+            else:
+                assert False
+            return np.gradient(
+                self.s(b, theta, bo, ro, sigr, n=n), edge_order=2
+            ) / np.gradient(wrt, edge_order=2)
+
+    return Model()
 
 
-def s(b, theta, bo, ro, sigr, n=0):
-    if hasattr(ro, "__len__"):
-        assert not (
-            hasattr(b, "__len__")
-            or hasattr(theta, "__len__")
-            or hasattr(bo, "__len__")
-            or hasattr(sigr, "__len__")
-        )
-        return [
-            _s([b], [theta], [bo], ro[i], sigr)[0, n] for i in range(len(ro))
-        ]
-    elif hasattr(sigr, "__len__"):
-        assert not (
-            hasattr(b, "__len__")
-            or hasattr(theta, "__len__")
-            or hasattr(bo, "__len__")
-            or hasattr(ro, "__len__")
-        )
-        return [
-            _s([b], [theta], [bo], ro, sigr[i])[0, n] for i in range(len(sigr))
-        ]
-    else:
-        assert (
-            hasattr(b, "__len__")
-            or hasattr(theta, "__len__")
-            or hasattr(bo, "__len__")
-        )
-        shaper = np.zeros_like(b) + np.zeros_like(bo) + np.zeros_like(theta)
-        b += shaper
-        theta += shaper
-        bo += shaper
-        return _s(b, theta, bo, ro, sigr)[:, n]
-
-
-_dsdb = [
-    theano.function(
-        [_b, _theta, _bo, _ro, _sigr],
-        tt.grad(map.ops.sT(_b, _theta, _bo, _ro, _sigr)[0, n], _b),
-    )
-    for n in range(map.Ny)
-]
-_dsdtheta = [
-    theano.function(
-        [_b, _theta, _bo, _ro, _sigr],
-        tt.grad(map.ops.sT(_b, _theta, _bo, _ro, _sigr)[0, n], _theta),
-    )
-    for n in range(map.Ny)
-]
-_dsdbo = [
-    theano.function(
-        [_b, _theta, _bo, _ro, _sigr],
-        tt.grad(map.ops.sT(_b, _theta, _bo, _ro, _sigr)[0, n], _bo),
-    )
-    for n in range(map.Ny)
-]
-_dsdro = [
-    theano.function(
-        [_b, _theta, _bo, _ro, _sigr],
-        tt.grad(map.ops.sT(_b, _theta, _bo, _ro, _sigr)[0, n], _ro),
-    )
-    for n in range(map.Ny)
-]
-_dsdsigr = [
-    theano.function(
-        [_b, _theta, _bo, _ro, _sigr],
-        tt.grad(map.ops.sT(_b, _theta, _bo, _ro, _sigr)[0, n], _sigr),
-    )
-    for n in range(map.Ny)
-]
-
-
-def dsdb(b, theta, bo, ro, sigr, n=0):
-    b = np.atleast_1d(b)
-    assert not hasattr(theta, "__len__")
-    assert not hasattr(bo, "__len__")
-    assert not hasattr(ro, "__len__")
-    assert not hasattr(sigr, "__len__")
-    return np.array(
-        [_dsdb[n]([b[i]], [theta], [bo], ro, sigr) for i in range(len(b))]
-    )
-
-
-def dsdtheta(b, theta, bo, ro, sigr, n=0):
-    theta = np.atleast_1d(theta)
-    assert not hasattr(b, "__len__")
-    assert not hasattr(bo, "__len__")
-    assert not hasattr(ro, "__len__")
-    assert not hasattr(sigr, "__len__")
-    return np.array(
-        [
-            _dsdtheta[n]([b], [theta[i]], [bo], ro, sigr)
-            for i in range(len(theta))
-        ]
-    )
-
-
-def dsdbo(b, theta, bo, ro, sigr, n=0):
-    bo = np.atleast_1d(bo)
-    assert not hasattr(b, "__len__")
-    assert not hasattr(theta, "__len__")
-    assert not hasattr(ro, "__len__")
-    assert not hasattr(sigr, "__len__")
-    return np.array(
-        [_dsdbo[n]([b], [theta], [bo[i]], ro, sigr) for i in range(len(bo))]
-    )
-
-
-def dsdro(b, theta, bo, ro, sigr, n=0):
-    ro = np.atleast_1d(ro)
-    assert not hasattr(b, "__len__")
-    assert not hasattr(theta, "__len__")
-    assert not hasattr(bo, "__len__")
-    assert not hasattr(sigr, "__len__")
-    return np.array(
-        [_dsdro[n]([b], [theta], [bo], ro[i], sigr) for i in range(len(ro))]
-    )
-
-
-def dsdsigr(b, theta, bo, ro, sigr, n=0):
-    sigr = np.atleast_1d(sigr)
-    assert not hasattr(b, "__len__")
-    assert not hasattr(theta, "__len__")
-    assert not hasattr(bo, "__len__")
-    assert not hasattr(ro, "__len__")
-    return np.array(
-        [
-            _dsdsigr[n]([b], [theta], [bo], ro, sigr[i])
-            for i in range(len(sigr))
-        ]
-    )
-
-
-def grad(b, theta, bo, ro, sigr, n=0):
-    if hasattr(b, "__len__"):
-        wrt = b
-    elif hasattr(theta, "__len__"):
-        wrt = theta
-    elif hasattr(bo, "__len__"):
-        wrt = bo
-    elif hasattr(ro, "__len__"):
-        wrt = ro
-    elif hasattr(sigr, "__len__"):
-        wrt = sigr
-    else:
-        assert False
-    return np.gradient(
-        s(b, theta, bo, ro, sigr, n=n), edge_order=2
-    ) / np.gradient(wrt, edge_order=2)
-
-
-def test_derivs(n=1, npts=10000, atol=1e-5, plot=False, throw=True):
+def test_derivs(model, n=1, npts=10000, atol=1e-5, plot=False, throw=True):
 
     if plot:
         fig, ax = plt.subplots(3, 5, figsize=(16, 7))
@@ -178,8 +206,8 @@ def test_derivs(n=1, npts=10000, atol=1e-5, plot=False, throw=True):
     ro = 0.1
     sigr = 0.0
     b = np.linspace(-1, 1, npts)
-    g1 = grad(b, theta, bo, ro, sigr, n=n)
-    g2 = dsdb(b, theta, bo, ro, sigr, n=n).flatten()
+    g1 = model.grad(b, theta, bo, ro, sigr, n=n)
+    g2 = model.dsdb(b, theta, bo, ro, sigr, n=n).flatten()
     # Pad the edges (numerical gradient isn't great)
     if throw:
         assert np.allclose(g1[200:-50], g2[200:-50], atol=atol), "error in b"
@@ -199,8 +227,8 @@ def test_derivs(n=1, npts=10000, atol=1e-5, plot=False, throw=True):
     ro = 0.1
     sigr = 30 * np.pi / 180
     theta = np.linspace(-np.pi, np.pi, npts)
-    g1 = grad(b, theta, bo, ro, sigr, n=n)
-    g2 = dsdtheta(b, theta, bo, ro, sigr, n=n).flatten()
+    g1 = model.grad(b, theta, bo, ro, sigr, n=n)
+    g2 = model.dsdtheta(b, theta, bo, ro, sigr, n=n).flatten()
     if throw:
         assert np.allclose(g1, g2, atol=atol), "error in theta"
 
@@ -219,8 +247,8 @@ def test_derivs(n=1, npts=10000, atol=1e-5, plot=False, throw=True):
     ro = 0.1
     sigr = 30 * np.pi / 180
     bo = np.linspace(0, 1.5, npts)
-    g1 = grad(b, theta, bo, ro, sigr, n=n)
-    g2 = dsdbo(b, theta, bo, ro, sigr, n=n).flatten()
+    g1 = model.grad(b, theta, bo, ro, sigr, n=n)
+    g2 = model.dsdbo(b, theta, bo, ro, sigr, n=n).flatten()
     if throw:
         assert np.allclose(g1, g2, atol=atol), "error in bo"
 
@@ -239,8 +267,8 @@ def test_derivs(n=1, npts=10000, atol=1e-5, plot=False, throw=True):
     bo = 0.75
     sigr = 30 * np.pi / 180
     ro = np.linspace(0.001, 1.5, npts)
-    g1 = grad(b, theta, bo, ro, sigr, n=n)
-    g2 = dsdro(b, theta, bo, ro, sigr, n=n).flatten()
+    g1 = model.grad(b, theta, bo, ro, sigr, n=n)
+    g2 = model.dsdro(b, theta, bo, ro, sigr, n=n).flatten()
     if throw:
         assert np.allclose(g1, g2, atol=atol), "error in ro"
 
@@ -263,8 +291,8 @@ def test_derivs(n=1, npts=10000, atol=1e-5, plot=False, throw=True):
     bo = 0.75
     ro = 0.1
     sigr = np.linspace(0, 30 * np.pi / 180, npts)
-    g1 = grad(b, theta, bo, ro, sigr, n=n)
-    g2 = dsdsigr(b, theta, bo, ro, sigr, n=n).flatten()
+    g1 = model.grad(b, theta, bo, ro, sigr, n=n)
+    g2 = model.dsdsigr(b, theta, bo, ro, sigr, n=n).flatten()
     if throw:
         assert np.allclose(g1, g2, atol=atol), "error in sigr"
 

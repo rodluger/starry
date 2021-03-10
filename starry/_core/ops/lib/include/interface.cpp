@@ -405,7 +405,7 @@ PYBIND11_MODULE(_c_ops, m) {
             return p;
           });
 
-  // Export the degree for access in theano
+  // Export the degree for access in python
   m.attr("STARRY_OREN_NAYAR_DEG") = py::int_(STARRY_OREN_NAYAR_DEG);
 
   // Sturm's theorem to get number of poly roots between `a` and `b`

@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
-from ...compat import Apply
+from ...compat import Apply, Op, tt
 import numpy as np
-import theano.tensor as tt
-import theano.sparse as ts
 
 __all__ = ["dotROp", "tensordotRzOp"]
 
 
-class dotROp(tt.Op):
+class dotROp(Op):
     def __init__(self, func):
         self.func = func
         self._grad_op = dotRGradientOp(self)
@@ -33,7 +31,7 @@ class dotROp(tt.Op):
         return self._grad_op(*(inputs + gradients))
 
 
-class dotRGradientOp(tt.Op):
+class dotRGradientOp(Op):
     def __init__(self, base_op):
         self.base_op = base_op
 
@@ -55,7 +53,7 @@ class dotRGradientOp(tt.Op):
         outputs[4][0] = np.reshape(btheta, np.shape(inputs[4]))
 
 
-class tensordotRzOp(tt.Op):
+class tensordotRzOp(Op):
     def __init__(self, func):
         self.func = func
         self._grad_op = tensordotRzGradientOp(self)
@@ -81,7 +79,7 @@ class tensordotRzOp(tt.Op):
         return self._grad_op(*(inputs + gradients))
 
 
-class tensordotRzGradientOp(tt.Op):
+class tensordotRzGradientOp(Op):
     def __init__(self, base_op):
         self.base_op = base_op
 

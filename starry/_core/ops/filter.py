@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
-from ...compat import Apply
+from ...compat import Apply, Op, tt, ts
 import numpy as np
-import theano.tensor as tt
-import theano.sparse as ts
 import os
 
 # C extensions are not installed on RTD
@@ -15,7 +13,7 @@ else:
 __all__ = ["FOp", "OrenNayarOp"]
 
 
-class FOp(tt.Op):
+class FOp(Op):
     def __init__(self, func, N, Ny):
         self.func = func
         self.N = N
@@ -42,7 +40,7 @@ class FOp(tt.Op):
         return self._grad_op(*(inputs + gradients))
 
 
-class FGradientOp(tt.Op):
+class FGradientOp(Op):
     def __init__(self, base_op):
         self.base_op = base_op
 
@@ -61,7 +59,7 @@ class FGradientOp(tt.Op):
         outputs[1][0] = np.reshape(bf, np.shape(inputs[1]))
 
 
-class OrenNayarOp(tt.Op):
+class OrenNayarOp(Op):
     def __init__(self, func):
         self.func = func
 
