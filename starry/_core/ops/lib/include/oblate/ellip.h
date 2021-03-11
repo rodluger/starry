@@ -31,14 +31,16 @@ using namespace utils;
 /**
   Autodiff-safe arc tangent.
 */
-template <typename T> inline T arctan(const T &x) { return atan(x); }
+template <typename Scalar> inline Scalar arctan(const Scalar &x) {
+  return atan(x);
+}
 
 /**
   Autodiff-safe arc tangent.
 */
-template <typename T, int N>
-inline ADScalar<T, N> arctan(const ADScalar<T, N> &x) {
-  ADScalar<T, N> result;
+template <typename Scalar, int N>
+inline ADScalar<Scalar, N> arctan(const ADScalar<Scalar, N> &x) {
+  ADScalar<Scalar, N> result;
   result.value() = atan(x.value());
   result.derivatives() = x.derivatives() / (x.value() * x.value() + 1);
   return result;
@@ -47,14 +49,16 @@ inline ADScalar<T, N> arctan(const ADScalar<T, N> &x) {
 /**
   Autodiff-safe hyperbolic arc cosine.
 */
-template <typename T> inline T arccosh(const T &x) { return acosh(x); }
+template <typename Scalar> inline Scalar arccosh(const Scalar &x) {
+  return acosh(x);
+}
 
 /**
   Autodiff-safe hyperbolic arc cosine.
 */
-template <typename T, int N>
-inline ADScalar<T, N> arccosh(const ADScalar<T, N> &x) {
-  ADScalar<T, N> result;
+template <typename Scalar, int N>
+inline ADScalar<Scalar, N> arccosh(const ADScalar<Scalar, N> &x) {
+  ADScalar<Scalar, N> result;
   result.value() = acosh(x.value());
   result.derivatives() = x.derivatives() / sqrt(x.value() * x.value() - 1);
   return result;
@@ -67,13 +71,14 @@ inline ADScalar<T, N> arccosh(const ADScalar<T, N> &x) {
   so it's much faster to evaluate all values of `x` at once!
 
 */
-template <typename T>
-inline Pair<T> el2(const Pair<T> &x_, const T &kc_, const T &a_, const T &b_) {
+template <typename Scalar>
+inline Pair<Scalar> el2(const Pair<Scalar> &x_, const Scalar &kc_,
+                        const Scalar &a_, const Scalar &b_) {
 
   // Make copies
-  T kc = kc_;
-  T a = a_;
-  T b = b_;
+  Scalar kc = kc_;
+  Scalar a = a_;
+  Scalar b = b_;
 
   if (kc == 0) {
     std::stringstream args;
@@ -88,7 +93,7 @@ inline Pair<T> el2(const Pair<T> &x_, const T &kc_, const T &a_, const T &b_) {
 
   // We declare these params as vectors,
   // but operate on them as arrays (because Eigen...)
-  Pair<T> c_, d_, p_, y_, f_, l_, g_, q_;
+  Pair<Scalar> c_, d_, p_, y_, f_, l_, g_, q_;
   f_ = x_ * 0;
   l_ = x_ * 0;
   auto x = x_.array();
@@ -102,7 +107,7 @@ inline Pair<T> el2(const Pair<T> &x_, const T &kc_, const T &a_, const T &b_) {
   auto q = q_.array();
 
   // Scalars
-  T z, i, m, e, gp;
+  Scalar z, i, m, e, gp;
   int n;
 
   // Initial conditions
@@ -158,15 +163,14 @@ inline Pair<T> el2(const Pair<T> &x_, const T &kc_, const T &a_, const T &b_) {
   }
 
   l = (y < 0).select(1.0 + l, l);
-  q = (atan(m / y) + pi<T>() * l) * a / m;
+  q = (atan(m / y) + pi<Scalar>() * l) * a / m;
   q = (x < 0).select(-q, q);
   return (q + c * z).matrix();
 }
 
-template <class T> class IncompleteEllipticIntegrals {
+template <class Scalar, int N> class IncompleteEllipticIntegrals {
 
-  // Autodiff wrt {b, theta, bo, ro}
-  using A = ADScalar<T, 4>;
+  using A = ADScalar<Scalar, N>;
 
 protected:
   // Inputs
@@ -194,18 +198,18 @@ protected:
   inline void compute_el2(const Pair<A> &tanphi_, const A &m_) {
 
     // Get the values
-    Pair<T> tanphi;
+    Pair<Scalar> tanphi;
     tanphi(0) = tanphi_(0).value();
     tanphi(1) = tanphi_(1).value();
-    T m = m_.value();
-    T mc = 1 - m;
+    Scalar m = m_.value();
+    Scalar mc = 1 - m;
 
     // Compute the elliptic integrals
     Fv = el2(tanphi, sqrt(1 - m), 1.0, 1.0);
     Ev = el2(tanphi, sqrt(1 - m), 1.0, 1 - m);
 
     // Compute their derivatives
-    T p2, q2, t2, ddtanphi, ddm;
+    Scalar p2, q2, t2, ddtanphi, ddm;
     for (size_t i = 0; i < 2; ++i) {
       t2 = tanphi(i) * tanphi(i);
       p2 = 1.0 / (1.0 + t2);
@@ -258,10 +262,11 @@ protected:
 
         // A lot of trial and error here. This ensures we match
         // `mpmath.ellipe` over the entire real line for phi.
-        T term = floor((kappa(i).value() - 3 * pi<T>()) / (4 * pi<T>()));
+        Scalar term =
+            floor((kappa(i).value() - 3 * pi<Scalar>()) / (4 * pi<Scalar>()));
         A f1 = 4 * (term + 1) * E0 + Ev(i);
         A f2 = 4 * (term + 1.5) * E0 - Ev(i);
-        T cond = angle(0.5 * kappa(i).value()) / (2 * pi<T>());
+        Scalar cond = angle(0.5 * kappa(i).value()) / (2 * pi<Scalar>());
         if ((cond > 0.25) && (cond < 0.75))
           E += sgn * f2;
         else
@@ -285,7 +290,8 @@ protected:
 
         // A lot of trial and error here. This ensures we match
         // `mpmath.ellipe` over the entire real line for phi.
-        T term = floor((kappa(i).value() - pi<T>()) / (2 * pi<T>()));
+        Scalar term =
+            floor((kappa(i).value() - pi<Scalar>()) / (2 * pi<Scalar>()));
         A f1 = 2 * (term + 1) * E0 + Ev(i);
         E += sgn * f1;
         sgn *= -1;

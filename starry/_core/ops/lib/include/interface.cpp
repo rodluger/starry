@@ -423,7 +423,7 @@ PYBIND11_MODULE(_c_ops, m) {
 
   // Incomplete elliptic integral of the second kind
   m.def("E", [](const double &k2, const Pair<double> &phi) {
-    using A = ADScalar<double, 4>;
+    using A = ADScalar<double, 3>;
     A k2_ad;
     k2_ad.value() = k2;
     k2_ad.derivatives() = Vector<double>::Unit(3, 0);
@@ -432,8 +432,9 @@ PYBIND11_MODULE(_c_ops, m) {
     phi_ad(0).derivatives() = Vector<double>::Unit(3, 1);
     phi_ad(1).value() = phi(1);
     phi_ad(1).derivatives() = Vector<double>::Unit(3, 2);
-    auto integrals = starry::oblate::ellip::IncompleteEllipticIntegrals<double>(
-        k2_ad, phi_ad);
+    auto integrals =
+        starry::oblate::ellip::IncompleteEllipticIntegrals<double, 3>(k2_ad,
+                                                                      phi_ad);
     return py::make_tuple(integrals.E.value(), integrals.E.derivatives());
   });
 

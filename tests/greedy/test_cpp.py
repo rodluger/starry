@@ -29,7 +29,7 @@ def test_E():
 
     """
     phi1s = np.linspace(-6 * np.pi, 6 * np.pi, 31)
-    phi2s = np.linspace(-6 * np.pi, 6 * np.pi, 100)
+    phi2s = np.linspace(-6 * np.pi, 6 * np.pi, 31)
     k2s = [-100, -5.0, -1.5, -1.0, -0.5, 0.0, 1.0, 0.5, 1.5, 5.0, 100]
     for k2 in k2s:
         for phi1 in phi1s:
