@@ -194,6 +194,7 @@ class MapBase(object):
             raise ValueError("Invalid map index.")
 
     def __setitem__(self, idx, val):
+        val = np.array(val)
         if isinstance(idx, integers) or isinstance(idx, slice):
             # User is accessing a limb darkening index
             inds = get_ul_inds(self.udeg, idx)

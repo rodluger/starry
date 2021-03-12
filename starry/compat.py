@@ -4,7 +4,7 @@ import aesara_theano_fallback
 from aesara_theano_fallback import aesara as theano
 import aesara_theano_fallback.tensor as tt
 from aesara_theano_fallback import sparse as ts
-from aesara_theano_fallback import change_flags, ifelse
+from aesara_theano_fallback import change_flags, ifelse, USE_AESARA
 from aesara_theano_fallback.tensor import slinalg
 from aesara_theano_fallback.graph import basic, op, params_type, fg
 
@@ -23,6 +23,7 @@ __all__ = [
     "change_flags",
     "floatX",
     "evaluator",
+    "USE_AESARA",
 ]
 
 # Suppress third-party deprecation warnings
