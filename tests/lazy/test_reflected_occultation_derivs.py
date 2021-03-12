@@ -1,5 +1,5 @@
-import theano
-import theano.tensor as tt
+from starry.compat import theano
+from starry.compat import tt
 import numpy as np
 import starry
 import matplotlib.pyplot as plt

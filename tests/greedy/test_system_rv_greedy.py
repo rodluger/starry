@@ -2,7 +2,7 @@
 """Test Keplerian system stuff."""
 import starry
 import pytest
-import theano
+from starry.compat import theano
 import numpy as np
 import astropy.units as u
 import exoplanet

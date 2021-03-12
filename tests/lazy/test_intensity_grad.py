@@ -1,6 +1,6 @@
 import starry
-import theano
-import theano.tensor as tt
+from starry.compat import theano
+from starry.compat import tt
 from starry.compat import change_flags
 import pytest
 import numpy as np

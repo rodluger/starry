@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-import theano
-import theano.tensor as tt
+from starry.compat import theano
+from starry.compat import tt
 from starry._core.ops.limbdark.get_cl import GetClOp
 from starry._core.ops.limbdark.get_cl_rev import GetClRevOp
 

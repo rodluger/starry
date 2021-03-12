@@ -3,9 +3,9 @@
 Test the various Theano Ops and their gradients.
 
 """
-import theano
+from starry.compat import theano
 from starry.compat import change_flags
-import theano.tensor as tt
+from starry.compat import tt
 import numpy as np
 import pytest
 import starry

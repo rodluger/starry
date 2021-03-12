@@ -8,7 +8,7 @@ See docstring of `compute_ortho_grid` in "core.py"
 """
 import starry
 import pytest
-import theano.tensor as tt
+from starry.compat import tt
 import itertools
 import numpy as np
 
