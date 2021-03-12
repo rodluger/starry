@@ -129,6 +129,7 @@ protected:
     A f0 = Elliptic.E;
 
     // Upper boundary
+    // TODO: Find a series solution so we don't have to integrate
     int nmax = 2 * deg + 4;
     Scalar invkc2_value = invkc2.value();
     std::function<Scalar(Scalar)> func = [nmax, invkc2_value](Scalar x) {
