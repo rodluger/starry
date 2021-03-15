@@ -1,16 +1,13 @@
 # -*- coding: utf-8 -*-
-from ...compat import Apply
+from ...compat import Apply, Op, theano, tt, change_flags
 import numpy as np
 from scipy.optimize import minimize
-import theano
-import theano.tensor as tt
-from theano.configparser import change_flags
 
 
 __all__ = ["minimizeOp", "LDPhysicalOp"]
 
 
-class minimizeOp(tt.Op):
+class minimizeOp(Op):
     """Find the global minimum of the map intensity.
 
     Returns the tuple `(lat, lon, I)`.
@@ -145,7 +142,7 @@ class minimizeOp(tt.Op):
         self.result = result
 
 
-class LDPhysicalOp(tt.Op):
+class LDPhysicalOp(Op):
     """
     Check whether a limb darkening profile is physical using Sturm's theorem.
 

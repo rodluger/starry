@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
-from ...compat import Apply
+from ...compat import Apply, Op, tt
 import numpy as np
-import theano.tensor as tt
 
 
 __all__ = ["sTOp", "rTReflectedOp", "sTReflectedOp"]
 
 
-class sTOp(tt.Op):
+class sTOp(Op):
     def __init__(self, func, N):
         self.func = func
         self.N = N
@@ -34,7 +33,7 @@ class sTOp(tt.Op):
         return self._grad_op(*(inputs + gradients))
 
 
-class sTGradientOp(tt.Op):
+class sTGradientOp(Op):
     def __init__(self, base_op):
         self.base_op = base_op
 
@@ -53,7 +52,7 @@ class sTGradientOp(tt.Op):
         outputs[1][0] = np.reshape(br, np.shape(inputs[1]))
 
 
-class rTReflectedOp(tt.Op):
+class rTReflectedOp(Op):
     def __init__(self, func, N):
         self.func = func
         self.N = N
@@ -94,7 +93,7 @@ class rTReflectedOp(tt.Op):
         return grad
 
 
-class rTReflectedGradientOp(tt.Op):
+class rTReflectedGradientOp(Op):
     def __init__(self, base_op):
         self.base_op = base_op
 
@@ -115,7 +114,7 @@ class rTReflectedGradientOp(tt.Op):
         outputs[1][0] = np.array(np.reshape(bsigr, np.shape(sigr)))
 
 
-class sTReflectedOp(tt.Op):
+class sTReflectedOp(Op):
     def __init__(self, func, N):
         self.func = func
         self.N = N
@@ -167,7 +166,7 @@ class sTReflectedOp(tt.Op):
         return grad
 
 
-class sTReflectedGradientOp(tt.Op):
+class sTReflectedGradientOp(Op):
     def __init__(self, base_op):
         self.base_op = base_op
 

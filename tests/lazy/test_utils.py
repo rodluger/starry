@@ -2,7 +2,7 @@
 """Test Op utils.
 
 """
-import theano.tensor as tt
+from starry.compat import tt
 from starry._core.math import lazy_math
 from scipy.linalg import block_diag as scipy_block_diag
 import numpy as np

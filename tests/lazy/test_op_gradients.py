@@ -3,9 +3,9 @@
 Test the various Theano Ops and their gradients.
 
 """
-import theano
+from starry.compat import theano
 from starry.compat import change_flags
-import theano.tensor as tt
+from starry.compat import tt
 import numpy as np
 import pytest
 import starry
@@ -14,7 +14,7 @@ import starry
 def test_sT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     with change_flags(compute_test_value="off"):
         map = starry.Map(ydeg=2)
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             map.ops.sT,
             (np.linspace(0.01, 1.09, 30), 0.1),
             abs_tol=abs_tol,
@@ -39,7 +39,7 @@ def test_intensity(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         def intensity(lat, lon, y, u, f, theta):
             return map.ops.intensity(lat, lon, y, u, f, theta, np.array(True))
 
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             intensity,
             (lat, lon, y, u, f, theta),
             abs_tol=abs_tol,
@@ -59,7 +59,7 @@ def test_tensordotRz(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
         # Matrix M
         M = np.ones((7, 9))
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             map.ops.tensordotRz,
             (M, theta),
             abs_tol=abs_tol,
@@ -71,7 +71,7 @@ def test_tensordotRz(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
         # Vector M
         M = np.ones((1, 9))
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             map.ops.tensordotRz,
             (M, theta),
             abs_tol=abs_tol,
@@ -93,7 +93,7 @@ def test_dotR(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
         # Matrix M
         M = np.ones((7, 9))
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             map.ops.dotR,
             (M, x, y, z, theta),
             abs_tol=abs_tol,
@@ -105,7 +105,7 @@ def test_dotR(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
         # Vector M
         M = np.ones((1, 9))
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             map.ops.dotR,
             (M, x, y, z, theta),
             abs_tol=abs_tol,
@@ -123,7 +123,7 @@ def test_F(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         u = np.random.randn(3)
         u[0] = -1
         f = np.random.randn(16)
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             map.ops.F,
             (u, f),
             abs_tol=abs_tol,
@@ -141,7 +141,7 @@ def test_pT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         x = np.array([0.13])
         y = np.array([0.25])
         z = np.sqrt(1 - x ** 2 - y ** 2)
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             map.ops.pT,
             (x, y, z),
             abs_tol=abs_tol,
@@ -169,7 +169,7 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         func = lambda *args: tt.dot(map.ops.X(*args), y)
 
         # Just rotation
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             func,
             (theta, xo, yo, zo, 0.0, inc, obl, u, f),
             abs_tol=abs_tol,
@@ -180,7 +180,7 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         )
 
         # Just occultation
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             func,
             (theta, xo / 3, yo, zo, ro, inc, obl, u, f),
             abs_tol=abs_tol,
@@ -191,7 +191,7 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         )
 
         # Rotation + occultation
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             func,
             (theta, xo, yo, zo, ro, inc, obl, u, f),
             abs_tol=abs_tol,
@@ -207,7 +207,7 @@ def test_rT_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         map = starry.Map(ydeg=2, reflected=True)
         bterm = np.linspace(-1, 1, 10)[1:-1]
         sigr = 30 * np.pi / 180
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             map.ops.rT,
             (bterm, sigr),
             abs_tol=abs_tol,
@@ -256,7 +256,7 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
                 np.array(True),
             )
 
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             intensity,
             (lat, lon, y, u, f, xs, ys, zs, Rs, theta, sigr),
             abs_tol=abs_tol,
@@ -292,7 +292,7 @@ def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             )
 
         # Just rotation
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             func,
             (theta, xs, ys, zs, Rs, ro, inc, obl, u, f),
             abs_tol=abs_tol,
@@ -321,7 +321,7 @@ def test_flux_ylm_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         func = lambda *args: tt.dot(map.ops.X(*args), y)
 
         # Just rotation
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             func,
             (theta, xo, yo, zo, 0.0, inc, obl, u, f),
             abs_tol=abs_tol,
@@ -332,7 +332,7 @@ def test_flux_ylm_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         )
 
         # Just occultation
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             func,
             (theta, xo / 3, yo, zo, ro, inc, obl, u, f),
             abs_tol=abs_tol,
@@ -343,7 +343,7 @@ def test_flux_ylm_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         )
 
         # Rotation + occultation
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             func,
             (theta, xo, yo, zo, ro, inc, obl, u, f),
             abs_tol=abs_tol,
@@ -365,7 +365,7 @@ def test_flux_quad_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         u = np.array([-1.0] + list(np.random.randn(2)))
         func = lambda *args: map.ops.flux(*args)
 
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             func,
             (xo, yo, zo, ro, u),
             abs_tol=abs_tol,
@@ -392,7 +392,7 @@ def test_rv(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         u = [-1.0]
 
         # Just rotation
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             map.ops.rv,
             (theta, xo, yo, zo, 0.0, inc, obl, y, u, veq, alpha),
             abs_tol=abs_tol,
@@ -403,7 +403,7 @@ def test_rv(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         )
 
         # Just occultation
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             map.ops.rv,
             (theta, xo / 3, yo, zo, ro, inc, obl, y, u, veq, alpha),
             abs_tol=abs_tol,
@@ -414,7 +414,7 @@ def test_rv(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         )
 
         # Rotation + occultation
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             map.ops.rv,
             (theta, xo, yo, zo, ro, inc, obl, y, u, veq, alpha),
             abs_tol=abs_tol,
@@ -432,7 +432,7 @@ def test_spot(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         sigma = 0.1
         lat = 30 * np.pi / 180
         lon = 45 * np.pi / 180
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             map.ops.spotYlm,
             (amp, sigma, lat, lon),
             abs_tol=abs_tol,
@@ -450,7 +450,7 @@ def test_spot_spectral(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         sigma = 0.1
         lat = 30 * np.pi / 180
         lon = 45 * np.pi / 180
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             map.ops.spotYlm,
             (amp, sigma, lat, lon),
             abs_tol=abs_tol,
@@ -469,7 +469,7 @@ def test_sT_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         bo = np.array([0.75])
         ro = 0.5
         sigr = 30 * np.pi / 180
-        tt.verify_grad(
+        theano.gradient.verify_grad(
             map.ops.sT,
             (b, theta, bo, ro, sigr),
             abs_tol=abs_tol,

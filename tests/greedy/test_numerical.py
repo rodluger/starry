@@ -3,7 +3,7 @@
 Test against numerical integration.
 
 """
-import theano
+from starry.compat import theano
 import starry
 import numpy as np
 

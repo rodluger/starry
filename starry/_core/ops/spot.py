@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
-from ...compat import Apply
+from ...compat import Apply, Op, tt
 import numpy as np
-import theano
-import theano.tensor as tt
 
 __all__ = ["spotYlmOp"]
 
 
-class spotYlmOp(tt.Op):
+class spotYlmOp(Op):
     def __init__(self, func, ydeg, nw):
         self.func = func
         self._grad_op = spotYlmGradientOp(self)
@@ -37,7 +35,7 @@ class spotYlmOp(tt.Op):
         return self._grad_op(*(inputs + gradients))
 
 
-class spotYlmGradientOp(tt.Op):
+class spotYlmGradientOp(Op):
     def __init__(self, base_op):
         self.base_op = base_op
 

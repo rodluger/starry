@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-import theano
-import theano.tensor as tt
+from starry.compat import theano
+from starry.compat import tt
 from starry._core.ops.limbdark.get_cl import GetClOp
 from starry._core.ops.limbdark.get_cl_rev import GetClRevOp
 
@@ -89,7 +89,9 @@ class TestGetCl(InferShapeTester):
         )
 
     def test_grad(self):
-        tt.verify_grad(self.op, [np.array([-1, 0.3, 0.2, 0.5])], rng=np.random)
+        theano.gradient.verify_grad(
+            self.op, [np.array([-1, 0.3, 0.2, 0.5])], rng=np.random
+        )
 
 
 class TestGetClRev(InferShapeTester):

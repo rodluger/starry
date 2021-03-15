@@ -55,7 +55,7 @@ def from_nexsci(name, limb_darkening=[0.4, 0.2]):
         from NExSci
     """
     df = _get_nexsci_data()
-    if name is "random":
+    if name == "random":
         system_list = (
             df[
                 [

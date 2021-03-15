@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
-from ...compat import Apply
+from ...compat import Apply, Op, tt
 import numpy as np
-import theano
-import theano.tensor as tt
 
 __all__ = ["pTOp"]
 
 
-class pTOp(tt.Op):
+class pTOp(Op):
     def __init__(self, func, deg):
         self.func = func
         self.deg = deg
@@ -30,7 +28,7 @@ class pTOp(tt.Op):
         return self._grad_op(*(inputs + gradients))
 
 
-class pTGradientOp(tt.Op):
+class pTGradientOp(Op):
     def __init__(self, base_op):
         self.base_op = base_op
 

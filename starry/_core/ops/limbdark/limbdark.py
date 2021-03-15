@@ -2,10 +2,8 @@
 
 __all__ = ["LimbDarkOp"]
 
-from ....compat import Apply
+from ....compat import Apply, theano, tt
 from .base_op import LimbDarkBaseOp
-import theano
-import theano.tensor as tt
 
 
 class LimbDarkOp(LimbDarkBaseOp):

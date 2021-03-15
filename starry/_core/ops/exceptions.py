@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-from ...compat import Apply
+from ...compat import Apply, Op, tt, floatX
 import numpy as np
-import theano.tensor as tt
 
 __all__ = ["CheckBoundsOp", "RaiseValueErrorOp", "RaiseValueErrorIfOp"]
 
 
-class CheckBoundsOp(tt.Op):
+class CheckBoundsOp(Op):
     """
 
     """
@@ -46,7 +45,7 @@ class CheckBoundsOp(tt.Op):
             )
 
 
-class RaiseValueErrorIfOp(tt.Op):
+class RaiseValueErrorIfOp(Op):
     """
 
     """
@@ -57,7 +56,7 @@ class RaiseValueErrorIfOp(tt.Op):
     def make_node(self, *inputs):
         condition = inputs
         inputs = [tt.as_tensor_variable(condition)]
-        outputs = [tt.TensorType(tt.config.floatX, ())()]
+        outputs = [tt.TensorType(floatX, ())()]
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, *args):
