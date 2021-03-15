@@ -2,7 +2,6 @@ name: tests
 
 on:
   push:
-    branches: [master,dev]
   pull_request:
     branches: [master]
 
@@ -26,11 +25,11 @@ jobs:
           - python-version: "3.8"
             pymc-version: "pymc3==3.11"
             arviz-version: ""
-          - python-version: "3.8"
-            pymc-version: '"https://github.com/pymc-devs/pymc3/archive/master.zip" "exoplanet==0.5.0rc2"'
-            arviz-version: ""
           - python-version: "3.9"
             pymc-version: "pymc3==3.11"
+            arviz-version: ""
+          - python-version: "3.8"
+            pymc-version: "https://github.com/pymc-devs/pymc3/archive/master.zip"
             arviz-version: ""
 
     steps:

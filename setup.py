@@ -219,10 +219,10 @@ setup(
         "astropy>=3.1",
         "pymc3",
         "pymc3-ext",
-        "aesara-theano-fallback>=0.0.3",
+        "aesara-theano-fallback>=0.0.4",
         "matplotlib>=3.2.2",
         "ipython",
-        "exoplanet>=0.4.0",
+        "exoplanet>=0.4.5",
         "packaging",
     ],
     extras_require={
