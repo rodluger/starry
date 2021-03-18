@@ -1281,9 +1281,11 @@ class YlmBase(legacy.YlmBase):
         elif projection == STARRY_MOLLWEIDE_PROJECTION:
             lat, lon = self.ops.compute_moll_grid(res)[0]
         else:
-            lat, lon = self.ops.compute_ortho_grid_inc_obl(
+            latlon = self.ops.compute_ortho_grid_inc_obl(
                 res, self._inc, self._obl
             )[0]
+            lat = latlon[0]
+            lon = latlon[1]
         return (
             self._math.reshape(lat, (res, res)) / self._angle_factor,
             self._math.reshape(lon, (res, res)) / self._angle_factor,
