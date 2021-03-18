@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-from ....compat import Apply
-import theano.tensor as tt
+from ....compat import Apply, tt
 from .base_op import LimbDarkBaseOp
 
 

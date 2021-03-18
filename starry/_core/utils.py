@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 from .. import config
-from ..compat import Node, change_flags
-import theano
-import theano.tensor as tt
+from ..compat import Node, change_flags, theano, tt
 import numpy as np
 from inspect import getmro
 from functools import wraps
@@ -11,13 +9,13 @@ import sys
 
 logger = logging.getLogger("starry.ops")
 
-__all__ = ["logger", "autocompile", "is_theano", "clear_cache"]
+__all__ = ["logger", "autocompile", "is_tensor", "clear_cache"]
 
 
 integers = (int, np.int16, np.int32, np.int64)
 
 
-def is_theano(*objs):
+def is_tensor(*objs):
     """Return ``True`` if any of ``objs`` is a ``Theano`` object."""
     for obj in objs:
         for c in getmro(type(obj)):
@@ -59,7 +57,7 @@ def _get_type(arg):
 
     """
     ttype = type(arg)
-    if is_theano(arg):
+    if is_tensor(arg):
         return ttype
     else:
         if ttype in integers:
@@ -100,7 +98,7 @@ def autocompile(func):
     @wraps(func)  # inherit docstring
     def wrapper(instance, *args):
 
-        if is_theano(*args):
+        if is_tensor(*args):
 
             # Just return the function as is
             return func(instance, *args)

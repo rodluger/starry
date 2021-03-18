@@ -1,6 +1,19 @@
 # -*- coding: utf-8 -*-
+import warnings
+import aesara_theano_fallback
+from aesara_theano_fallback import aesara as theano
+import aesara_theano_fallback.tensor as tt
+from aesara_theano_fallback import sparse as ts
+from aesara_theano_fallback import change_flags, ifelse, USE_AESARA
+from aesara_theano_fallback.tensor import slinalg
+from aesara_theano_fallback.graph import basic, op, params_type, fg
 
 __all__ = [
+    "theano",
+    "tt",
+    "ts",
+    "slinalg",
+    "ifelse",
     "Apply",
     "COp",
     "Op",
@@ -8,38 +21,28 @@ __all__ = [
     "ParamsType",
     "Node",
     "change_flags",
+    "floatX",
     "evaluator",
+    "USE_AESARA",
 ]
 
 # Suppress third-party deprecation warnings
-import warnings
-
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="pymc3")
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="theano")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="aesara")
 
-# Import theano interface
-try:
-    from theano.graph.basic import Apply, Node
-    from theano.graph.op import ExternalCOp as COp
-    from theano.graph.op import Op
-    from theano.graph.params_type import Params, ParamsType
-    from theano.graph.fg import MissingInputError
-except ImportError:
-    from theano.gof.graph import Apply, Node
-    from theano.gof.op import COp, Op
-    from theano.gof.params_type import Params, ParamsType
-    from theano.gof.fg import MissingInputError
-try:
-    import theano
+# Set double precision
+floatX = "float64"
 
-    change_flags = theano.config.change_flags
-except:
-    from theano.configparser import change_flags
-
-# Force double precision
-import theano.tensor as tt
-
-tt.config.floatX = "float64"
+# Compatibility imports
+Node = basic.Node
+Apply = basic.Apply
+Op = op.Op
+COp = op.ExternalCOp
+Params = params_type.Params
+ParamsType = params_type.ParamsType
+MissingInputError = fg.MissingInputError
+theano.config.floatX = floatX
 
 
 def evaluator(**kwargs):

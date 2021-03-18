@@ -2,7 +2,7 @@
 from . import config, legacy
 from ._constants import *
 from ._core import OpsYlm, OpsLD, OpsReflected, OpsRV, math
-from ._core.utils import is_theano
+from ._core.utils import is_tensor
 from ._indices import integers, get_ylm_inds, get_ul_inds, get_ylmw_inds
 from ._plotting import (
     get_ortho_latitude_lines,
@@ -194,6 +194,8 @@ class MapBase(object):
             raise ValueError("Invalid map index.")
 
     def __setitem__(self, idx, val):
+        if not is_tensor(val):
+            val = np.array(val)
         if isinstance(idx, integers) or isinstance(idx, slice):
             # User is accessing a limb darkening index
             inds = get_ul_inds(self.udeg, idx)
@@ -1223,7 +1225,7 @@ class YlmBase(legacy.YlmBase):
         if self.nw is not None:
             animated = True
         else:
-            if is_theano(theta):
+            if is_tensor(theta):
                 animated = hasattr(theta, "ndim") and theta.ndim > 0
             else:
                 animated = hasattr(theta, "__len__")
@@ -2394,7 +2396,7 @@ class ReflectedBase(object):
         else:
             animated = False
             for arg in [theta, xs, ys, zs]:
-                if is_theano(arg):
+                if is_tensor(arg):
                     animated = animated or (
                         hasattr(arg, "ndim") and arg.ndim > 0
                     )

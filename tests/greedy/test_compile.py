@@ -2,7 +2,7 @@
 """Test theano compiling."""
 import starry
 import pytest
-import theano
+from starry.compat import theano
 import numpy as np
 
 
@@ -12,7 +12,7 @@ def test_test_value_error():
     are missing test values in our compiled
     functions, as pymc3 forces theano errors when
     test values are missing.
-    
+
     """
     theano.config.compute_test_value = "raise"
     map = starry.Map()

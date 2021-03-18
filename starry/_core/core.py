@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from .. import config
+from ..compat import theano, tt, ts, ifelse
 from .._constants import *
 from .ops import (
     sTOp,
@@ -18,12 +19,8 @@ from .ops import (
     RaiseValueErrorIfOp,
     OrenNayarOp,
 )
-from .utils import logger, autocompile, is_theano, clear_cache
+from .utils import logger, autocompile, is_tensor, clear_cache
 from .math import lazy_math as math
-import theano
-import theano.tensor as tt
-import theano.sparse as ts
-from theano.ifelse import ifelse
 from scipy.special import legendre as LegendreP
 import numpy as np
 from astropy import units

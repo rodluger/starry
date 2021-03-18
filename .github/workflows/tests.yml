@@ -7,7 +7,7 @@ on:
 
 jobs:
   tests:
-    name: "${{ matrix.pymc-version }} on py${{ matrix.python-version }}"
+    name: "Test ${{ matrix.pymc-version }} on py${{ matrix.python-version }}"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -25,11 +25,11 @@ jobs:
           - python-version: "3.8"
             pymc-version: "pymc3==3.11"
             arviz-version: ""
-          - python-version: "3.8"
-            pymc-version: "https://github.com/pymc-devs/pymc3/archive/master.zip"
-            arviz-version: ""
           - python-version: "3.9"
             pymc-version: "pymc3==3.11"
+            arviz-version: ""
+          - python-version: "3.8"
+            pymc-version: "https://github.com/pymc-devs/pymc3/archive/master.zip"
             arviz-version: ""
 
     steps:
@@ -46,6 +46,7 @@ jobs:
             ${{ runner.os }}-${{ matrix.pymc-version }}-
 
       - name: Set up Python
+        id: setup_python
         uses: conda-incubator/setup-miniconda@v2
         with:
           auto-update-conda: true
@@ -53,48 +54,43 @@ jobs:
           environment-file: environment.yml
           python-version: ${{ matrix.python-version }}
 
-      - name: Set up environment
-        shell: bash -l {0}
-        run: |
-          sudo apt-get update
-          sudo apt-get install ffmpeg
-
       - name: Install dependencies
+        id: install
+        if: steps.setup_python.outcome == 'success'
         shell: bash -l {0}
         run: |
           python -m pip install -U pip
-          python -m pip uninstall -y theano  # so that we know which version we're getting
           python -m pip install ${{ matrix.pymc-version }} ${{ matrix.arviz-version }}
           STARRY_UNIT_TESTS=1 python -m pip install -e ".[tests]"
-          python -c 'import theano; print(theano.__version__)'
 
       - name: Run tests (greedy)
+        if: steps.install.outcome == 'success'
         shell: bash -l {0}
         run: python -m pytest -v tests/greedy --junitxml=junit/test-results-greedy.xml --cov=starry --cov-append
 
       - name: Run tests (lazy)
+        if: steps.install.outcome == 'success'
         shell: bash -l {0}
         run: python -m pytest -v tests/lazy --junitxml=junit/test-results-lazy.xml --cov=starry --cov-append
-        if: ${{ always() }}
 
       - name: Run extension tests (greedy)
+        if: steps.install.outcome == 'success'
         shell: bash -l {0}
         run: python -m pytest -v starry/extensions/tests/greedy --junitxml=junit/test-results-extensions-greedy.xml --cov=starry --cov-append
-        if: ${{ always() }}
 
       - name: Run extension tests (lazy)
+        if: steps.install.outcome == 'success'
         shell: bash -l {0}
         run: python -m pytest -v starry/extensions/tests/lazy --junitxml=junit/test-results-extensions-lazy.xml --cov=starry --cov-append
-        if: ${{ always() }}
 
       - name: Get unique id
         id: unique-id
+        if: always()
         env:
           STRATEGY_CONTEXT: ${{ toJson(strategy) }}
         run: |
           export JOB_ID=`echo $STRATEGY_CONTEXT | md5sum`
           echo "::set-output name=id::$JOB_ID"
-        if: always()
 
       - name: Publish Unit Test Results
         uses: EnricoMi/publish-unit-test-result-action@v1
