@@ -12,6 +12,7 @@
 #include "../utils.h"
 #include "constants.h"
 #include "ellip.h"
+#include "special.h"
 
 namespace starry {
 namespace oblate {
@@ -19,6 +20,7 @@ namespace occultation {
 
 using namespace utils;
 using namespace ellip;
+using namespace special;
 
 template <class Scalar, int N> class Occultation {
 
@@ -45,6 +47,7 @@ protected:
 
   // Integrals
   Vector<A> W;
+  Vector<A> V;
 
   // Numerical integration
   quad::Quad<Scalar> QUAD;
@@ -157,6 +160,81 @@ protected:
     solve(f0, fN, funcA, funcB, funcC, nmax, W);
   }
 
+  /**
+   *
+   * Compute the vector of `V` integrals, computed
+   * recursively given a lower boundary condition
+   * (trivial) and an upper boundary condition
+   * (computed from `2F1`).
+   *
+   * The term `V_i` is the solution to the integral of
+   *
+   *    cos(phi) * sin(phi)^i * sqrt(1 - w^2 sin(phi))
+   *
+   * from phi = phi1 to phi = phi2, where
+   *
+   *    w^2 = 1 / (2 * k^2 - 1)
+   *
+   */
+  inline void compute_V() {
+
+    int nmax = 2 * deg + 4;
+    A invw2 = 2 * k2 - 1;
+    A sinphi, x;
+    A f0, fN;
+    std::function<A(int)> funcA, funcB, funcC;
+    Vector<A> V2, V1;
+
+    // -- Upper limit --
+
+    // Useful quantities
+    sinphi = sin(phi2);
+    x = sinphi / invw2;
+
+    // Boundary conditions
+    f0 = (2.0 / 3.0) * (1 - (1 - x) * sqrt(1 - x)) * invw2;
+    fN = pow(sinphi, (nmax + 1.0)) / (nmax + 1.0) *
+         hyp2f1(-0.5, nmax + 1.0, nmax + 2.0, x);
+
+    // Recursion coefficients
+    funcA = [x, invw2](int n) {
+      return (2 * n + (2 * n + 1) * x) * invw2 / (2 * n + 3);
+    };
+    funcB = [sinphi, invw2](int n) {
+      return -2 * (n - 1) * sinphi * invw2 / (2 * n + 3);
+    };
+    funcC = [](int n) { return 0.0; };
+
+    // Solve the tridiagonal problem
+    solve(f0, fN, funcA, funcB, funcC, nmax, V2);
+
+    // -- Lower limit --
+
+    // Useful quantities
+    sinphi = sin(phi1);
+    x = sinphi / invw2;
+
+    // Boundary conditions
+    f0 = (2.0 / 3.0) * (1 - (1 - x) * sqrt(1 - x)) * invw2;
+    fN = pow(sinphi, (nmax + 1.0)) / (nmax + 1.0) *
+         hyp2f1(-0.5, nmax + 1.0, nmax + 2.0, x);
+
+    // Recursion coefficients
+    funcA = [x, invw2](int n) {
+      return (2 * n + (2 * n + 1) * x) * invw2 / (2 * n + 3);
+    };
+    funcB = [sinphi, invw2](int n) {
+      return -2 * (n - 1) * sinphi * invw2 / (2 * n + 3);
+    };
+    funcC = [](int n) { return 0.0; };
+
+    // Solve the tridiagonal problem
+    solve(f0, fN, funcA, funcB, funcC, nmax, V1);
+
+    // Definite integral
+    V = V2 - V1;
+  }
+
 public:
   RowVector<A> sT;
 
@@ -184,7 +262,8 @@ public:
 
     // TODO
     compute_W();
-    sT = W.transpose();
+    compute_V();
+    sT = (W + V).transpose();
   }
 };
 
