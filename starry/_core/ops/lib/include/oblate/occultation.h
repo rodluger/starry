@@ -44,10 +44,20 @@ protected:
   A k2;
   A kc2;
   A invkc2;
+  A costheta;
+  A sintheta;
+  A tantheta;
+  A invtantheta;
+  A gamma;
+  A sqrtgamma;
+  A w2;
 
   // Integrals
   Vector<A> W;
   Vector<A> V;
+  Matrix<A> J;
+  Matrix<A> Lp;
+  Matrix<A> Lt;
 
   // Numerical integration
   quad::Quad<Scalar> QUAD;
@@ -235,6 +245,115 @@ protected:
     V = V2 - V1;
   }
 
+  /**
+   *
+   * Compute the matrix of `J` integrals.
+   *
+   * The term `J_{i,j}` is the solution to the integral of
+   *
+   *    cos(phi)^i * sin(phi)^j * sqrt(1 - w^2 sin(phi))
+   *
+   * from phi = phi1 to phi = phi2, where
+   *
+   *    w^2 = 1 / (2 * k^2 - 1)
+   *
+   */
+  inline void compute_J() {
+
+    //
+    int nmax = deg + 3;
+    A c1 = -2.0 * sqrt(1 - w2);
+    A term;
+    Scalar fac, amp;
+    J.setZero(nmax, nmax);
+
+    // Compute the helper integral vectors
+    compute_W();
+    compute_V();
+
+    // Compute all `J`
+    for (int s = 0; s < nmax / 2; ++s) {
+      for (int q = 0; q < nmax; ++q) {
+        fac = 1.0;
+        for (int i = 0; i < s + 1; ++i) {
+          term = 0.0;
+          amp = 1.0;
+          for (int j = 0; j < 2 * i + q + 1; ++j) {
+            term += amp * W(j);
+            amp *= -2 * (2 * i + q - j) / (j + 1.0);
+          }
+          J(2 * s, q) += c1 * fac * term;
+          J(2 * s + 1, q) += fac * V(2 * i + q);
+          fac *= (i - s) / (i + 1);
+        }
+      }
+    }
+  }
+
+  /**
+   *
+   * Compute the matrix of `L` integrals.
+   *
+   * The term `L_{i,j}` is the solution to the integral of
+   *
+   *    cos(phi)^i * sin(phi)^j
+   *
+   * from phi = phip1 to phi = phip2, where
+   *
+   *    phip = phi - theta
+   *
+   * (pT integral) or
+   *
+   *    phip = xi
+   *
+   * (tT integral).
+   *
+   */
+  inline void compute_L(const A &phip1, const A &phip2, Matrix<A> &L) {
+
+    //
+    int nmax = deg + 3;
+    A cp1 = cos(phip1);
+    A cp2 = cos(phip2);
+    A sp1 = sin(phip1);
+    A sp2 = sin(phip2);
+    L.resize(nmax, nmax);
+
+    // Lower boundary
+    L(0, 0) = phip2 - phip1;
+    L(1, 0) = sp2 - sp1;
+    L(0, 1) = cp1 - cp2;
+    L(1, 1) = 0.5 * (cp1 * cp1 - cp2 * cp2);
+
+    // Recursion coeffs
+    A fac, A1, B1, C1, D1;
+    A A0 = cp1 * sp1;
+    A B0 = cp2 * sp2;
+    A C0 = cp2 * sp2;
+    A D0 = cp1 * sp1;
+
+    // Recurse
+    for (int u = 0; u < nmax; ++u) {
+      A1 = A0;
+      B1 = B0;
+      C1 = C0;
+      D1 = D0;
+      for (int v = 2; v < nmax; ++v) {
+        fac = 1.0 / (u + v);
+        L(u, v) = fac * (A1 - B1 + (v - 1) * L(u, v - 2));
+        L(v, u) = fac * (C1 - D1 + (v - 1) * L(v - 2, u));
+        A1 *= sp1;
+        B1 *= sp2;
+        C1 *= cp2;
+        D1 *= cp1;
+      }
+      A0 *= cp1;
+      B0 *= cp2;
+      C0 *= sp2;
+      D0 *= sp1;
+    }
+  }
+
 public:
   RowVector<A> sT;
 
@@ -247,6 +366,7 @@ public:
   inline void compute(const A &bo_, const A &ro_, const A &f_, const A &theta_,
                       const A &phi1_, const A &phi2_, const A &xi1_,
                       const A &xi2_) {
+    // Make local copies of the inputs
     bo = bo_;
     ro = ro_;
     f = f_;
@@ -256,13 +376,26 @@ public:
     xi1 = xi1_;
     xi2 = xi2_;
 
-    k2 = (1 - bo * bo - ro * ro + 2 * bo * ro) / (4 * bo * ro);
+    // Useful variables
+    gamma = 1 - bo * bo - ro * ro;
+    sqrtgamma = sqrt(gamma);
+    k2 = (gamma + 2 * bo * ro) / (4 * bo * ro);
     kc2 = 1 - k2;
+    w2 = 1.0 / (2 * k2 - 1);
     invkc2 = 1.0 / kc2;
+    costheta = cos(theta);
+    sintheta = sin(theta);
+    tantheta = sintheta / costheta;
+    invtantheta = 1.0 / tantheta;
 
     // TODO
-    compute_W();
-    compute_V();
+    compute_J();
+    compute_L(phi1 - theta, phi2 - theta, Lp);
+    compute_L(xi1, xi2, Lt);
+
+    A pT2 = p2_numerical(bo, ro, f, theta, phi1, phi2, QUAD);
+    std::cout << pT2.value() << std::endl;
+
     sT = (W + V).transpose();
   }
 };
