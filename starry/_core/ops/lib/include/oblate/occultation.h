@@ -21,6 +21,7 @@ namespace occultation {
 using namespace utils;
 using namespace ellip;
 using namespace special;
+using std::min, std::max;
 
 template <class Scalar, int N> class Occultation {
 
@@ -29,6 +30,7 @@ template <class Scalar, int N> class Occultation {
 protected:
   // Misc
   int deg;
+  int ncoeff;
 
   // Inputs
   A bo;
@@ -56,8 +58,21 @@ protected:
   Vector<A> W;
   Vector<A> V;
   Matrix<A> J;
+  Matrix<A> J32;
+  Matrix<A> J12;
   Matrix<A> Lp;
   Matrix<A> Lt;
+  Matrix<A> M;
+  Matrix<A> I;
+  Matrix<A> K;
+  Matrix<A> H;
+
+  // Helper matrices
+  Matrix<A> BL;
+  Matrix<A> BR;
+  Matrix<A> S;
+  Matrix<A> C;
+  Eigen::Matrix<A, 2, 3, ColMajor> D;
 
   // Numerical integration
   quad::Quad<Scalar> QUAD;
@@ -357,7 +372,7 @@ protected:
 public:
   RowVector<A> sT;
 
-  explicit Occultation(int deg) : deg(deg) {}
+  explicit Occultation(int deg) : deg(deg), ncoeff((deg + 1) * (deg + 1)) {}
 
   /**
       Compute the full solution vector s^T.
@@ -388,15 +403,120 @@ public:
     tantheta = sintheta / costheta;
     invtantheta = 1.0 / tantheta;
 
-    // TODO
-    compute_J();
+    // Compute the binomial helper matrices
+    S.resize(deg + 3, deg + 3);
+    C.resize(deg + 3, deg + 3);
+    BL.resize(deg + 3, deg + 3);
+    BR.resize(deg + 3, deg + 3);
+    A fac, fac0, facc, facs, fac0l, fac0r, facl, facr, facb;
+    fac0 = 0.0;
+    fac0l = 1.0;
+    fac0r = 1.0;
+    for (int i = 0; i < deg + 3; ++i) {
+      facs = ro * fac0;
+      facc = fac0;
+      facl = fac0l;
+      facr = fac0r;
+      for (int j = 0; j < i + 1; ++j) {
+        S(i, deg + 2 + j - i) = facs;
+        C(deg + 2 + j - i, i) = facc;
+        BL(i, j) = facl;
+        BR(i, j) = facr;
+        fac = bo * (i - j) / (ro * (j + 1));
+        facs *= fac * sintheta;
+        facc *= fac * costheta;
+        facb = (i - j) / (j + 1);
+        facl *= facb * tantheta;
+        facr *= -facb * invtantheta;
+      }
+      fac0 *= ro;
+      fac0l *= costheta;
+      fac0r *= -sintheta;
+    }
+
+    // Compute the first `f` derivative matrix
+    A cos2theta = cos(2 * theta);
+    D << -1.5 * (bo * bo + ro * ro + (bo + ro) * (bo - ro) * cos2theta),
+        6 * bo * ro * costheta * costheta, 3 * ro * ro * cos2theta,
+        -6 * bo * ro * costheta * sintheta, -6 * ro * ro * costheta * sintheta,
+        0;
+
+    // Compute the M integral
     compute_L(phi1 - theta, phi2 - theta, Lp);
+    M = S.topRightCorner(deg + 2, deg + 2) * Lp.reverse().topRows(deg + 2) *
+        C.leftCols(deg + 2);
+
+    // Compute the I integral
+    compute_J();
+    J32 = gamma * sqrtgamma *
+          (J.topLeftCorner(deg + 2, deg + 2) -
+           w2 * J.topRightCorner(deg + 2, deg + 2));
+    J12 = sqrtgamma * J.topLeftCorner(deg + 2, deg + 2);
+    I.setZero(deg + 2, deg + 2);
+    A J0, J1, T;
+    for (int i = 0; i < deg + 1; ++i) {
+      int jmax = min(deg, i + 1);
+      for (int j = 0; j < jmax; ++j) {
+        J0 = J32(i - j, j);
+        J1 = (D.cwiseProduct(J12.block(i - j, j, 2, 3))).sum();
+        T = J0 + f * J1;
+        for (int k = 0; k < i + 1; ++k) {
+          int imk = i - k;
+          int lmin = max(0, j - imk);
+          int lmax = min(k + 1, j + 1);
+          for (int l = lmin; l < lmax; ++l) {
+            I(deg + 1 - imk, deg + 1 - k) += BL(imk, j - l) * T * BR(k, l);
+          }
+        }
+      }
+    }
+
+    // Compute the K, H integrals
+    K = S.topRightCorner(deg + 2, deg + 1) * I.topRows(deg + 1) *
+        C.bottomLeftCorner(deg + 2, deg + 2);
+    H = S.topRightCorner(deg + 2, deg + 2) * I.leftCols(deg + 1) *
+        C.bottomLeftCorner(deg + 1, deg + 2);
+
+    // Compute L (t integral)
     compute_L(xi1, xi2, Lt);
 
-    A pT2 = p2_numerical(bo, ro, f, theta, phi1, phi2, QUAD);
-    std::cout << pT2.value() << std::endl;
+    // Go through the cases
+    A pT, tT;
+    sT.resize(ncoeff);
+    int mu, nu, n = 0;
+    for (int l = 0; l < deg + 1; ++l) {
+      for (int m = -l; m < l + 1; ++m) {
+        mu = l - m;
+        nu = l + m;
 
-    sT = (W + V).transpose();
+        // Compute the pT and tT integrals
+        if (is_even(nu)) {
+          // Case 1
+          pT = pow(1 - f, -(nu / 2)) * M((mu + 2) / 2, nu / 2);
+          tT = Lt(mu / 2 + 2, nu / 2);
+        } else if ((l == 1) && (m == 0)) {
+          // Case 2
+          pT = p2_numerical(bo, ro, f, theta, phi1, phi2, QUAD);
+          tT = (1 - f) * (xi2 - xi1) / 3;
+        } else if (is_even(l) && (mu == 1)) {
+          // Case 3
+          pT = -(1 - f) * H(l - 2, 0);
+          tT = 0.0;
+        } else if (!is_even(l) && (mu == 1)) {
+          // Case 4
+          pT = -H(l - 3, 1);
+          tT = 0.0;
+        } else {
+          // Case 5
+          pT = pow(1 - f, (1 - nu) / 2) * K((mu - 3) / 2, (nu - 1) / 2);
+          tT = 0.0;
+        }
+
+        // The surface integral is just their sum
+        sT(n) = pT + tT;
+        ++n;
+      }
+    }
   }
 };
 
