@@ -64,8 +64,9 @@ inline ADScalar<Scalar, N> hyp2f1(const Scalar &a, const Scalar &b,
                                   const ADScalar<Scalar, N> &z) {
   ADScalar<Scalar, N> F;
   F.value() = hyp2f1(a, b, c, z.value());
-  F.derivatives() =
-      z.derivatives() * a * b / c * hyp2f1(a + 1, b + 1, c + 1, z.value());
+  if (N > 0)
+    F.derivatives() =
+        z.derivatives() * a * b / c * hyp2f1(a + 1, b + 1, c + 1, z.value());
   return F;
 }
 
@@ -170,15 +171,18 @@ p2_numerical(const ADScalar<Scalar, N> &bo, const ADScalar<Scalar, N> &ro,
 
   // Compute the derivatives.
   // Deriv wrt phi is easy; need to integrate for the other ones
-  res.derivatives() =
-      (func(phi2.value()) * phi2.derivatives() +
-       func(phi1.value()) * phi1.derivatives() +
-       QUAD.integrate(phi1.value(), phi2.value(), dfuncdbo) * bo.derivatives() +
-       QUAD.integrate(phi1.value(), phi2.value(), dfuncdro) * ro.derivatives() +
-       QUAD.integrate(phi1.value(), phi2.value(), dfuncdf) * f.derivatives() +
-       QUAD.integrate(phi1.value(), phi2.value(), dfuncdtheta) *
-           theta.derivatives());
-
+  if (N > 0) {
+    res.derivatives() =
+        (func(phi2.value()) * phi2.derivatives() +
+         func(phi1.value()) * phi1.derivatives() +
+         QUAD.integrate(phi1.value(), phi2.value(), dfuncdbo) *
+             bo.derivatives() +
+         QUAD.integrate(phi1.value(), phi2.value(), dfuncdro) *
+             ro.derivatives() +
+         QUAD.integrate(phi1.value(), phi2.value(), dfuncdf) * f.derivatives() +
+         QUAD.integrate(phi1.value(), phi2.value(), dfuncdtheta) *
+             theta.derivatives());
+  }
   return res;
 }
 

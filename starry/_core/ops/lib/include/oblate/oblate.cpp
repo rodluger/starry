@@ -37,7 +37,7 @@ PYBIND11_MODULE(_c_ops, m) {
                  const double &f_, const double &theta_, const double &phi1_,
                  const double &phi2_, const double &xi1_, const double &xi2_,
                  const int &nruns) {
-    using A = ADScalar<double, 8>;
+    using A = ADScalar<double, 0>;
     A bo, ro, f, theta, phi1, phi2, xi1, xi2;
     bo.value() = bo_;
     ro.value() = ro_;
@@ -47,7 +47,7 @@ PYBIND11_MODULE(_c_ops, m) {
     phi2.value() = phi2_;
     xi1.value() = xi1_;
     xi2.value() = xi2_;
-    auto occ = Occultation<double, 8>(deg);
+    auto occ = Occultation<double, 0>(deg);
 
     for (int n = 0; n < nruns; ++n)
       occ.compute(bo, ro, f, theta, phi1, phi2, xi1, xi2);

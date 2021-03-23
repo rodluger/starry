@@ -42,7 +42,8 @@ template <typename Scalar, int N>
 inline ADScalar<Scalar, N> arctan(const ADScalar<Scalar, N> &x) {
   ADScalar<Scalar, N> result;
   result.value() = atan(x.value());
-  result.derivatives() = x.derivatives() / (x.value() * x.value() + 1);
+  if (N > 0)
+    result.derivatives() = x.derivatives() / (x.value() * x.value() + 1);
   return result;
 }
 
@@ -60,7 +61,8 @@ template <typename Scalar, int N>
 inline ADScalar<Scalar, N> arccosh(const ADScalar<Scalar, N> &x) {
   ADScalar<Scalar, N> result;
   result.value() = acosh(x.value());
-  result.derivatives() = x.derivatives() / sqrt(x.value() * x.value() - 1);
+  if (N > 0)
+    result.derivatives() = x.derivatives() / sqrt(x.value() * x.value() - 1);
   return result;
 }
 
@@ -209,20 +211,22 @@ protected:
     Ev = el2(tanphi, sqrt(1 - m), 1.0, 1 - m);
 
     // Compute their derivatives
-    Scalar p2, q2, t2, ddtanphi, ddm;
-    for (size_t i = 0; i < 2; ++i) {
-      t2 = tanphi(i) * tanphi(i);
-      p2 = 1.0 / (1.0 + t2);
-      q2 = p2 * t2;
-      ddtanphi = p2 / sqrt(1.0 - m * q2);
-      ddm = 0.5 * (Ev(i).value() / (m * mc) - Fv(i).value() / m -
-                   tanphi(i) * ddtanphi / mc);
-      Fv(i).derivatives() =
-          ddtanphi * tanphi_(i).derivatives() + ddm * m_.derivatives();
-      ddtanphi = p2 * sqrt(1.0 - m * q2);
-      ddm = 0.5 * (Ev(i).value() - Fv(i).value()) / m;
-      Ev(i).derivatives() =
-          ddtanphi * tanphi_(i).derivatives() + ddm * m_.derivatives();
+    if (N > 0) {
+      Scalar p2, q2, t2, ddtanphi, ddm;
+      for (size_t i = 0; i < 2; ++i) {
+        t2 = tanphi(i) * tanphi(i);
+        p2 = 1.0 / (1.0 + t2);
+        q2 = p2 * t2;
+        ddtanphi = p2 / sqrt(1.0 - m * q2);
+        ddm = 0.5 * (Ev(i).value() / (m * mc) - Fv(i).value() / m -
+                     tanphi(i) * ddtanphi / mc);
+        Fv(i).derivatives() =
+            ddtanphi * tanphi_(i).derivatives() + ddm * m_.derivatives();
+        ddtanphi = p2 * sqrt(1.0 - m * q2);
+        ddm = 0.5 * (Ev(i).value() - Fv(i).value()) / m;
+        Ev(i).derivatives() =
+            ddtanphi * tanphi_(i).derivatives() + ddm * m_.derivatives();
+      }
     }
   }
 
@@ -339,9 +343,10 @@ public:
                           (1.0 - k2.value()) * kinv.value() * F0.value());
 
       // Derivatives
-      E0.derivatives() =
-          0.5 / k2.value() * (E0.value() - F0.value()) * k2.derivatives();
-
+      if (N > 0) {
+        E0.derivatives() =
+            0.5 / k2.value() * (E0.value() - F0.value()) * k2.derivatives();
+      }
     } else if (k2.value() >= 0) {
 
       // Values
@@ -349,11 +354,13 @@ public:
       E0.value() = CEL(k2inv.value(), 1.0, 1.0, 1.0 - k2inv.value());
 
       // Derivatives
-      F0.derivatives() = 0.5 / k2inv.value() *
-                         (E0.value() / (1 - k2inv.value()) - F0.value()) *
-                         k2inv.derivatives();
-      E0.derivatives() =
-          0.5 / k2inv.value() * (E0.value() - F0.value()) * k2inv.derivatives();
+      if (N > 0) {
+        F0.derivatives() = 0.5 / k2inv.value() *
+                           (E0.value() / (1 - k2inv.value()) - F0.value()) *
+                           k2inv.derivatives();
+        E0.derivatives() = 0.5 / k2inv.value() * (E0.value() - F0.value()) *
+                           k2inv.derivatives();
+      }
     } else {
 
       // k2 is negative, so we should use the analytic continuation
