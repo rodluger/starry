@@ -78,8 +78,10 @@ template <typename Scalar>
 inline Scalar p2_integrand(const Scalar &bo, const Scalar &ro, const Scalar &f,
                            const Scalar &theta, const Scalar &bc,
                            const Scalar &bs, const Scalar &phi) {
-  Scalar x = ro * cos(phi - theta) + bs;
-  Scalar y = (ro * sin(phi - theta) + bc) / (1 - f);
+  Scalar cpt = cos(phi - theta);
+  Scalar spt = sin(phi - theta);
+  Scalar x = ro * cpt + bs;
+  Scalar y = (ro * spt + bc) / (1 - f);
   Scalar z = sqrt(1 - x * x - y * y);
   if (z < 1e-12)
     z = 1e-12;
@@ -88,40 +90,86 @@ inline Scalar p2_integrand(const Scalar &bo, const Scalar &ro, const Scalar &f,
   return ro * (ro + bo * sin(phi)) * (1 - z * z * z) / (3 * (1 - z * z));
 }
 
-// TODO!
 template <typename Scalar>
 inline Scalar dp2dbo_integrand(const Scalar &bo, const Scalar &ro,
                                const Scalar &f, const Scalar &theta,
                                const Scalar &bc, const Scalar &bs,
                                const Scalar &phi) {
-  return 0.0;
+  Scalar cpt = cos(phi - theta);
+  Scalar spt = sin(phi - theta);
+  Scalar costheta = cos(theta);
+  Scalar sintheta = sin(theta);
+  Scalar sinphi = sin(phi);
+  Scalar x = ro * cpt + bs;
+  Scalar y = (ro * spt + bc) / (1 - f);
+  Scalar z = sqrt(1 - x * x - y * y);
+  if (z < 1e-12)
+    z = 1e-12;
+  if (z > 1 - 1e-12)
+    z = 1 - 1e-12;
+  Scalar s = 1 + z + z * z;
+  Scalar q =
+      ro * ((y * costheta) / (1 - f) + x * sintheta) * (ro + bo * sinphi);
+  return (ro * s * sinphi * (1 + z) - q * (2 + z)) / (3 * (1 + z) * (1 + z));
 }
 
-// TODO!
 template <typename Scalar>
 inline Scalar dp2dro_integrand(const Scalar &bo, const Scalar &ro,
                                const Scalar &f, const Scalar &theta,
                                const Scalar &bc, const Scalar &bs,
                                const Scalar &phi) {
-  return 0.0;
+  Scalar cpt = cos(phi - theta);
+  Scalar spt = sin(phi - theta);
+  Scalar sinphi = sin(phi);
+  Scalar x = ro * cpt + bs;
+  Scalar y = (ro * spt + bc) / (1 - f);
+  Scalar z = sqrt(1 - x * x - y * y);
+  if (z < 1e-12)
+    z = 1e-12;
+  if (z > 1 - 1e-12)
+    z = 1 - 1e-12;
+  Scalar s = 1 + z + z * z;
+  Scalar q = ro * (x * cpt + (y * spt) / (1 - f)) * (ro + bo * sinphi);
+  return (2 * ro * s * (1 + z) + bo * s * sinphi * (1 + z) - q * (2 + z)) /
+         (3 * (1 + z) * (1 + z));
 }
 
-// TODO!
 template <typename Scalar>
 inline Scalar dp2df_integrand(const Scalar &bo, const Scalar &ro,
                               const Scalar &f, const Scalar &theta,
                               const Scalar &bc, const Scalar &bs,
                               const Scalar &phi) {
-  return 0.0;
+  Scalar cpt = cos(phi - theta);
+  Scalar spt = sin(phi - theta);
+  Scalar sinphi = sin(phi);
+  Scalar x = ro * cpt + bs;
+  Scalar y = (ro * spt + bc) / (1 - f);
+  Scalar z = sqrt(1 - x * x - y * y);
+  if (z < 1e-12)
+    z = 1e-12;
+  if (z > 1 - 1e-12)
+    z = 1 - 1e-12;
+  Scalar q = ro * y * y * (ro + bo * sinphi);
+  return -q / (1 - f) * (2 + z) / (3 * (1 + z) * (1 + z));
 }
 
-// TODO!
 template <typename Scalar>
 inline Scalar dp2dtheta_integrand(const Scalar &bo, const Scalar &ro,
                                   const Scalar &f, const Scalar &theta,
                                   const Scalar &bc, const Scalar &bs,
                                   const Scalar &phi) {
-  return 0.0;
+  Scalar cpt = cos(phi - theta);
+  Scalar spt = sin(phi - theta);
+  Scalar sinphi = sin(phi);
+  Scalar x = ro * cpt + bs;
+  Scalar y = (ro * spt + bc) / (1 - f);
+  Scalar z = sqrt(1 - x * x - y * y);
+  if (z < 1e-12)
+    z = 1e-12;
+  if (z > 1 - 1e-12)
+    z = 1 - 1e-12;
+  Scalar q = ro * x * y * (ro + bo * sinphi) * (2 - f) * f / (1 - f);
+  return q * (2 + z) / (3 * (1 + z) * (1 + z));
 }
 
 /**
