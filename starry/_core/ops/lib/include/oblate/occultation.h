@@ -377,6 +377,14 @@ public:
   /**
       Compute the full solution vector s^T.
 
+      TODO: Instabilities occur when
+
+        - np.abs(costheta) < 1e-15
+        - np.abs(sintheta) < 1e-15
+        - np.abs(b) < 1e-3
+        - r < 1e-3
+        - np.abs(1 - b - r) < 1e-3
+
   */
   inline void compute(const A &bo_, const A &ro_, const A &f_, const A &theta_,
                       const A &phi1_, const A &phi2_, const A &xi1_,
