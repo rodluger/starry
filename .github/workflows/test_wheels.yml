@@ -1,0 +1,25 @@
+name: test_wheels
+on:
+  workflow_dispatch
+
+jobs:
+  test_wheels:
+    name: Test wheels on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, windows-latest, macos-latest]
+        python-version: ["3.7", "3.8", "3.9"]
+    steps:
+      - uses: actions/setup-python@v2
+        name: Install Python
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install starry
+        run: |
+          python -m pip install starry
+
+      - name: Test import
+        run: |
+          python -c "import starry; print(starry.__version__)"
