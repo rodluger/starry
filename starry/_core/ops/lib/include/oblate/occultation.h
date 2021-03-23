@@ -170,15 +170,15 @@ protected:
     // Recursion coefficients
     A kc2_alias = kc2;
     std::function<A(int)> funcA = [kc2_alias](int n) {
-      return 2 * (n + (n - 1) * kc2_alias) / (2 * n + 1);
+      return 2.0 * (n + (n - 1.0) * kc2_alias) / (2.0 * n + 1.0);
     };
     std::function<A(int)> funcB = [kc2_alias](int n) {
-      return -(2 * n - 3) / (2 * n + 1) * kc2_alias;
+      return -(2.0 * n - 3.0) / (2.0 * n + 1.0) * kc2_alias;
     };
     std::function<A(int)> funcC = [kc2_alias, sinu, cosu, D3](int n) {
-      return (pow(sinu(1), (2 * n - 3)) * cosu(1) * D3(1) -
-              pow(sinu(0), (2 * n - 3)) * cosu(0) * D3(0)) *
-             kc2_alias / (2 * n + 1);
+      return (pow(sinu(1), (2.0 * n - 3.0)) * cosu(1) * D3(1) -
+              pow(sinu(0), (2.0 * n - 3.0)) * cosu(0) * D3(0)) *
+             kc2_alias / (2.0 * n + 1.0);
     };
 
     // Solve the tridiagonal problem
@@ -299,7 +299,7 @@ protected:
           }
           J(2 * s, q) += c1 * fac * term;
           J(2 * s + 1, q) += fac * V(2 * i + q);
-          fac *= (i - s) / (i + 1);
+          fac *= (i - s) / (i + 1.0);
         }
       }
     }
@@ -404,12 +404,12 @@ public:
     invtantheta = 1.0 / tantheta;
 
     // Compute the binomial helper matrices
-    S.resize(deg + 3, deg + 3);
-    C.resize(deg + 3, deg + 3);
-    BL.resize(deg + 3, deg + 3);
-    BR.resize(deg + 3, deg + 3);
+    S.setZero(deg + 3, deg + 3);
+    C.setZero(deg + 3, deg + 3);
+    BL.setZero(deg + 3, deg + 3);
+    BR.setZero(deg + 3, deg + 3);
     A fac, fac0, facc, facs, fac0l, fac0r, facl, facr, facb;
-    fac0 = 0.0;
+    fac0 = 1.0;
     fac0l = 1.0;
     fac0r = 1.0;
     for (int i = 0; i < deg + 3; ++i) {
@@ -417,15 +417,17 @@ public:
       facc = fac0;
       facl = fac0l;
       facr = fac0r;
-      for (int j = 0; j < i + 1; ++j) {
-        S(i, deg + 2 + j - i) = facs;
-        C(deg + 2 + j - i, i) = facc;
+      for (int j = 0; j < deg + 3; ++j) {
+        if (j < i + 1) {
+          S(i, deg + 2 + j - i) = facs;
+          C(deg + 2 + j - i, i) = facc;
+          fac = bo * (i - j) / (ro * (j + 1.0));
+          facs *= fac * sintheta;
+          facc *= fac * costheta;
+        }
         BL(i, j) = facl;
         BR(i, j) = facr;
-        fac = bo * (i - j) / (ro * (j + 1));
-        facs *= fac * sintheta;
-        facc *= fac * costheta;
-        facb = (i - j) / (j + 1);
+        facb = (i - j) / (j + 1.0);
         facl *= facb * tantheta;
         facr *= -facb * invtantheta;
       }
@@ -437,9 +439,8 @@ public:
     // Compute the first `f` derivative matrix
     A cos2theta = cos(2 * theta);
     D << -1.5 * (bo * bo + ro * ro + (bo + ro) * (bo - ro) * cos2theta),
-        6 * bo * ro * costheta * costheta, 3 * ro * ro * cos2theta,
-        -6 * bo * ro * costheta * sintheta, -6 * ro * ro * costheta * sintheta,
-        0;
+        -6 * bo * ro * costheta * costheta, -3 * ro * ro * cos2theta,
+        6 * bo * ro * costheta * sintheta, 6 * ro * ro * costheta * sintheta, 0;
 
     // Compute the M integral
     compute_L(phi1 - theta, phi2 - theta, Lp);
@@ -463,8 +464,8 @@ public:
         for (int k = 0; k < i + 1; ++k) {
           int imk = i - k;
           int lmin = max(0, j - imk);
-          int lmax = min(k + 1, j + 1);
-          for (int l = lmin; l < lmax; ++l) {
+          int lmax = min(k, j);
+          for (int l = lmin; l < lmax + 1; ++l) {
             I(deg + 1 - imk, deg + 1 - k) += BL(imk, j - l) * T * BR(k, l);
           }
         }
@@ -493,7 +494,7 @@ public:
         if (is_even(nu)) {
           // Case 1
           pT = pow(1 - f, -(nu / 2)) * M((mu + 2) / 2, nu / 2);
-          tT = Lt(mu / 2 + 2, nu / 2);
+          tT = (1 - f) * Lt(mu / 2 + 2, nu / 2);
         } else if ((l == 1) && (m == 0)) {
           // Case 2
           pT = p2_numerical(bo, ro, f, theta, phi1, phi2, QUAD);
