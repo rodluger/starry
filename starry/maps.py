@@ -49,7 +49,7 @@ class Amplitude(object):
 class MapBase(object):
     """The base class for all `starry` maps."""
 
-    # The map amplitude (just an attribute)
+    # The map amplitude
     amp = Amplitude()
 
     def _no_spectral(self):
