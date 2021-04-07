@@ -8,6 +8,130 @@ from scipy.special import comb
 __all__ = ["PythonSolver", "NumericalSolver", "CppSolver"]
 
 
+def quartic_coeffs(b, xo, yo, ro):
+    A = (1 - b ** 2) ** 2
+    B = -4 * xo * (1 - b ** 2)
+    C = -2 * (
+        b ** 4
+        + ro ** 2
+        - 3 * xo ** 2
+        - yo ** 2
+        - b ** 2 * (1 + ro ** 2 - xo ** 2 + yo ** 2)
+    )
+    D = -4 * xo * (b ** 2 - ro ** 2 + xo ** 2 + yo ** 2)
+    E = (
+        b ** 4
+        - 2 * b ** 2 * (ro ** 2 - xo ** 2 + yo ** 2)
+        + (ro ** 2 - xo ** 2 - yo ** 2) ** 2
+    )
+    return np.array([A, B, C, D, E])
+
+
+def find_intersections(bo, ro, f, theta):
+    x0 = bo * np.sin(theta)
+    y0 = bo * np.cos(theta)
+    coeff = quartic_coeffs(1 - f, x0, y0, ro)
+    return np.roots(coeff), np.polyval(np.abs(coeff), np.abs(np.roots(coeff)))
+
+
+def circle_err(x, y, bo, ro, theta):
+    return np.abs(
+        (y - bo * np.cos(theta)) ** 2
+        - (ro ** 2 - (x - bo * np.sin(theta)) ** 2)
+    )
+
+
+def get_angles(bo, ro, f, theta):
+
+    # Domain adjustment
+    if bo < 0:
+        bo = -bo
+        theta -= np.pi
+
+    # Get roots of quartic
+    roots, err = find_intersections(bo, ro, f, theta)
+    roots_real = roots[np.isclose(roots, np.real(roots), atol=0.0001)]
+
+    # Center of occultor in this frame
+    xo = bo * np.sin(theta)
+    yo = bo * np.cos(theta)
+
+    # Compute the corresponding angles
+    phi = []
+    xi = []
+    if len(roots_real) == 2:
+
+        # Circle intersects the edge of the ellipse twice
+        for x_root in roots_real:
+            x_root = np.real(x_root)
+            x0, y0 = bo * np.sin(theta), bo * np.cos(theta)
+            y_int = (1 - f) * np.sqrt(1 - x_root ** 2)
+            phi_pos = theta + np.arctan2(y_int - y0, x_root - x0)
+            xi_pos = np.arctan2(np.sqrt(1 - x_root ** 2), x_root)
+            phi_neg = theta - np.arctan2(y_int + y0, x_root - x0)
+            xi_neg = np.arctan2(-np.sqrt(1 - x_root ** 2), x_root)
+            if circle_err(x_root, y_int, bo, ro, theta) > circle_err(
+                x_root, -y_int, bo, ro, theta
+            ):
+                phi.append(phi_neg)
+                xi.append(xi_neg)
+            else:
+                phi.append(phi_pos)
+                xi.append(xi_pos)
+
+        # Wrap and sort the angles
+        phi = np.array(phi) % (2 * np.pi)
+        xi = np.array(xi) % (2 * np.pi)
+        if xi[0] > xi[1]:
+            xi = xi[::-1]
+            phi = phi[::-1]
+
+        # Ensure the T integral does not take us
+        # through the inside of the occultor
+        xm = np.cos(xi.mean())
+        ym = (1 - f) * np.sin(xi.mean())
+        if (xm - xo) ** 2 + (ym - yo) ** 2 < ro ** 2:
+            xi = xi[::-1]
+            xi[1] += 2 * np.pi
+
+        # Ensure the P integral takes us through
+        # the inside of the star
+        xm = xo + ro * np.cos(theta - phi.mean())
+        ym = yo - ro * np.sin(theta - phi.mean())
+        if np.abs(ym) > (1 - f) * np.sqrt(1 - xm ** 2):
+            phi[0] += 2 * np.pi
+
+    elif len(roots_real) < 2:
+
+        # Is the center of the circle outside the ellipse?
+        if abs(yo) > (1 - f) * np.sqrt(1 - xo * xo):
+
+            # Is the center of the ellipse outside the circle?
+            if bo > ro:
+
+                # No occultation
+                phi = np.array([0.0, 0.0])
+                xi = np.array([0.0, 2 * np.pi])
+
+            else:
+
+                # Complete occultation
+                phi = np.array([0.0, 0.0])
+                xi = np.array([0.0, 0.0])
+
+        else:
+
+            # Regular occultation, but occultor doesn't touch the limb
+            phi = np.array([2 * np.pi, 0.0])
+            xi = np.array([0.0, 2 * np.pi])
+
+    else:
+
+        raise ValueError("Unexpected branch.")
+
+    return phi, xi
+
+
 def G(n, f):
 
     # Get the mu, nu indices
@@ -117,7 +241,8 @@ def tT_numerical(lmax, xi, b, r, f, theta):
     return tT.reshape(1, -1)
 
 
-def sT_numerical(lmax, phi, xi, b, r, f, theta):
+def sT_numerical(lmax, b, r, f, theta):
+    phi, xi = get_angles(b, r, f, theta)
     return pT_numerical(lmax, phi, b, r, f, theta) + tT_numerical(
         lmax, xi, b, r, f, theta
     )
@@ -382,15 +507,7 @@ class PythonSolver:
         return res
 
     def _get_sT(
-        self,
-        bo=0.1,
-        ro=0.25,
-        f=0.1,
-        theta=0.4,
-        phi1=0.1,
-        phi2=0.9,
-        xi1=0.3,
-        xi2=1.7,
+        self, bo=0.65, ro=0.4, f=0.2, theta=0.5,
     ):
         """
         Return the `sT` solution vector.
@@ -404,6 +521,9 @@ class PythonSolver:
             - np.abs(1 - b - r) < 1e-3
         
         """
+        # Get the angles
+        (phi1, phi2), (xi1, xi2) = get_angles(bo, ro, f, theta)
+
         # Useful variables
         b = bo
         r = ro
@@ -536,21 +656,10 @@ class NumericalSolver:
         self.lmax = lmax
 
     def get_sT(
-        self,
-        bo=0.1,
-        ro=0.25,
-        f=0.1,
-        theta=0.4,
-        phi1=0.1,
-        phi2=0.9,
-        xi1=0.3,
-        xi2=1.7,
-        nruns=1,
+        self, bo=0.65, ro=0.4, f=0.2, theta=0.5, nruns=1,
     ):
         for n in range(nruns):
-            res = sT_numerical(
-                self.lmax, [phi1, phi2], [xi1, xi2], bo, ro, f, theta
-            )
+            res = sT_numerical(self.lmax, bo, ro, f, theta)
         return res
 
 
@@ -559,15 +668,6 @@ class CppSolver:
         self.lmax = lmax
 
     def get_sT(
-        self,
-        bo=0.1,
-        ro=0.25,
-        f=0.1,
-        theta=0.4,
-        phi1=0.1,
-        phi2=0.9,
-        xi1=0.3,
-        xi2=1.7,
-        nruns=1,
+        self, bo=0.65, ro=0.4, f=0.2, theta=0.5, nruns=1,
     ):
-        return sT(self.lmax, bo, ro, f, theta, phi1, phi2, xi1, xi2, nruns)
+        return sT(self.lmax, bo, ro, f, theta, nruns)
