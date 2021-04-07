@@ -38,10 +38,6 @@ protected:
   A ro;
   A f;
   A theta;
-  A phi1;
-  A phi2;
-  A xi1;
-  A xi2;
 
   // Transformed inputs
   A k2;
@@ -372,6 +368,7 @@ protected:
 
 public:
   RowVector<A> sT;
+  A phi1, phi2, xi1, xi2;
 
   explicit Occultation(int deg) : deg(deg), ncoeff((deg + 1) * (deg + 1)) {}
 
@@ -398,7 +395,6 @@ public:
     theta = theta_;
 
     // Compute the angles of intersection
-    A phi1, phi2, xi1, xi2;
     get_angles(bo, ro, f, theta, phi1, phi2, xi1, xi2);
 
     // TODO: Special cases (no occultation, complete occultation, etc.)

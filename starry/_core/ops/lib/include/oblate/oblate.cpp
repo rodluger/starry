@@ -5,6 +5,7 @@
 
 // Includes
 #include "../utils.h"
+#include "geometry.h"
 #include "occultation.h"
 #include <iostream>
 #include <pybind11/eigen.h>
@@ -19,6 +20,8 @@ PYBIND11_MODULE(_c_ops, m) {
   using namespace starry::utils;
   using namespace starry::oblate::ellip;
   using namespace starry::oblate::occultation;
+  using namespace starry::oblate::geometry;
+
   m.def("E", [](const double &k2, const Pair<double> &phi) {
     using A = ADScalar<double, 3>;
     A k2_ad;
@@ -50,5 +53,17 @@ PYBIND11_MODULE(_c_ops, m) {
     for (int n = 0; n < occ.sT.size(); ++n)
       sT_value(n) = occ.sT(n).value();
     return sT_value;
+  });
+
+  m.def("angles", [](const double &bo_, const double &ro_, const double &f_,
+                     const double &theta_) {
+    using A = ADScalar<double, 0>;
+    A bo, ro, f, theta, phi1, phi2, xi1, xi2;
+    bo.value() = bo_;
+    ro.value() = ro_;
+    f.value() = f_;
+    theta.value() = theta_;
+    get_angles(bo, ro, f, theta, phi1, phi2, xi1, xi2);
+    return py::make_tuple(phi1.value(), phi2.value(), xi1.value(), xi2.value());
   });
 }

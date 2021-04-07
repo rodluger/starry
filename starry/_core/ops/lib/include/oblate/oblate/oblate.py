@@ -1,4 +1,4 @@
-from ._c_ops import sT
+from ._c_ops import sT, angles
 import numpy as np
 from scipy.integrate import quad
 from scipy.special import hyp2f1, ellipeinc

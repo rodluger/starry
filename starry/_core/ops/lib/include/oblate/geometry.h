@@ -108,16 +108,19 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
       x(nroots++) = xo - term;
 
     // Derivatives
-    int s = yo < 0 ? 1 : -1;
-    for (int n = 0; n < nroots; ++n) {
-      dxdb(n) = s *
-                sqrt((1 - x(n) * x(n)) * (ro2 - (x(n) - xo) * (x(n) - xo))) /
-                (x(n) - xo);
-      dxdtheta(n) = bo * (costheta - s * sqrt(ro2 - (x(n) - xo) * (x(n) - xo)) /
-                                         (x(n) - xo) * sintheta);
-      dxdbo(n) = sintheta + s * sqrt(ro2 - (x(n) - xo) * (x(n) - xo)) /
-                                (x(n) - xo) * costheta;
-      dxdro(n) = ro / (x(n) - xo);
+    if (N > 0) {
+      int s = yo < 0 ? 1 : -1;
+      for (int n = 0; n < nroots; ++n) {
+        dxdb(n) = s *
+                  sqrt((1 - x(n) * x(n)) * (ro2 - (x(n) - xo) * (x(n) - xo))) /
+                  (x(n) - xo);
+        dxdtheta(n) =
+            bo * (costheta - s * sqrt(ro2 - (x(n) - xo) * (x(n) - xo)) /
+                                 (x(n) - xo) * sintheta);
+        dxdbo(n) = sintheta + s * sqrt(ro2 - (x(n) - xo) * (x(n) - xo)) /
+                                  (x(n) - xo) * costheta;
+        dxdro(n) = ro / (x(n) - xo);
+      }
     }
 
     // Need to solve a quartic
@@ -223,15 +226,17 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
             x(nroots) = minx_re;
 
             // Now compute its derivatives
-            q = sqrt(ro2 - (minx_re - xo) * (minx_re - xo));
-            p = sqrt(1 - minx_re * minx_re);
-            v = (minx_re - xo) / q;
-            w = b / p;
-            t = 1.0 / (w * minx_re - (s1 * s0) * v);
-            dxdb(nroots) = t * p;
-            dxdtheta(nroots) = (s1 * sintheta * v - costheta) * (bo * t * s0);
-            dxdbo(nroots) = -(sintheta + s1 * costheta * v) * (t * s0);
-            dxdro(nroots) = -ro * t / q * s1 * s0;
+            if (N > 0) {
+              q = sqrt(ro2 - (minx_re - xo) * (minx_re - xo));
+              p = sqrt(1 - minx_re * minx_re);
+              v = (minx_re - xo) / q;
+              w = b / p;
+              t = 1.0 / (w * minx_re - (s1 * s0) * v);
+              dxdb(nroots) = t * p;
+              dxdtheta(nroots) = (s1 * sintheta * v - costheta) * (bo * t * s0);
+              dxdbo(nroots) = -(sintheta + s1 * costheta * v) * (t * s0);
+              dxdro(nroots) = -ro * t / q * s1 * s0;
+            }
 
             // Move on
             ++nroots;
@@ -245,9 +250,11 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
   Vector<A> result(nroots);
   for (int n = 0; n < nroots; ++n) {
     result(n).value() = x(n);
-    result(n).derivatives() =
-        dxdb(n) * b_.derivatives() + dxdtheta(n) * theta_.derivatives() +
-        dxdbo(n) * bo_.derivatives() + dxdro(n) * ro_.derivatives();
+    if (N > 0) {
+      result(n).derivatives() =
+          dxdb(n) * b_.derivatives() + dxdtheta(n) * theta_.derivatives() +
+          dxdbo(n) * bo_.derivatives() + dxdro(n) * ro_.derivatives();
+    }
   }
 
   return result;
@@ -360,7 +367,7 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
     // First root
     y = b * sqrt(1 - x(0) * x(0));
     rhs = (ro * ro - (x(0) - xo) * (x(0) - xo));
-    if (abs((y - yo) * (y - yo) - rhs) < abs((y - yo) * (y - yo) - rhs)) {
+    if (abs((y - yo) * (y - yo) - rhs) < abs((y + yo) * (y + yo) - rhs)) {
       phi1 = theta + atan2(y - yo, x(0) - xo);
       xi1 = atan2(sqrt(1 - x(0) * x(0)), x(0));
     } else {
@@ -371,12 +378,12 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
     // Second root
     y = b * sqrt(1 - x(1) * x(1));
     rhs = (ro * ro - (x(1) - xo) * (x(1) - xo));
-    if (abs((y - yo) * (y - yo) - rhs) < abs((y - yo) * (y - yo) - rhs)) {
+    if (abs((y - yo) * (y - yo) - rhs) < abs((y + yo) * (y + yo) - rhs)) {
       phi2 = theta + atan2(y - yo, x(1) - xo);
-      xi2 = atan2(sqrt(1 - x(0) * x(0)), x(0));
+      xi2 = atan2(sqrt(1 - x(1) * x(1)), x(1));
     } else {
       phi2 = theta + atan2(y + yo, x(1) - xo);
-      xi2 = atan2(-sqrt(1 - x(0) * x(0)), x(0));
+      xi2 = atan2(-sqrt(1 - x(1) * x(1)), x(1));
     }
 
     // Wrap and sort the angles
