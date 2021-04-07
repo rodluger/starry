@@ -9,7 +9,6 @@
 
 #include "../quad.h"
 #include "../utils.h"
-#include "constants.h"
 
 namespace starry {
 namespace oblate {

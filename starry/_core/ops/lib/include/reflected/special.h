@@ -9,7 +9,6 @@
 
 #include "../quad.h"
 #include "../utils.h"
-#include "constants.h"
 
 namespace starry {
 namespace reflected {
@@ -133,13 +132,13 @@ inline T P2_numerical(const T &bo, const T &ro, const Vector<T> &kappa,
     res.derivatives() -=
         f(kappa(i).value() - pi<Scalar>()) * kappa(i).derivatives();
     res.derivatives() +=
-        bo.derivatives() *
-        QUAD.integrate(kappa(i).value() - pi<Scalar>(),
-                       kappa(i + 1).value() - pi<Scalar>(), dfdbo);
+        bo.derivatives() * QUAD.integrate(kappa(i).value() - pi<Scalar>(),
+                                          kappa(i + 1).value() - pi<Scalar>(),
+                                          dfdbo);
     res.derivatives() +=
-        ro.derivatives() *
-        QUAD.integrate(kappa(i).value() - pi<Scalar>(),
-                       kappa(i + 1).value() - pi<Scalar>(), dfdro);
+        ro.derivatives() * QUAD.integrate(kappa(i).value() - pi<Scalar>(),
+                                          kappa(i + 1).value() - pi<Scalar>(),
+                                          dfdro);
   }
 
   return res;
@@ -299,9 +298,9 @@ inline T J_numerical(const int N, const T &k2, const Vector<T> &kappa,
         0.5 * f(0.5 * kappa(i + 1).value()) * kappa(i + 1).derivatives();
     res.derivatives() -=
         0.5 * f(0.5 * kappa(i).value()) * kappa(i).derivatives();
-    res.derivatives() += k2.derivatives() *
-                         QUAD.integrate(0.5 * kappa(i).value(),
-                                        0.5 * kappa(i + 1).value(), dfdk2);
+    res.derivatives() +=
+        k2.derivatives() * QUAD.integrate(0.5 * kappa(i).value(),
+                                          0.5 * kappa(i + 1).value(), dfdk2);
   }
 
   return res;

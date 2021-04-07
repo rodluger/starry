@@ -8,7 +8,6 @@
 #define _STARRY_PRIMITIVE_H_
 
 #include "../utils.h"
-#include "constants.h"
 #include "ellip.h"
 #include "special.h"
 
@@ -246,11 +245,11 @@ inline Vector<T> W_indef(const int nmax, const T &s2_, const T &q2,
     T x = q2 * q3 * s2nmax;
 
     // Upper boundary condition
-    result(nmax) =
-        (s2 * s2nmax * (3.0 / (nmax + 1.0) *
-                            hyp2f1(-0.5, nmax + 1.0, nmax + 2.0, T(1.0 - q2)) +
-                        2 * q3) /
-         (2.0 * nmax + 5.0));
+    result(nmax) = (s2 * s2nmax *
+                    (3.0 / (nmax + 1.0) *
+                         hyp2f1(-0.5, nmax + 1.0, nmax + 2.0, T(1.0 - q2)) +
+                     2 * q3) /
+                    (2.0 * nmax + 5.0));
 
     // Recurse down
     T f, A, B;

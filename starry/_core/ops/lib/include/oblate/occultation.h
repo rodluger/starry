@@ -10,8 +10,8 @@
 
 #include "../quad.h"
 #include "../utils.h"
-#include "constants.h"
 #include "ellip.h"
+#include "geometry.h"
 #include "special.h"
 
 namespace starry {
@@ -21,6 +21,7 @@ namespace occultation {
 using namespace utils;
 using namespace ellip;
 using namespace special;
+using namespace geometry;
 using std::min, std::max;
 
 template <class Scalar, int N> class Occultation {
@@ -388,18 +389,19 @@ public:
       TODO: Gradients not tested, especially for pT(2).
 
   */
-  inline void compute(const A &bo_, const A &ro_, const A &f_, const A &theta_,
-                      const A &phi1_, const A &phi2_, const A &xi1_,
-                      const A &xi2_) {
+  inline void compute(const A &bo_, const A &ro_, const A &f_,
+                      const A &theta_) {
     // Make local copies of the inputs
     bo = bo_;
     ro = ro_;
     f = f_;
     theta = theta_;
-    phi1 = phi1_;
-    phi2 = phi2_;
-    xi1 = xi1_;
-    xi2 = xi2_;
+
+    // Compute the angles of intersection
+    A phi1, phi2, xi1, xi2;
+    get_angles(bo, ro, f, theta, phi1, phi2, xi1, xi2);
+
+    // TODO: Special cases (no occultation, complete occultation, etc.)
 
     // Useful variables
     gamma = 1 - bo * bo - ro * ro;

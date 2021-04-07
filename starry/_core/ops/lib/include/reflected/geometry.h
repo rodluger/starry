@@ -8,7 +8,6 @@
 #define _STARRY_GEOMETRY_H_
 
 #include "../utils.h"
-#include "constants.h"
 #include <Eigen/Eigenvalues>
 
 namespace starry {
@@ -213,12 +212,10 @@ inline Vector<T> get_roots(const T &b_, const T &theta_, const T &costheta_,
       dxdb(n) = s *
                 sqrt((1 - x(n) * x(n)) * (ro2 - (x(n) - xo) * (x(n) - xo))) /
                 (x(n) - xo);
-      dxdtheta(n) = bo * (costheta -
-                          s * sqrt(ro2 - (x(n) - xo) * (x(n) - xo)) /
-                              (x(n) - xo) * sintheta);
-      dxdbo(n) =
-          sintheta +
-          s * sqrt(ro2 - (x(n) - xo) * (x(n) - xo)) / (x(n) - xo) * costheta;
+      dxdtheta(n) = bo * (costheta - s * sqrt(ro2 - (x(n) - xo) * (x(n) - xo)) /
+                                         (x(n) - xo) * sintheta);
+      dxdbo(n) = sintheta + s * sqrt(ro2 - (x(n) - xo) * (x(n) - xo)) /
+                                (x(n) - xo) * costheta;
       dxdro(n) = ro / (x(n) - xo);
     }
 

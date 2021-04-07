@@ -34,23 +34,17 @@ PYBIND11_MODULE(_c_ops, m) {
   });
 
   m.def("sT", [](const int &deg, const double &bo_, const double &ro_,
-                 const double &f_, const double &theta_, const double &phi1_,
-                 const double &phi2_, const double &xi1_, const double &xi2_,
-                 const int &nruns) {
+                 const double &f_, const double &theta_, const int &nruns) {
     using A = ADScalar<double, 0>;
-    A bo, ro, f, theta, phi1, phi2, xi1, xi2;
+    A bo, ro, f, theta;
     bo.value() = bo_;
     ro.value() = ro_;
     f.value() = f_;
     theta.value() = theta_;
-    phi1.value() = phi1_;
-    phi2.value() = phi2_;
-    xi1.value() = xi1_;
-    xi2.value() = xi2_;
     auto occ = Occultation<double, 0>(deg);
 
     for (int n = 0; n < nruns; ++n)
-      occ.compute(bo, ro, f, theta, phi1, phi2, xi1, xi2);
+      occ.compute(bo, ro, f, theta);
 
     Vector<double> sT_value(occ.sT.size());
     for (int n = 0; n < occ.sT.size(); ++n)

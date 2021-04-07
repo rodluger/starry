@@ -9,7 +9,6 @@
 
 #include "../basis.h"
 #include "../utils.h"
-#include "constants.h"
 #include "oren_nayar.h"
 
 namespace starry {
@@ -130,9 +129,8 @@ inline Vector<T> OrenNayarPolynomial(const T &b, const T &theta, const T &sigr,
     // coefficients in the polynomial basis
     for (int n = 0; n < STARRY_OREN_NAYAR_N; ++n) {
       for (int m = 0; m < STARRY_OREN_NAYAR_NB * STARRY_OREN_NAYAR_NB; ++m) {
-        f(n) += STARRY_OREN_NAYAR_COEFFS[m +
-                                         STARRY_OREN_NAYAR_NB *
-                                             STARRY_OREN_NAYAR_NB * n] *
+        f(n) += STARRY_OREN_NAYAR_COEFFS[m + STARRY_OREN_NAYAR_NB *
+                                                 STARRY_OREN_NAYAR_NB * n] *
                 bbc(m);
       }
     }

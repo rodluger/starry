@@ -15,7 +15,6 @@ Elliptic integrals computed following
 
 #include "../ellip.h"
 #include "../utils.h"
-#include "constants.h"
 #include <iostream>
 
 namespace starry {

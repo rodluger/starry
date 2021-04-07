@@ -8,6 +8,7 @@
 #define _STARRY_UTILS_H_
 
 // Includes
+#include "macros.h"
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/SparseLU>
@@ -22,14 +23,14 @@
 #include <unsupported/Eigen/AutoDiff>
 #include <vector>
 
-//! Number of digits (16 = double)
-#ifndef STARRY_NDIGITS
-#define STARRY_NDIGITS 16
-#else
+//! Number of digits of precision (16 = double)
+#ifdef STARRY_NDIGITS
 #if STARRY_NDIGITS > 16
 #define STARRY_ENABLE_BOOST
 #endif
 #endif
+
+//! Use the boost library?
 #ifdef STARRY_ENABLE_BOOST
 #include <boost/math/special_functions/gamma.hpp>
 #include <boost/multiprecision/cpp_dec_float.hpp>
@@ -49,41 +50,6 @@ typedef void Multi;
 #define unlikely(x) __builtin_expect(!!(x), 0)
 #endif
 
-//! Number of Gaussian-Legendre quadrature points for numerical integration
-#ifndef STARRY_QUAD_POINTS
-#define STARRY_QUAD_POINTS 100
-#endif
-
-//! Max iterations in elliptic integrals
-#ifndef STARRY_ELLIP_MAX_ITER
-#define STARRY_ELLIP_MAX_ITER 200
-#endif
-
-//! Max iterations in computing the M & N integrals
-#ifndef STARRY_MN_MAX_ITER
-#define STARRY_MN_MAX_ITER 100
-#endif
-
-//! Max iterations in computing the I & J integrals
-#ifndef STARRY_IJ_MAX_ITER
-#define STARRY_IJ_MAX_ITER 200
-#endif
-
-//! Refine the downward recursion in the J integral at this index
-#ifndef STARRY_REFINE_J_AT
-#define STARRY_REFINE_J_AT 25
-#endif
-
-//! Cutoff value for `b` below which we reparametrize LD evaluation
-#ifndef STARRY_BCUT
-#define STARRY_BCUT 1.0e-3
-#endif
-
-//! Things currently go numerically unstable in our bases for high `l`
-#ifndef STARRY_MAX_LMAX
-#define STARRY_MAX_LMAX 50
-#endif
-
 //! The value of `pi` in double precision
 #ifndef M_PI
 #define M_PI 3.14159265358979323846264338328
@@ -93,6 +59,21 @@ typedef void Multi;
 #ifndef M_SQRTPI
 #define M_SQRTPI 1.77245385090551602729816748334
 #endif
+
+// Integration codes (reflected light / oblate)
+#define FLUX_ZERO 0
+#define FLUX_DAY_OCC 1
+#define FLUX_DAY_VIS 2
+#define FLUX_NIGHT_OCC 3
+#define FLUX_NIGHT_VIS 4
+#define FLUX_SIMPLE_OCC 5
+#define FLUX_SIMPLE_REFL 6
+#define FLUX_SIMPLE_OCC_REFL 7
+#define FLUX_TRIP_DAY_OCC 8
+#define FLUX_TRIP_NIGHT_OCC 9
+#define FLUX_QUAD_DAY_VIS 10
+#define FLUX_QUAD_NIGHT_VIS 11
+#define FLUX_NOON 12
 
 // Bounds checks
 #ifdef STARRY_DEBUG
@@ -127,7 +108,6 @@ typedef void Multi;
 #define CHECK_BOUNDS(INDEX, IMIN, IMAX)                                        \
   do {                                                                         \
   } while (0)
-
 #endif
 
 namespace starry {
