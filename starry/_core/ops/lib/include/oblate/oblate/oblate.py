@@ -335,14 +335,15 @@ class PythonSolver:
         sinu = np.sin(u)
         cosu = np.cos(u)
         diff = lambda x: np.diff(x)[0]
-        D = (1 - sinu ** 2 / kc2) ** 0.5
+        D = np.real((1 - sinu ** 2 / kc2 + 0j) ** 0.5)
 
         # The two boundary conditions
         # TODO: How should we evaluate fN?
         N = 2 * self.lmax + 4
         f0 = diff(ellipeinc(u, 1 / kc2))
         fN = quad(
-            lambda u: np.sin(u) ** (2 * N) * (1 - np.sin(u) ** 2 / kc2) ** 0.5,
+            lambda u: np.sin(u) ** (2 * N)
+            * np.real((1 - np.sin(u) ** 2 / kc2 + 0j) ** 0.5),
             u1,
             u2,
             epsabs=1e-12,
@@ -507,7 +508,7 @@ class PythonSolver:
         return res
 
     def _get_sT(
-        self, bo=0.65, ro=0.4, f=0.2, theta=0.5,
+        self, bo=0.58, ro=0.4, f=0.2, theta=0.5,
     ):
         """
         Return the `sT` solution vector.
@@ -656,7 +657,7 @@ class NumericalSolver:
         self.lmax = lmax
 
     def get_sT(
-        self, bo=0.65, ro=0.4, f=0.2, theta=0.5, nruns=1,
+        self, bo=0.58, ro=0.4, f=0.2, theta=0.5, nruns=1,
     ):
         for n in range(nruns):
             res = sT_numerical(self.lmax, bo, ro, f, theta)
@@ -668,6 +669,6 @@ class CppSolver:
         self.lmax = lmax
 
     def get_sT(
-        self, bo=0.65, ro=0.4, f=0.2, theta=0.5, nruns=1,
+        self, bo=0.58, ro=0.4, f=0.2, theta=0.5, nruns=1,
     ):
         return sT(self.lmax, bo, ro, f, theta, nruns)

@@ -6,6 +6,8 @@ import time
 
 def test_compare_to_numerical(lmax=8):
 
+    # TODO: C++ version can't currently handle f < 1e-8
+
     cppsolver = oblate.CppSolver(lmax)
     numsolver = oblate.NumericalSolver(lmax)
 
@@ -21,13 +23,25 @@ def test_compare_to_numerical(lmax=8):
     assert np.allclose(cppdsTdf, numdsTdf)
 
 
-def test_compare_to_python(lmax=8):
+def test_compare_to_python_ksq_gt_one(lmax=8):
 
     cppsolver = oblate.CppSolver(lmax)
     pysolver = oblate.PythonSolver(lmax)
 
-    cppsT = cppsolver.get_sT()
-    pysT = pysolver.get_sT()
+    cppsT = cppsolver.get_sT(bo=0.58, ro=0.4, f=0.2, theta=0.5)
+    pysT = pysolver.get_sT(bo=0.58, ro=0.4, f=0.2, theta=0.5)
+    assert np.allclose(cppsT, pysT)
+
+
+def test_compare_to_python_ksq_lt_one(lmax=8):
+
+    # TODO: Getting NaNs here!
+
+    cppsolver = oblate.CppSolver(lmax)
+    pysolver = oblate.PythonSolver(lmax)
+
+    cppsT = cppsolver.get_sT(bo=0.65, ro=0.4, f=0.2, theta=0.5)
+    pysT = pysolver.get_sT(bo=0.65, ro=0.4, f=0.2, theta=0.5)
     assert np.allclose(cppsT, pysT)
 
 
