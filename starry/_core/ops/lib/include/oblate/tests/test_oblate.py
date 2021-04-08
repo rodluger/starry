@@ -3,6 +3,11 @@ import numpy as np
 import pytest
 
 
+@pytest.mark.xfail(reason="hyp2f1(-0.5, 21, 22, 0.999987) doesn't converge.")
+def test_hyp2f1_convergence(solvers):
+    solvers["cpp"].get_sT(bo=0.93, ro=0.1, f=1e-6, theta=0.5)
+
+
 @pytest.mark.xfail(reason="The C++ version can't currently handle f = 0.")
 @pytest.mark.parametrize("kwargs", [dict(bo=0.58, ro=0.4, theta=0.5)])
 def test_compare_to_numerical(solvers, kwargs):
@@ -23,28 +28,36 @@ def test_compare_to_numerical(solvers, kwargs):
 
 
 @pytest.mark.parametrize("kwargs", [dict(bo=0.58, ro=0.4, f=0.2, theta=0.5)])
-def test_compare_to_python_ksq_gt_one(solvers, kwargs):
+def test_ksq_gt_one(solvers, kwargs):
     """
-    Compare C++ implementation to Python implementation for k^2 > 1.
+    Test occultations with k^2 > 1.
 
     """
-    cppsT = solvers["cpp"].get_sT(**kwargs)
+    numsT = solvers["num"].get_sT(**kwargs)
     pysT = solvers["py"].get_sT(**kwargs)
-    assert np.allclose(cppsT, pysT)
+    cppsT = solvers["cpp"].get_sT(**kwargs)
+    assert np.allclose(numsT, pysT, atol=0.05)
+    assert np.allclose(pysT, cppsT)
 
 
-@pytest.mark.xfail(
-    reason="Getting complex intermediate values when computing J."
+@pytest.mark.xfail(reason="Complex intermediate values when computing J.")
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        dict(bo=0.9, ro=0.1, f=0.2, theta=0.8),
+        dict(bo=0.65, ro=0.4, f=0.2, theta=0.5),
+    ],
 )
-@pytest.mark.parametrize("kwargs", [dict(bo=0.65, ro=0.4, f=0.2, theta=0.5)])
-def test_compare_to_python_ksq_lt_one(solvers, kwargs):
+def test_ksq_lt_one(solvers, kwargs):
     """
-    Compare C++ implementation to Python implementation for k^2 < 1.
+    Test occultations with k^2 < 1.
 
     """
-    cppsT = solvers["cpp"].get_sT(**kwargs)
     pysT = solvers["py"].get_sT(**kwargs)
-    assert np.allclose(cppsT, pysT)
+    cppsT = solvers["cpp"].get_sT(**kwargs)
+    numsT = solvers["num"].get_sT(**kwargs)
+    assert np.allclose(numsT, pysT, atol=0.05)
+    assert np.allclose(pysT, cppsT)
 
 
 @pytest.mark.parametrize("kwargs", [dict(bo=0.3, ro=0.8, f=0.4, theta=0.5)])
@@ -56,3 +69,4 @@ def test_compare_numerical_to_brute(kwargs):
     num = oblate.NumericalSolver(5).get_sT(**kwargs).flatten()
     assert np.all(np.abs(brute - num) < 0.001)
     assert np.all(np.abs((brute - num) / num) < 0.002)
+

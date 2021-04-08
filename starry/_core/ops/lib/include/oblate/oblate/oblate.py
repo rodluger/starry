@@ -133,8 +133,6 @@ def get_angles(bo, ro, f, theta):
 
         raise ValueError("Unexpected branch.")
 
-    print(phi, xi)
-
     return phi, xi
 
 
@@ -224,7 +222,7 @@ def pT_numerical(lmax, phi, b, r, f, theta):
             dx = lambda phi: -r * np.sin(phi)
             dy = lambda phi: r * np.cos(phi)
             pT[n] += primitive(x, y, dx, dy, phi1, phi2, f, theta, n)
-    return pT.reshape(1, -1)
+    return pT
 
 
 def tT_numerical(lmax, xi, b, r, f, theta):
@@ -244,7 +242,7 @@ def tT_numerical(lmax, xi, b, r, f, theta):
                 theta
             ) * np.cos(xi)
             tT[n] += primitive(x, y, dx, dy, xi1, xi2, f, theta, n)
-    return tT.reshape(1, -1)
+    return tT
 
 
 def sT_numerical(lmax, b, r, f, theta):
@@ -417,10 +415,22 @@ class PythonSolver:
         W = self.get_W(k2, phi1, phi2)
         V = self.get_V(k2, phi1, phi2)
         w2 = 1 / (2 * k2 - 1)
-        c1 = -2.0 * (1 - w2) ** 0.5
 
-        # TODO: If w2 > 1, c1 is imaginary. We need
-        # to reparametrize!!!
+        if w2 < 1:
+            c1 = -2.0 * (1 - w2) ** 0.5
+        else:
+            c1 = -2.0 * (w2 - 1) ** 0.5
+
+            # TODO: Solve this analytically
+            u1 = (np.pi - 2 * phi1) / 4
+            u2 = (np.pi - 2 * phi2) / 4
+            func = lambda u, j: np.sin(u) ** (2 * j) * np.sqrt(
+                np.sin(u) ** 2 / (1 - k2) - 1
+            )
+            W = [
+                integrate(func, u1, u2, args=(j,))
+                for j in range(2 * self.lmax + 5)
+            ]
 
         J = np.zeros((self.lmax + 3, self.lmax + 3))
         for s in range((self.lmax + 3) // 2):
@@ -652,7 +662,6 @@ class PythonSolver:
                 sT[n] = (1 - f) ** ((1 - nu) // 2) * K[
                     (mu - 3) // 2, (nu - 1) // 2
                 ]
-
         return sT
 
     def get_sT(self, nruns=1, **kwargs):
