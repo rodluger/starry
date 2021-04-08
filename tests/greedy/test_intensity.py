@@ -5,7 +5,11 @@ import numpy as np
 import pytest
 
 # Setup
-map = starry.Map(ydeg=1)
+@pytest.fixture(autouse=True)
+def map():
+    return starry.Map(ydeg=1)
+
+
 params = [
     [[0, 0, 0], 0, 0, 1.0 / np.pi],
     [[1, 0, 0], 0, np.linspace(-180, 180, 10), 1.0 / np.pi],
@@ -21,12 +25,12 @@ params = [
 
 
 @pytest.mark.parametrize("y,lat,lon,I", params)
-def test_intensity(y, lat, lon, I):
+def test_intensity(y, lat, lon, I, map):
     map[1:, :] = y
     assert np.allclose(map.intensity(lat=lat, lon=lon), I)
 
 
-def test_design_matrix():
+def test_design_matrix(map):
     map[1:, :] = [0.1, 0.2, 0.3]
     lat = [0, 30]
     lon = [45, 90]
@@ -34,7 +38,7 @@ def test_design_matrix():
     assert np.allclose(map.intensity(lat=lat, lon=lon), P.dot(map.y))
 
 
-def test_limb_darkened():
+def test_limb_darkened(map):
     map = starry.Map(udeg=2)
     map[1] = 0.5
     map[2] = 0.25

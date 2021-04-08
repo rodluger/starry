@@ -6,18 +6,25 @@ the code runs without raising errors.
 
 """
 import matplotlib
-
-matplotlib.use("Agg")
-
 import starry
 import numpy as np
 import os
 import pymc3 as pm
+import pytest
 
-if starry.compat.USE_AESARA:
-    theano_config = dict(aesara_config=dict(compute_test_value="ignore"))
-else:
-    theano_config = dict(theano_config=dict(compute_test_value="ignore"))
+
+@pytest.fixture(autouse=True)
+def setup():
+    matplotlib.use("Agg")
+    yield
+
+
+@pytest.fixture(autouse=True)
+def theano_config():
+    if starry.compat.USE_AESARA:
+        return dict(aesara_config=dict(compute_test_value="ignore"))
+    else:
+        return dict(theano_config=dict(compute_test_value="ignore"))
 
 
 def test_show():
@@ -78,7 +85,7 @@ def test_system_rv_show():
     os.remove("tmp.mp4")
 
 
-def test_show_pymc3():
+def test_show_pymc3(theano_config):
     with pm.Model(**theano_config) as model:
         map = starry.Map()
         ncoeff = map.Ny
@@ -89,7 +96,7 @@ def test_show_pymc3():
         os.remove("tmp.pdf")
 
 
-def test_show_reflected_pymc3():
+def test_show_reflected_pymc3(theano_config):
     with pm.Model(**theano_config) as model:
         map = starry.Map(ydeg=1, udeg=1, reflected=True)
         ncoeff = map.Ny
@@ -100,7 +107,7 @@ def test_show_reflected_pymc3():
         os.remove("tmp.pdf")
 
 
-def test_show_rv_pymc3():
+def test_show_rv_pymc3(theano_config):
     with pm.Model(**theano_config) as model:
         map = starry.Map(ydeg=1, udeg=1, rv=True)
         ncoeff = map.Ny
@@ -111,7 +118,7 @@ def test_show_rv_pymc3():
         os.remove("tmp.pdf")
 
 
-def test_show_ld_pymc3():
+def test_show_ld_pymc3(theano_config):
     with pm.Model(**theano_config) as model:
         map = starry.Map(udeg=2)
         map[1:] = pm.MvNormal("u", [0.5, 0.25], np.eye(2), shape=(2,))
@@ -119,7 +126,7 @@ def test_show_ld_pymc3():
         os.remove("tmp.pdf")
 
 
-def test_system_show_pymc3():
+def test_system_show_pymc3(theano_config):
     with pm.Model(**theano_config) as model:
         pri = starry.Primary(starry.Map())
         sec = starry.Secondary(starry.Map(), porb=1.0)
@@ -131,7 +138,7 @@ def test_system_show_pymc3():
         os.remove("tmp.gif")
 
 
-def test_system_rv_show_pymc3():
+def test_system_rv_show_pymc3(theano_config):
     with pm.Model(**theano_config) as model:
         pri = starry.Primary(starry.Map(rv=True))
         sec = starry.Secondary(starry.Map(rv=True), porb=1.0)

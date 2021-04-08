@@ -6,13 +6,17 @@ the code runs without raising errors.
 
 """
 import matplotlib
-
-matplotlib.use("Agg")
-
 import matplotlib.pyplot as plt
 import starry
 import numpy as np
 import os
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def setup():
+    matplotlib.use("Agg")
+    yield
 
 
 def test_show(mp4=False):

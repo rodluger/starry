@@ -2,7 +2,7 @@
 """Test theano compiling."""
 import starry
 import pytest
-from starry.compat import theano
+from starry.compat import change_flags
 import numpy as np
 
 
@@ -14,7 +14,6 @@ def test_test_value_error():
     test values are missing.
 
     """
-    theano.config.compute_test_value = "raise"
-    map = starry.Map()
-    flux = map.flux()
-    assert theano.config.compute_test_value == "raise"
+    with change_flags(compute_test_value="raise"):
+        map = starry.Map()
+        flux = map.flux()

@@ -13,11 +13,9 @@ import itertools
 import numpy as np
 
 
-map = starry.Map(1)
-
-
 @pytest.mark.parametrize("compile", [True, False])
 def test_ortho_grid(compile):
+    map = starry.Map(1)
     for res in np.arange(30, 101):
         if compile:
             (lat, lon), (x, y, z) = map.ops.compute_ortho_grid(res)
