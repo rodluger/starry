@@ -5,7 +5,7 @@ from scipy.special import hyp2f1, ellipeinc
 from scipy.special import comb
 
 
-__all__ = ["PythonSolver", "NumericalSolver", "CppSolver"]
+__all__ = ["PythonSolver", "NumericalSolver", "CppSolver", "BruteSolver"]
 
 
 def quartic_coeffs(b, xo, yo, ro):
@@ -98,8 +98,12 @@ def get_angles(bo, ro, f, theta):
         # the inside of the star
         xm = xo + ro * np.cos(theta - phi.mean())
         ym = yo - ro * np.sin(theta - phi.mean())
-        if np.abs(ym) > (1 - f) * np.sqrt(1 - xm ** 2):
-            phi[0] += 2 * np.pi
+        if ym ** 2 > (1 - f) ** 2 * (1 - xm ** 2):
+            if phi[0] < phi[1]:
+                phi[0] += 2 * np.pi
+            else:
+                phi[1] += 2 * np.pi
+                phi = [phi[1], phi[0]]
 
     elif len(roots_real) < 2:
 
@@ -128,6 +132,8 @@ def get_angles(bo, ro, f, theta):
     else:
 
         raise ValueError("Unexpected branch.")
+
+    print(phi, xi)
 
     return phi, xi
 
@@ -413,6 +419,9 @@ class PythonSolver:
         w2 = 1 / (2 * k2 - 1)
         c1 = -2.0 * (1 - w2) ** 0.5
 
+        # TODO: If w2 > 1, c1 is imaginary. We need
+        # to reparametrize!!!
+
         J = np.zeros((self.lmax + 3, self.lmax + 3))
         for s in range((self.lmax + 3) // 2):
             for q in range(self.lmax + 3):
@@ -672,3 +681,116 @@ class CppSolver:
         self, bo=0.58, ro=0.4, f=0.2, theta=0.5, nruns=1,
     ):
         return sT(self.lmax, bo, ro, f, theta, nruns)
+
+
+class BruteSolver:
+    def __init__(self, lmax=5):
+        self.lmax = lmax
+
+    def g(self, n, x, y, z=None):
+        """
+        Return the nth term of the Green's basis.
+        
+        """
+        if z is None:
+            z2 = 1 - x ** 2 - y ** 2
+            z = np.sqrt(np.abs(z2))
+            on_star = z2 > 0
+            z[~on_star] = np.nan
+        l = int(np.floor(np.sqrt(n)))
+        m = n - l * l - l
+        mu = l - m
+        nu = l + m
+        if nu % 2 == 0:
+            I = [mu // 2]
+            J = [nu // 2]
+            K = [0]
+            C = [(mu + 2) // 2]
+        elif (l == 1) and (m == 0):
+            I = [0]
+            J = [0]
+            K = [1]
+            C = [1]
+        elif (mu == 1) and (l % 2 == 0):
+            I = [l - 2]
+            J = [1]
+            K = [1]
+            C = [3]
+        elif mu == 1:
+            I = [l - 3, l - 1, l - 3]
+            J = [0, 0, 2]
+            K = [1, 1, 1]
+            C = [-1, 1, 4]
+        else:
+            I = [(mu - 5) // 2, (mu - 5) // 2, (mu - 1) // 2]
+            J = [(nu - 1) // 2, (nu + 3) // 2, (nu - 1) // 2]
+            K = [1, 1, 1]
+            C = [(mu - 3) // 2, -(mu - 3) // 2, -(mu + 3) // 2]
+        res = z * 0
+        for i, j, k, c in zip(I, J, K, C):
+            if c != 0:
+                res += c * x ** i * y ** j * z ** k
+
+        return res
+
+    def get_sT(
+        self, bo=0.58, ro=0.4, f=0.2, theta=0.5, res=999, nruns=1,
+    ):
+        for n in range(nruns):
+
+            # Semi-minor axis of the ellipse
+            b = 1 - f
+
+            # There are two equivalent ways of doing this:
+            if False:
+
+                # Grid up the ellipse
+                x = np.linspace(-1 - ro, 1 + ro, res)
+                y = np.linspace(-b - ro, b + ro, res)
+                x, y = np.meshgrid(x, y)
+                on_star = 1 - x ** 2 - (y / b) ** 2 > 0
+
+                # Compute the Green's basis in (x, y') where
+                #
+                #     y' = y / b
+                #
+                # is the transformed y coordinate
+                g = np.array(
+                    [self.g(n, x, y / b) for n in range((self.lmax + 1) ** 2)]
+                )
+                g /= np.count_nonzero(on_star)
+
+                # Compute the visible pixels
+                xo = bo * np.sin(theta)
+                yo = bo * np.cos(theta)
+                under_occultor = (x - xo) ** 2 + (y - yo) ** 2 <= ro ** 2
+                inds = on_star & ~under_occultor
+
+            else:
+
+                # Grid up the unit disk
+                x = np.linspace(-1 - ro, 1 + ro, res)
+                y = np.linspace(-1 - ro, 1 + ro, res)
+                x, y = np.meshgrid(x, y)
+                on_star = 1 - x ** 2 - y ** 2 > 0
+
+                # Compute the Green's basis as usual
+                g = np.array(
+                    [self.g(n, x, y) for n in range((self.lmax + 1) ** 2)]
+                )
+                g /= np.count_nonzero(on_star)
+
+                # Compute the visible pixels in a stretched frame where
+                #
+                #     y' = y * b
+                #
+                # is the transformed y coordinate
+                xo = bo * np.sin(theta)
+                yo = bo * np.cos(theta)
+                under_occultor = (x - xo) ** 2 + (y * b - yo) ** 2 <= ro ** 2
+                inds = on_star & ~under_occultor
+
+        # Integrate
+        sT = b * np.pi * np.sum(g[:, inds], axis=1)
+
+        return sT

@@ -410,7 +410,12 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
     xm = xo + ro * cos(theta - mid);
     ym = yo - ro * sin(theta - mid);
     if (ym * ym > b * b * (1 - xm * xm)) {
-      phi1 += 2 * pi<Scalar>();
+      if (phi1 < phi2) {
+        phi1 += 2 * pi<Scalar>();
+      } else {
+        phi2 += 2 * pi<Scalar>();
+        std::swap(phi1, phi2);
+      }
     }
 
   } else {
