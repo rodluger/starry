@@ -4,11 +4,6 @@ import pytest
 import itertools
 
 
-@pytest.mark.xfail(reason="hyp2f1(-0.5, 21, 22, 0.999987) doesn't converge.")
-def test_hyp2f1_convergence(solvers):
-    solvers["cpp"].get_sT(bo=0.93, ro=0.1, f=1e-6, theta=0.5)
-
-
 @pytest.mark.xfail(reason="The C++ version can't currently handle f = 0.")
 @pytest.mark.parametrize("kwargs", [dict(bo=0.58, ro=0.4, theta=0.5)])
 def test_compare_to_numerical(solvers, kwargs):

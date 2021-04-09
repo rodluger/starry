@@ -5,7 +5,7 @@ Tests for C++ functions.
 """
 from starry import _c_ops as Ops
 import numpy as np
-from mpmath import ellipe
+from mpmath import ellipe, ellipf
 import pytest
 
 

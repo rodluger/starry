@@ -222,6 +222,26 @@ protected:
   }
 
   /**
+   * Computes
+   *
+   *     2F1(-1/2, n + 1, n + 2, z)
+   *
+   * in the regime 1/2 < z < 1. This is a lot
+   * more efficient than the standard algorithm,
+   * which converges very slowly for z close to unity.
+   *
+   */
+  inline A hyp2f1_reparam(const int &n, const A &z) {
+    A omz = 1 - z;
+    A c1 = -2.0 * (n + 1.0) / 3.0 * pow(omz, 1.5);
+    A c2 = 2.0 / 3.0;
+    for (int m = 1; m < n + 1; ++m)
+      c2 *= 2.0 * (m + 1.0) / (3.0 + 2.0 * m);
+    return c1 * hyp2f1(n + 2.5, 1.0, 2.5, omz) +
+           c2 * hyp2f1(-0.5, n + 1.0, -0.5, omz);
+  }
+
+  /**
    *
    * Compute the vector of `V` integrals, computed
    * recursively given a lower boundary condition
@@ -242,7 +262,7 @@ protected:
     int nmax = 2 * deg + 4;
     A invw2 = 2 * k2 - 1;
     A sinphi, x;
-    A f0, fN;
+    A f0, fN, H;
     std::function<A(int)> funcA, funcB, funcC;
     Vector<A> V2, V1;
 
@@ -254,8 +274,11 @@ protected:
 
     // Boundary conditions
     f0 = (2.0 / 3.0) * (1 - (1 - x) * sqrt(1 - x)) * invw2;
-    fN = pow(sinphi, (nmax + 1.0)) / (nmax + 1.0) *
-         hyp2f1(-0.5, nmax + 1.0, nmax + 2.0, x);
+    if (x < 0.5)
+      H = hyp2f1(-0.5, nmax + 1.0, nmax + 2.0, x);
+    else
+      H = hyp2f1_reparam(nmax, x);
+    fN = pow(sinphi, (nmax + 1.0)) / (nmax + 1.0) * H;
 
     // Recursion coefficients
     funcA = [x, invw2](int n) {
@@ -277,8 +300,11 @@ protected:
 
     // Boundary conditions
     f0 = (2.0 / 3.0) * (1 - (1 - x) * sqrt(1 - x)) * invw2;
-    fN = pow(sinphi, (nmax + 1.0)) / (nmax + 1.0) *
-         hyp2f1(-0.5, nmax + 1.0, nmax + 2.0, x);
+    if (x < 0.5)
+      H = hyp2f1(-0.5, nmax + 1.0, nmax + 2.0, x);
+    else
+      H = hyp2f1_reparam(nmax, x);
+    fN = pow(sinphi, (nmax + 1.0)) / (nmax + 1.0) * H;
 
     // Recursion coefficients
     funcA = [x, invw2](int n) {
