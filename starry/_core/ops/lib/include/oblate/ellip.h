@@ -233,9 +233,10 @@ protected:
     Compute the incomplete elliptic integrals of the first and second kinds.
 
   */
-  inline void compute_E() {
+  inline void compute_EF() {
 
     E = 0.0;
+    F = 0.0;
 
     if ((k2 < 1) && (k2 >= 0)) {
 
@@ -264,16 +265,22 @@ protected:
       for (size_t i = 0; i < 2; ++i) {
 
         // A lot of trial and error here. This ensures we match
-        // `mpmath.ellipe` over the entire real line for phi.
+        // `mpmath.ellipe` and `mpmath.ellipf` over the entire
+        // real line for phi.
         Scalar term =
             floor((kappa(i).value() - 3 * pi<Scalar>()) / (4 * pi<Scalar>()));
         A f1 = 4 * (term + 1) * E0 + Ev(i);
         A f2 = 4 * (term + 1.5) * E0 - Ev(i);
+        A g1 = 4 * (term + 1) * F0 + Fv(i);
+        A g2 = 4 * (term + 1.5) * F0 - Fv(i);
         Scalar cond = angle(0.5 * kappa(i).value()) / (2 * pi<Scalar>());
-        if ((cond > 0.25) && (cond < 0.75))
+        if ((cond > 0.25) && (cond < 0.75)) {
           E += sgn * f2;
-        else
+          F += sgn * g2;
+        } else {
           E += sgn * f1;
+          F += sgn * g1;
+        }
         sgn *= -1;
       }
 
@@ -292,11 +299,14 @@ protected:
       for (size_t i = 0; i < 2; ++i) {
 
         // A lot of trial and error here. This ensures we match
-        // `mpmath.ellipe` over the entire real line for phi.
+        // `mpmath.ellipe` and `mpmath.ellipf` over the entire
+        // real line for phi.
         Scalar term =
             floor((kappa(i).value() - pi<Scalar>()) / (2 * pi<Scalar>()));
         A f1 = 2 * (term + 1) * E0 + Ev(i);
+        A g1 = 2 * (term + 1) * F0 + Fv(i);
         E += sgn * f1;
+        F += sgn * g1;
         sgn *= -1;
       }
     }
@@ -305,6 +315,7 @@ protected:
 public:
   // Outputs
   A E;
+  A F;
 
   //! Constructor
   explicit IncompleteEllipticIntegrals(const A &ksq, const Pair<A> &phi) {
@@ -343,6 +354,9 @@ public:
 
       // Derivatives
       if (N > 0) {
+        F0.derivatives() = 0.5 / k2.value() *
+                           (E0.value() / (1 - k2.value()) - F0.value()) *
+                           k2.derivatives();
         E0.derivatives() =
             0.5 / k2.value() * (E0.value() - F0.value()) * k2.derivatives();
       }
@@ -363,25 +377,27 @@ public:
     } else {
 
       // k2 is negative, so we should use the analytic continuation
-      // trick from https://dlmf.nist.gov/19.7#E2 to compute E0 using
+      // trick from https://dlmf.nist.gov/19.7#E2 to compute F0 and E0 using
       // CEL and a positive argument. For now, it's easier to just
-      // compute E0 using the incomplete elliptic integral algorithm,
+      // compute F0 and E0 using the incomplete elliptic integral algorithm,
       // which actually works fine for negative k2.
-      // NOTE that F0 is not computed since we don't need it above.
       Pair<A> tanphi;
       tanphi(0) = 0;
       tanphi(1) = STARRY_HUGE_TAN;
       compute_el2(tanphi, k2inv);
+      F0 = Fv(1) - Fv(0);
       E0 = Ev(1) - Ev(0);
     }
 
-    // Compute the incomplete elliptic integral of the second kind.
-    // The expression
+    // Compute the incomplete elliptic integrals of the first and second kinds.
+    // The expressions
     //
+    //      F(k2, phi)
     //      E(k2, phi)
     //
-    // for vector `phi` is equivalent to the definite integral
+    // for vector `phi` are equivalent to the definite integrals
     //
+    //      ellipf(phi[1], k2) - ellipf(phi[0], k2)
     //      ellipe(phi[1], k2) - ellipe(phi[0], k2)
     //
     // computed using (say) `mpmath.ellipe` in Python.
@@ -390,7 +406,7 @@ public:
     // negative values of `k2` using analytic continuation;
     // these are required in the evaluation of the oblate
     // integrals.
-    compute_E();
+    compute_EF();
   }
 };
 

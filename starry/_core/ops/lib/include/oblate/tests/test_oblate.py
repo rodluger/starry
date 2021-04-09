@@ -1,6 +1,7 @@
 import oblate
 import numpy as np
 import pytest
+import itertools
 
 
 @pytest.mark.xfail(reason="hyp2f1(-0.5, 21, 22, 0.999987) doesn't converge.")
@@ -27,46 +28,50 @@ def test_compare_to_numerical(solvers, kwargs):
     assert np.allclose(cppdsTdf, numdsTdf)
 
 
-@pytest.mark.parametrize("kwargs", [dict(bo=0.58, ro=0.4, f=0.2, theta=0.5)])
-def test_ksq_gt_one(solvers, kwargs):
-    """
-    Test occultations with k^2 > 1.
+class Compare:
+    @pytest.mark.parametrize(
+        "compare",
+        [
+            ("cpp", "py"),
+            # ("num", "py"),
+            # ("cpp", "num"),
+            # ("brute", "num"),
+            # ("brute", "cpp"),
+            # ("brute", "py"),
+        ],
+    )
+    def test_compare(self, solvers, kwargs, compare):
+        kwargs = dict(kwargs)
+        brute_error = 1e-3
+        max_error = kwargs.pop("max_error", 1e-8)
+        atol = {
+            ("cpp", "py"): 1e-12,
+            ("num", "py"): max_error,
+            ("cpp", "num"): max_error,
+            ("brute", "num"): brute_error,
+            ("brute", "cpp"): max(max_error, brute_error),
+            ("brute", "py"): max(max_error, brute_error),
+        }
+        assert np.allclose(
+            solvers[compare[0]].get_sT(**kwargs),
+            solvers[compare[1]].get_sT(**kwargs),
+            atol=atol[compare],
+        )
 
-    """
-    numsT = solvers["num"].get_sT(**kwargs)
-    pysT = solvers["py"].get_sT(**kwargs)
-    cppsT = solvers["cpp"].get_sT(**kwargs)
-    assert np.allclose(numsT, pysT, atol=0.05)
-    assert np.allclose(pysT, cppsT)
+
+@pytest.mark.parametrize(
+    "kwargs", [dict(bo=0.58, ro=0.4, f=0.2, theta=0.5, max_error=0.05)]
+)
+class TestKsqGreaterThanOne(Compare):
+    pass
 
 
-@pytest.mark.xfail(reason="Complex intermediate values when computing J.")
 @pytest.mark.parametrize(
     "kwargs",
     [
-        dict(bo=0.9, ro=0.1, f=0.2, theta=0.8),
-        dict(bo=0.65, ro=0.4, f=0.2, theta=0.5),
+        # dict(bo=0.9, ro=0.1, f=0.2, theta=0.8, max_error=0.05),
+        dict(bo=0.65, ro=0.4, f=0.2, theta=0.5, max_error=0.05),
     ],
 )
-def test_ksq_lt_one(solvers, kwargs):
-    """
-    Test occultations with k^2 < 1.
-
-    """
-    pysT = solvers["py"].get_sT(**kwargs)
-    cppsT = solvers["cpp"].get_sT(**kwargs)
-    numsT = solvers["num"].get_sT(**kwargs)
-    assert np.allclose(numsT, pysT, atol=0.05)
-    assert np.allclose(pysT, cppsT)
-
-
-@pytest.mark.parametrize("kwargs", [dict(bo=0.3, ro=0.8, f=0.4, theta=0.5)])
-def test_compare_numerical_to_brute(kwargs):
-    """
-
-    """
-    brute = oblate.BruteSolver(5).get_sT(**kwargs).flatten()
-    num = oblate.NumericalSolver(5).get_sT(**kwargs).flatten()
-    assert np.all(np.abs(brute - num) < 0.001)
-    assert np.all(np.abs((brute - num) / num) < 0.002)
-
+class TestKsqLessThanOne(Compare):
+    pass

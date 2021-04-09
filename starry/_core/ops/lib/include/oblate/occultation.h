@@ -136,6 +136,9 @@ protected:
    */
   inline void compute_W() {
 
+    int nmax = 2 * deg + 4;
+    Scalar invkc2_value = invkc2.value();
+
     // Transformed angles
     Pair<A> u;
     u(0) = 0.25 * (pi<A>() - 2 * phi1);
@@ -146,23 +149,61 @@ protected:
     cosu.array() = cos(u.array());
 
     // Delta^3 parameter from Gradshteyn & Ryzhik
-    Pair<A> D3;
-    D3.array() = pow(1 - sinu.array() * sinu.array() * invkc2, 1.5);
+    Pair<A> D1, D2, D3;
+    D2.array() = abs(1 - sinu.array() * sinu.array() * invkc2);
+    D1.array() = pow(D2.array(), 0.5);
+    D3.array() = D1.array() * D2.array();
 
     // Lower boundary
-    auto Elliptic = IncompleteEllipticIntegrals<Scalar, N>(invkc2, u);
-    A f0 = Elliptic.E;
+    A f0;
+    if (k2 >= 1) {
+
+      auto Elliptic = IncompleteEllipticIntegrals<Scalar, N>(invkc2, u);
+      f0 = Elliptic.E;
+
+    } else {
+
+      // Complex trickery: D is actually imaginary, so D^3 is negative
+      // in this branch. The extra factor of `i` cancels with the
+      // imaginary part of the elliptic integral below to yield a real
+      // result.
+      D3 *= -1;
+
+      // We need to compute the *imaginary* part of the elliptic integrals
+      // in this branch. Ideally we could just do
+      //
+      //  auto Elliptic = IncompleteEllipticIntegrals<Scalar, N>(invkc2, u);
+      //  f0 = imag(Elliptic.E);
+      //
+      // But our `el2` algorithm only computes the real part. So we need
+      // to reparametrize.
+      Pair<A> term, v, C, sinv;
+      int n0, n1, sgn0, sgn1;
+      n0 = std::floor((u(0).value() + 0.5 * pi<Scalar>()) / pi<Scalar>());
+      n1 = std::floor((u(1).value() + 0.5 * pi<Scalar>()) / pi<Scalar>());
+      sgn0 = is_even(n0) ? 1 : -1;
+      sgn1 = is_even(n1) ? 1 : -1;
+      term = D1 * sqrt(1 / k2 - 1);
+      v(0) = n0 * pi<Scalar>() + sgn0 * asin(term(0) / sinu(0));
+      v(1) = n1 * pi<Scalar>() + sgn1 * asin(term(1) / sinu(1));
+      auto Elliptic = IncompleteEllipticIntegrals<Scalar, N>(k2, v);
+      sinv.array() = sin(v.array());
+      C.array() = sinv.array() * cos(v.array()) /
+                  sqrt(1 - k2 * sinv.array() * sinv.array());
+      f0 = -sqrt(kc2) * (Elliptic.F - (Elliptic.E - k2 * (C(1) - C(0))) / kc2);
+
+      std::cout << f0 << std::endl;
+    }
 
     // Upper boundary
     // TODO: Find a series solution so we don't have to integrate
-    int nmax = 2 * deg + 4;
-    Scalar invkc2_value = invkc2.value();
-    std::function<Scalar(Scalar)> func = [nmax, invkc2_value](Scalar x) {
+    // TODO: Propagate derivatives!
+    std::function<Scalar(Scalar)> funcN = [nmax, invkc2_value](Scalar x) {
       Scalar sinx2 = sin(x);
       sinx2 *= sinx2;
-      return pow(sinx2, nmax) * sqrt(1 - sinx2 * invkc2_value);
+      return pow(sinx2, nmax) * sqrt(abs(1 - sinx2 * invkc2_value));
     };
-    A fN = QUAD.integrate(u(0).value(), u(1).value(), func);
+    A fN = QUAD.integrate(u(0).value(), u(1).value(), funcN);
 
     // Recursion coefficients
     A kc2_alias = kc2;
@@ -274,7 +315,7 @@ protected:
 
     //
     int nmax = deg + 3;
-    A c1 = -2.0 * sqrt(1 - w2);
+    A c1 = -2.0 * sqrt(abs(1 - w2));
     A term;
     Scalar fac, amp;
     J.setZero(nmax, nmax);

@@ -36,6 +36,20 @@ PYBIND11_MODULE(_c_ops, m) {
     return py::make_tuple(integrals.E.value(), integrals.E.derivatives());
   });
 
+  m.def("F", [](const double &k2, const Pair<double> &phi) {
+    using A = ADScalar<double, 3>;
+    A k2_ad;
+    k2_ad.value() = k2;
+    k2_ad.derivatives() = Vector<double>::Unit(3, 0);
+    Pair<A> phi_ad;
+    phi_ad(0).value() = phi(0);
+    phi_ad(0).derivatives() = Vector<double>::Unit(3, 1);
+    phi_ad(1).value() = phi(1);
+    phi_ad(1).derivatives() = Vector<double>::Unit(3, 2);
+    auto integrals = IncompleteEllipticIntegrals<double, 3>(k2_ad, phi_ad);
+    return py::make_tuple(integrals.F.value(), integrals.F.derivatives());
+  });
+
   m.def("sT", [](const int &deg, const double &bo_, const double &ro_,
                  const double &f_, const double &theta_, const int &nruns) {
     using A = ADScalar<double, 0>;

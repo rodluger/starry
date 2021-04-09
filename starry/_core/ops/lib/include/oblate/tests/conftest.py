@@ -3,7 +3,7 @@ import pytest
 
 
 @pytest.fixture(scope="session", autouse=True)
-def solvers(lmax=8):
+def solvers(lmax=5):
     cppsolver = oblate.CppSolver(lmax)
     numsolver = oblate.NumericalSolver(lmax)
     pysolver = oblate.PythonSolver(lmax)

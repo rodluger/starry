@@ -1,8 +1,8 @@
 from ._c_ops import sT, angles
 import numpy as np
 from scipy.integrate import quad
-from scipy.special import hyp2f1, ellipeinc
-from scipy.special import comb
+from mpmath import ellipe, ellipf
+from scipy.special import comb, hyp2f1
 
 
 __all__ = ["PythonSolver", "NumericalSolver", "CppSolver", "BruteSolver"]
@@ -332,6 +332,7 @@ class PythonSolver:
 
         """
         # Useful quantities
+        N = 2 * self.lmax + 4
         kc2 = 1 - k2
         u1 = 0.25 * (np.pi - 2 * phi1)
         u2 = 0.25 * (np.pi - 2 * phi2)
@@ -339,15 +340,46 @@ class PythonSolver:
         sinu = np.sin(u)
         cosu = np.cos(u)
         diff = lambda x: np.diff(x)[0]
-        D = np.real((1 - sinu ** 2 / kc2 + 0j) ** 0.5)
+        D2 = 1 - sinu ** 2 / kc2
+        """
+        w2 = 1 / (2 * k2 - 1)
+        if w2 < 1:
+            sgn = 1
+        else:
+            sgn = -1
+        """
+        if k2 >= 1:
+            sgn = 1
+        else:
+            sgn = -1
+        D3 = sgn * abs(D2) ** 1.5
 
         # The two boundary conditions
-        # TODO: How should we evaluate fN?
-        N = 2 * self.lmax + 4
-        f0 = diff(ellipeinc(u, 1 / kc2))
+        if sgn == 1:
+            f0 = float((ellipe(u[1], 1 / kc2) - ellipe(u[0], 1 / kc2)).real)
+        else:
+            f0 = float((ellipe(u[1], 1 / kc2) - ellipe(u[0], 1 / kc2)).imag)
+            """
+            For reference, this expression can be written in terms of the
+            real parts of elliptic integrals as follows:
+
+                n = np.floor((u + 0.5 * np.pi) / np.pi)
+                term = np.sqrt((sinu ** 2 / kc2 - 1) * (1 / k2 - 1))
+                A = n * np.pi + (-1) ** n * np.arcsin(term / sinu)
+                F = float((ellipf(A[1], k2) - ellipf(A[0], k2)).real)
+                E = float((ellipe(A[1], k2) - ellipe(A[0], k2)).real)
+                C = diff(
+                    (np.sin(A) * np.cos(A)) / np.sqrt(1 - k2 * np.sin(A) ** 2)
+                )
+                f0 = -np.sqrt(kc2) * (F - E / kc2 + k2 / kc2 * C)
+            """
+
+            print(f0)
+
+        # TODO: Is there a faster way to evaluate this?
         fN = quad(
             lambda u: np.sin(u) ** (2 * N)
-            * np.real((1 - np.sin(u) ** 2 / kc2 + 0j) ** 0.5),
+            * abs(1 - np.sin(u) ** 2 / kc2) ** 0.5,
             u1,
             u2,
             epsabs=1e-12,
@@ -357,9 +389,7 @@ class PythonSolver:
         # The recursion coefficients
         A = lambda j: 2 * (j + (j - 1) * kc2) / (2 * j + 1)
         B = lambda j: -(2 * j - 3) / (2 * j + 1) * kc2
-        C = lambda j: diff(kc2 * sinu ** (2 * j - 3) * cosu * D ** 3) / (
-            2 * j + 1
-        )
+        C = lambda j: diff(kc2 * sinu ** (2 * j - 3) * cosu * D3) / (2 * j + 1)
 
         # Solve the linear system
         return self.solve(f0, fN, A, B, C, N)
@@ -415,23 +445,7 @@ class PythonSolver:
         W = self.get_W(k2, phi1, phi2)
         V = self.get_V(k2, phi1, phi2)
         w2 = 1 / (2 * k2 - 1)
-
-        if w2 < 1:
-            c1 = -2.0 * (1 - w2) ** 0.5
-        else:
-            c1 = -2.0 * (w2 - 1) ** 0.5
-
-            # TODO: Solve this analytically
-            u1 = (np.pi - 2 * phi1) / 4
-            u2 = (np.pi - 2 * phi2) / 4
-            func = lambda u, j: np.sin(u) ** (2 * j) * np.sqrt(
-                np.sin(u) ** 2 / (1 - k2) - 1
-            )
-            W = [
-                integrate(func, u1, u2, args=(j,))
-                for j in range(2 * self.lmax + 5)
-            ]
-
+        c1 = -2.0 * abs(1 - w2) ** 0.5
         J = np.zeros((self.lmax + 3, self.lmax + 3))
         for s in range((self.lmax + 3) // 2):
             for q in range(self.lmax + 3):
@@ -693,8 +707,9 @@ class CppSolver:
 
 
 class BruteSolver:
-    def __init__(self, lmax=5):
+    def __init__(self, lmax=5, res=999):
         self.lmax = lmax
+        self.res = res
 
     def g(self, n, x, y, z=None):
         """
@@ -743,7 +758,7 @@ class BruteSolver:
         return res
 
     def get_sT(
-        self, bo=0.58, ro=0.4, f=0.2, theta=0.5, res=999, nruns=1,
+        self, bo=0.58, ro=0.4, f=0.2, theta=0.5, nruns=1,
     ):
         for n in range(nruns):
 
@@ -754,8 +769,8 @@ class BruteSolver:
             if False:
 
                 # Grid up the ellipse
-                x = np.linspace(-1 - ro, 1 + ro, res)
-                y = np.linspace(-b - ro, b + ro, res)
+                x = np.linspace(-1 - ro, 1 + ro, self.res)
+                y = np.linspace(-b - ro, b + ro, self.res)
                 x, y = np.meshgrid(x, y)
                 on_star = 1 - x ** 2 - (y / b) ** 2 > 0
 
@@ -778,8 +793,8 @@ class BruteSolver:
             else:
 
                 # Grid up the unit disk
-                x = np.linspace(-1 - ro, 1 + ro, res)
-                y = np.linspace(-1 - ro, 1 + ro, res)
+                x = np.linspace(-1 - ro, 1 + ro, self.res)
+                y = np.linspace(-1 - ro, 1 + ro, self.res)
                 x, y = np.meshgrid(x, y)
                 on_star = 1 - x ** 2 - y ** 2 > 0
 
