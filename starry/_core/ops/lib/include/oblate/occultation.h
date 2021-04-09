@@ -191,8 +191,6 @@ protected:
       C.array() = sinv.array() * cos(v.array()) /
                   sqrt(1 - k2 * sinv.array() * sinv.array());
       f0 = -sqrt(kc2) * (Elliptic.F - (Elliptic.E - k2 * (C(1) - C(0))) / kc2);
-
-      std::cout << f0 << std::endl;
     }
 
     // Upper boundary

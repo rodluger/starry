@@ -374,8 +374,6 @@ class PythonSolver:
                 f0 = -np.sqrt(kc2) * (F - E / kc2 + k2 / kc2 * C)
             """
 
-            print(f0)
-
         # TODO: Is there a faster way to evaluate this?
         fN = quad(
             lambda u: np.sin(u) ** (2 * N)

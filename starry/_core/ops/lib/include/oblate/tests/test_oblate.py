@@ -33,11 +33,11 @@ class Compare:
         "compare",
         [
             ("cpp", "py"),
-            # ("num", "py"),
-            # ("cpp", "num"),
-            # ("brute", "num"),
-            # ("brute", "cpp"),
-            # ("brute", "py"),
+            ("num", "py"),
+            ("cpp", "num"),
+            ("brute", "num"),
+            ("brute", "cpp"),
+            ("brute", "py"),
         ],
     )
     def test_compare(self, solvers, kwargs, compare):
@@ -69,7 +69,7 @@ class TestKsqGreaterThanOne(Compare):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        # dict(bo=0.9, ro=0.1, f=0.2, theta=0.8, max_error=0.05),
+        dict(bo=0.91, ro=0.1, f=0.2, theta=0.8, max_error=0.05),
         dict(bo=0.65, ro=0.4, f=0.2, theta=0.5, max_error=0.05),
     ],
 )
