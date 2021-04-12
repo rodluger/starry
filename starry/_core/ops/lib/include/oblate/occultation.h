@@ -195,13 +195,27 @@ protected:
 
     // Upper boundary
     // TODO: Find a series solution so we don't have to integrate
-    // TODO: Propagate derivatives!
     std::function<Scalar(Scalar)> funcN = [nmax, invkc2_value](Scalar x) {
       Scalar sinx2 = sin(x);
       sinx2 *= sinx2;
       return pow(sinx2, nmax) * sqrt(abs(1 - sinx2 * invkc2_value));
     };
-    A fN = QUAD.integrate(u(0).value(), u(1).value(), funcN);
+    A fN;
+    fN.value() = QUAD.integrate(u(0).value(), u(1).value(), funcN);
+    if (N > 0) {
+      std::function<Scalar(Scalar)> dfuncNdinvkc2 = [nmax,
+                                                     invkc2_value](Scalar x) {
+        Scalar sinx2 = sin(x);
+        sinx2 *= sinx2;
+        return -0.5 * pow(sinx2, nmax) * sinx2 *
+               pow(abs(1 - sinx2 * invkc2_value), -0.5);
+      };
+      fN.derivatives() =
+          (funcN(u(1).value()) * u(1).derivatives() +
+           funcN(u(0).value()) * u(0).derivatives() +
+           QUAD.integrate(u(0).value(), u(1).value(), dfuncNdinvkc2) *
+               invkc2.derivatives());
+    }
 
     // Recursion coefficients
     A kc2_alias = kc2;
@@ -440,7 +454,7 @@ public:
   /**
       Compute the full solution vector s^T.
 
-      TODO: Gradients not tested, especially for pT(2).
+      TODO: Unit tests for the gradients (never tested!)
 
   */
   inline void compute(const A &bo_, const A &ro_, const A &f_,
