@@ -145,6 +145,12 @@ def get_angles(bo, ro, f, theta):
                 phi = np.array([0.0, 0.0])
                 xi = np.array([0.0, 0.0])
 
+        elif bo <= ro - 1:
+
+            # Complete occultation
+            phi = np.array([0.0, 0.0])
+            xi = np.array([0.0, 0.0])
+
         else:
 
             # Regular occultation, but occultor doesn't touch the limb
@@ -626,10 +632,30 @@ class PythonSolver:
         # Get the angles
         (phi1, phi2), (xi1, xi2) = get_angles(bo, ro, f, theta)
 
+        # Special cases
+        if (phi1 == phi2 == xi1 == 0) and (xi2 == 2 * np.pi):
+            # No occultation?
+            sT = np.zeros((self.lmax + 1) ** 2)
+            Lxi = (1 - f) * self.get_L(xi1, xi2)
+            for n in range((self.lmax + 1) ** 2):
+                l = self.l[n]
+                m = self.m[n]
+                mu = l - m
+                nu = l + m
+                if self.cases[n] == 1:
+                    tT = Lxi[mu // 2 + 2, nu // 2]
+                    sT[n] = tT
+                elif self.cases[n] == 2:
+                    tT = (1 - f) * (xi2 - xi1) / 3
+                    sT[n] = tT
+            return sT
+        elif phi1 == phi2 == xi1 == xi2 == 0:
+            # Complete occultation
+            return np.zeros((self.lmax + 1) ** 2)
+
         # Useful variables
         b = bo
         r = ro
-
         tantheta = sintheta / costheta
         invtantheta = 1.0 / tantheta
         gamma = 1 - b ** 2 - r ** 2

@@ -134,3 +134,17 @@ class TestBoEqualsRo(Compare):
 )
 class TestBoEqualsOneMinusRo(Compare):
     pass
+
+
+@pytest.mark.parametrize(
+    "kwargs", [dict(bo=2.0, ro=0.1, f=0.1, theta=0.5),],
+)
+class TestNoOccultation(Compare):
+    pass
+
+
+@pytest.mark.parametrize(
+    "kwargs", [dict(bo=0.3, ro=2.0, f=0.1, theta=0.5),],
+)
+class TestCompleteOccultation(Compare):
+    pass

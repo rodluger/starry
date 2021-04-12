@@ -303,18 +303,21 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
 
     // Complete occultation
     phi1 = phi2 = xi1 = xi2 = 0.0;
+    return;
 
   } else if (bo + ro + f <= 1 + STARRY_GRAZING_TOL) {
 
     // Regular occultation, but occultor doesn't touch the limb
     phi2 = xi1 = 0.0;
     phi1 = xi2 = 2 * pi<Scalar>();
+    return;
 
   } else if (bo >= 1 + ro - STARRY_NO_OCC_TOL) {
 
     // No occultation
     phi1 = phi2 = xi1 = 0.0;
     xi2 = 2 * pi<Scalar>();
+    return;
   }
 
   // HACK: This grazing configuration leads to instabilities

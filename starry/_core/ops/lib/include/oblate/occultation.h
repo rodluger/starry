@@ -445,6 +445,32 @@ protected:
     }
   }
 
+  /**
+   *
+   * Compute the matrix of `L` integrals for the special case
+   * phi1 = 0, phi2 = 2 * pi (no occultation).
+   *
+   */
+  inline void compute_L0(Matrix<A> &L) {
+
+    //
+    int nmax = deg + 3;
+    L.setZero(nmax, nmax);
+
+    // Lower boundary
+    L(0, 0) = 2 * pi<Scalar>();
+
+    // Recurse
+    A fac;
+    for (int u = 0; u < nmax; u += 2) {
+      for (int v = 2; v < nmax; v += 2) {
+        fac = (v - 1.0) / (u + v);
+        L(u, v) = fac * L(u, v - 2);
+        L(v, u) = fac * L(v - 2, u);
+      }
+    }
+  }
+
 public:
   RowVector<A> sT;
   A phi1, phi2, xi1, xi2;
@@ -490,7 +516,36 @@ public:
     // Compute the angles of intersection
     get_angles(bo, ro, f, theta, phi1, phi2, xi1, xi2);
 
-    // TODO: Special cases (no occultation, complete occultation, etc.)
+    // Special cases
+    if ((phi1 == 0.0) && (phi2 == 0.0) && (xi1 == 0.0) && (xi2 == 0.0)) {
+
+      // Complete occultation
+      sT.setZero(ncoeff);
+      return;
+
+    } else if ((phi1 == 0.0) && (phi2 == 0.0) && (xi1 == 0.0) &&
+               (xi2 == 2 * pi<Scalar>())) {
+
+      // No occultation
+      compute_L0(Lt);
+      sT.setZero(ncoeff);
+      int mu, nu, n = 0;
+      for (int l = 0; l < deg + 1; ++l) {
+        for (int m = -l; m < l + 1; ++m) {
+          mu = l - m;
+          nu = l + m;
+          if (is_even(nu)) {
+            // Case 1
+            sT(n) = (1 - f) * Lt(mu / 2 + 2, nu / 2);
+          } else if ((l == 1) && (m == 0)) {
+            // Case 2
+            sT(n) = (1 - f) * (xi2 - xi1) / 3;
+          }
+          ++n;
+        }
+      }
+      return;
+    }
 
     // Useful variables
     gamma = 1 - bo * bo - ro * ro;
