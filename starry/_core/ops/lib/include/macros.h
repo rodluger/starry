@@ -130,6 +130,11 @@
 #define STARRY_MIN_F 1e-15
 #endif
 
+//! Tolerance at singular point `bo ~ 1 - ro`
+#ifndef STARRY_BO_EQUALS_ONE_MINUS_RO_TOL
+#define STARRY_BO_EQUALS_ONE_MINUS_RO_TOL 1e-6
+#endif
+
 //! Tolerance for various functions that calculate phi, xi, and lam
 #ifndef STARRY_ANGLE_TOL
 #define STARRY_ANGLE_TOL 1e-13
@@ -138,6 +143,21 @@
 //! Nudge bo away from ro when it gets this close
 #ifndef STARRY_BO_EQUALS_RO_TOL
 #define STARRY_BO_EQUALS_RO_TOL 1e-8
+#endif
+
+//! Nudge bo away from ro when bo ~ ro ~ 0.5
+#ifndef STARRY_BO_EQUALS_RO_EQUALS_HALF_TOL
+#define STARRY_BO_EQUALS_RO_EQUALS_HALF_TOL 1e-5
+#endif
+
+//! Nudge bo away from zero when it gets this close (oblate case)
+#ifndef STARRY_BO_EQUALS_ZERO_TOL
+#define STARRY_BO_EQUALS_ZERO_TOL 1e-12
+#endif
+
+//! Nudge ro away from zero when it gets this close (oblate case)
+#ifndef STARRY_RO_EQUALS_ZERO_TOL
+#define STARRY_RO_EQUALS_ZERO_TOL 1e-12
 #endif
 
 //! Nudge theta away from pi / 2 when ro = 1

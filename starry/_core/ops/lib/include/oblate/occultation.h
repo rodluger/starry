@@ -440,15 +440,6 @@ public:
   /**
       Compute the full solution vector s^T.
 
-      TODO: Instabilities occur when
-
-        - np.abs(costheta) < 1e-15
-        - np.abs(sintheta) < 1e-15
-        - np.abs(b) < 1e-3
-        - r < 1e-3
-        - np.abs(1 - b - r) < 1e-3
-        - f = 0
-
       TODO: Gradients not tested, especially for pT(2).
 
   */
@@ -459,6 +450,28 @@ public:
     ro = ro_;
     f = f_;
     theta = theta_;
+    costheta = cos(theta);
+    sintheta = sin(theta);
+
+    // Nudge the inputs away from singular points
+    if (abs(bo - ro) < STARRY_BO_EQUALS_RO_TOL)
+      bo = ro + (bo > ro ? STARRY_BO_EQUALS_RO_TOL : -STARRY_BO_EQUALS_RO_TOL);
+    if ((abs(bo - ro) < STARRY_BO_EQUALS_RO_EQUALS_HALF_TOL) &&
+        (abs(ro - 0.5) < STARRY_BO_EQUALS_RO_EQUALS_HALF_TOL))
+      bo = ro + STARRY_BO_EQUALS_RO_EQUALS_HALF_TOL;
+    if (abs(bo) < STARRY_BO_EQUALS_ZERO_TOL)
+      bo = STARRY_BO_EQUALS_ZERO_TOL;
+    if (ro < STARRY_RO_EQUALS_ZERO_TOL)
+      ro = STARRY_RO_EQUALS_ZERO_TOL;
+    if (abs(1 - bo - ro) < STARRY_BO_EQUALS_ONE_MINUS_RO_TOL)
+      bo = 1 - ro + STARRY_BO_EQUALS_ONE_MINUS_RO_TOL;
+    if (abs(sintheta) < STARRY_T_TOL) {
+      sintheta = sintheta > 0 ? STARRY_T_TOL : -STARRY_T_TOL;
+      theta = costheta > 0 ? 0 : pi<Scalar>();
+    } else if (abs(costheta) < STARRY_T_TOL) {
+      costheta = costheta > 0 ? STARRY_T_TOL : -STARRY_T_TOL;
+      theta = sintheta > 0 ? 0.5 * pi<Scalar>() : 1.5 * pi<Scalar>();
+    }
 
     // Compute the angles of intersection
     get_angles(bo, ro, f, theta, phi1, phi2, xi1, xi2);
@@ -472,8 +485,6 @@ public:
     kc2 = 1 - k2;
     w2 = 1.0 / (2 * k2 - 1);
     invkc2 = 1.0 / kc2;
-    costheta = cos(theta);
-    sintheta = sin(theta);
     tantheta = sintheta / costheta;
     invtantheta = 1.0 / tantheta;
 

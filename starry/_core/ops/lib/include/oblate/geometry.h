@@ -282,8 +282,6 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
   A f = f_;
   A b = 1 - f_;
   A theta = theta_;
-  A costheta = cos(theta);
-  A sintheta = sin(theta);
 
   // Enforce bo >= 0
   if (bo < 0) {
@@ -296,6 +294,9 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
     f = STARRY_MIN_F;
     b = 1 - f;
   }
+
+  A costheta = cos(theta);
+  A sintheta = sin(theta);
 
   // Trivial cases
   if (bo <= ro - 1 + STARRY_COMPLETE_OCC_TOL) {

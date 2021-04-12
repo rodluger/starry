@@ -56,9 +56,24 @@ def get_angles(bo, ro, f, theta):
         bo = -bo
         theta -= np.pi
 
+    # HACK to avoid singular point (python impl. only!)
+    if np.abs(theta - 0.5 * np.pi) < 1e-3:
+        theta = 0.5 * np.pi + 1e-3
+    elif np.abs(theta - 1.5 * np.pi) < 1e-3:
+        theta = 1.5 * np.pi + 1e-3
+
     # Get roots of quartic
     roots, err = find_intersections(bo, ro, f, theta)
-    roots_real = roots[np.isclose(roots, np.real(roots), atol=0.0001)]
+    roots = np.real(roots)[np.isclose(roots, np.real(roots), atol=0.0001)]
+
+    # Remove duplicate roots
+    """
+    tol = 1e-6
+    roots = np.zeros(0)
+    for x in roots_real:
+        if np.all(np.abs(x - roots) > tol):
+            roots = np.append(roots, x)
+    """
 
     # Center of occultor in this frame
     xo = bo * np.sin(theta)
@@ -67,11 +82,10 @@ def get_angles(bo, ro, f, theta):
     # Compute the corresponding angles
     phi = []
     xi = []
-    if len(roots_real) == 2:
+    if len(roots) == 2:
 
         # Circle intersects the edge of the ellipse twice
-        for x_root in roots_real:
-            x_root = np.real(x_root)
+        for x_root in roots:
             x0, y0 = bo * np.sin(theta), bo * np.cos(theta)
             y_int = (1 - f) * np.sqrt(1 - x_root ** 2)
             phi_pos = theta + np.arctan2(y_int - y0, x_root - x0)
@@ -113,7 +127,7 @@ def get_angles(bo, ro, f, theta):
                 phi[1] += 2 * np.pi
                 phi = [phi[1], phi[0]]
 
-    elif len(roots_real) < 2:
+    elif len(roots) < 2:
 
         # Is the center of the circle outside the ellipse?
         if abs(yo) > (1 - f) * np.sqrt(1 - xo * xo):
@@ -591,24 +605,31 @@ class PythonSolver:
     ):
         """
         Return the `sT` solution vector.
-        
-        TODO: Instabilities occur when
-        
-            - np.abs(costheta) < 1e-15
-            - np.abs(sintheta) < 1e-15
-            - np.abs(b) < 1e-3
-            - r < 1e-3
-            - np.abs(1 - b - r) < 1e-3
-        
+
         """
+        # Stability hacks
+        costheta = np.cos(theta)
+        sintheta = np.sin(theta)
+        if np.abs(bo) < 1e-15:
+            bo = 1e-15
+        if np.abs(sintheta) < 1e-15:
+            sintheta = 1e-15
+        elif np.abs(costheta) < 1e-15:
+            costheta = 1e-15
+        if np.abs(bo - ro) < 1e-12:
+            bo = ro + 1e-12
+        if np.abs(bo - ro) < 1e-5 and np.abs(ro - 0.5) < 1e-5:
+            bo = ro + 1e-5
+        if np.abs(1 - bo - ro) < 1e-6:
+            bo = 1 - ro + 1e-6
+
         # Get the angles
         (phi1, phi2), (xi1, xi2) = get_angles(bo, ro, f, theta)
 
         # Useful variables
         b = bo
         r = ro
-        costheta = np.cos(theta)
-        sintheta = np.sin(theta)
+
         tantheta = sintheta / costheta
         invtantheta = 1.0 / tantheta
         gamma = 1 - b ** 2 - r ** 2
