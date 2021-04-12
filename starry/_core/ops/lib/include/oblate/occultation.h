@@ -447,6 +447,7 @@ public:
         - np.abs(b) < 1e-3
         - r < 1e-3
         - np.abs(1 - b - r) < 1e-3
+        - f = 0
 
       TODO: Gradients not tested, especially for pT(2).
 

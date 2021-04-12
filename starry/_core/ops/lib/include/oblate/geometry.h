@@ -291,6 +291,12 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
     theta -= pi<Scalar>();
   }
 
+  // Avoid f = 0 issues
+  if (f < STARRY_MIN_F) {
+    f = STARRY_MIN_F;
+    b = 1 - f;
+  }
+
   // Trivial cases
   if (bo <= ro - 1 + STARRY_COMPLETE_OCC_TOL) {
 

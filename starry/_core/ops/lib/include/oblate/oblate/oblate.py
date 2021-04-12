@@ -3,9 +3,17 @@ import numpy as np
 from scipy.integrate import quad
 from mpmath import ellipe, ellipf
 from scipy.special import comb, hyp2f1
+import matplotlib.pyplot as plt
+from matplotlib.patches import Circle, Ellipse
 
 
-__all__ = ["PythonSolver", "NumericalSolver", "CppSolver", "BruteSolver"]
+__all__ = [
+    "PythonSolver",
+    "NumericalSolver",
+    "CppSolver",
+    "BruteSolver",
+    "draw",
+]
 
 
 def quartic_coeffs(b, xo, yo, ro):
@@ -198,30 +206,70 @@ def G(n, f):
     return G
 
 
-def primitive(x, y, dx, dy, theta1, theta2, f, rot, n=0):
-    def func(theta):
+def primitive(x, y, dx, dy, phi1, phi2, f, theta, n=0):
+    def func(phi):
         Gx, Gy = G(n, f)
-        xr = lambda theta: x(theta) * np.cos(rot) + y(theta) * np.sin(rot)
-        yr = lambda theta: -x(theta) * np.sin(rot) + y(theta) * np.cos(rot)
-        dxr = lambda theta: dx(theta) * np.cos(rot) + dy(theta) * np.sin(rot)
-        dyr = lambda theta: -dx(theta) * np.sin(rot) + dy(theta) * np.cos(rot)
-        return Gx(xr(theta), yr(theta)) * dxr(theta) + Gy(
-            xr(theta), yr(theta)
-        ) * dyr(theta)
+        xr = lambda phi: x(phi) * np.cos(theta) + y(phi) * np.sin(theta)
+        yr = lambda phi: -x(phi) * np.sin(theta) + y(phi) * np.cos(theta)
+        dxr = lambda phi: dx(phi) * np.cos(theta) + dy(phi) * np.sin(theta)
+        dyr = lambda phi: -dx(phi) * np.sin(theta) + dy(phi) * np.cos(theta)
+        return Gx(xr(phi), yr(phi)) * dxr(phi) + Gy(xr(phi), yr(phi)) * dyr(
+            phi
+        )
 
-    res, _ = quad(func, theta1, theta2, epsabs=1e-12, epsrel=1e-12)
+    res, _ = quad(func, phi1, phi2, epsabs=1e-12, epsrel=1e-12)
     return res
 
 
-def pT_numerical(lmax, phi, b, r, f, theta):
+def pT_numerical(lmax, phi, b, r, f, theta, linear=False):
     pT = np.zeros((lmax + 1) ** 2)
     for n in range((lmax + 1) ** 2):
         for phi1, phi2 in np.reshape(phi, (-1, 2)):
-            x = lambda phi: r * np.cos(phi)
-            y = lambda phi: (b + r * np.sin(phi))
-            dx = lambda phi: -r * np.sin(phi)
-            dy = lambda phi: r * np.cos(phi)
-            pT[n] += primitive(x, y, dx, dy, phi1, phi2, f, theta, n)
+            l = int(np.floor(np.sqrt(n)))
+            m = n - l * l - l
+            mu = l - m
+            nu = l + m
+            if (not linear) or (nu % 2 == 0) or (l == 1 and m == 0):
+                # Exact integral
+                x = lambda phi: r * np.cos(phi)
+                y = lambda phi: (b + r * np.sin(phi))
+                dx = lambda phi: -r * np.sin(phi)
+                dy = lambda phi: r * np.cos(phi)
+                pT[n] += primitive(x, y, dx, dy, phi1, phi2, f, theta, n)
+            else:
+                # Linear approximation in `f`
+                x = lambda phi: r * np.cos(theta - phi) + b * np.sin(theta)
+                y = lambda phi: b * np.cos(theta) - r * np.sin(theta - phi)
+                z = lambda phi: np.sqrt(np.abs(1 - x(phi) ** 2 - y(phi) ** 2))
+                dz3df = lambda phi: -3 * y(phi) ** 2 * z(phi)
+                if (mu == 1) and (l % 2 == 0):
+                    func = lambda phi: (
+                        r
+                        * (1 - f)
+                        * x(phi) ** (l - 2)
+                        * (z(phi) ** 3 + dz3df(phi) * f)
+                        * np.sin(theta - phi)
+                    )
+                elif (mu == 1) and (l % 2 != 0):
+                    func = lambda phi: (
+                        r
+                        * x(phi) ** (l - 3)
+                        * y(phi)
+                        * (z(phi) ** 3 + dz3df(phi) * f)
+                        * np.sin(theta - phi)
+                    )
+                else:
+                    func = lambda phi: (
+                        r
+                        * (1 - f) ** ((1 - nu) // 2)
+                        * x(phi) ** ((mu - 3) // 2)
+                        * y(phi) ** ((nu - 1) // 2)
+                        * (z(phi) ** 3 + dz3df(phi) * f)
+                        * np.cos(theta - phi)
+                    )
+                res, _ = quad(func, phi1, phi2, epsabs=1e-12, epsrel=1e-12)
+                pT[n] += res
+
     return pT
 
 
@@ -245,11 +293,11 @@ def tT_numerical(lmax, xi, b, r, f, theta):
     return tT
 
 
-def sT_numerical(lmax, b, r, f, theta):
+def sT_numerical(lmax, b, r, f, theta, linear=False):
     phi, xi = get_angles(b, r, f, theta)
-    return pT_numerical(lmax, phi, b, r, f, theta) + tT_numerical(
-        lmax, xi, b, r, f, theta
-    )
+    return pT_numerical(
+        lmax, phi, b, r, f, theta, linear=linear
+    ) + tT_numerical(lmax, xi, b, r, f, theta)
 
 
 def integrate(f, a, b, epsabs=1e-12, epsrel=1e-12, **kwargs):
@@ -683,14 +731,13 @@ class PythonSolver:
 
 
 class NumericalSolver:
-    def __init__(self, lmax=5):
+    def __init__(self, lmax=5, linear=False):
         self.lmax = lmax
+        self.linear = linear
 
-    def get_sT(
-        self, bo=0.58, ro=0.4, f=0.2, theta=0.5, nruns=1,
-    ):
+    def get_sT(self, bo=0.58, ro=0.4, f=0.2, theta=0.5, nruns=1):
         for n in range(nruns):
-            res = sT_numerical(self.lmax, bo, ro, f, theta)
+            res = sT_numerical(self.lmax, bo, ro, f, theta, linear=self.linear)
         return res
 
 
@@ -816,3 +863,77 @@ class BruteSolver:
         sT = b * np.pi * np.sum(g[:, inds], axis=1)
 
         return sT
+
+
+def draw(bo, ro, f, theta):
+
+    # Domain adjustment
+    if bo < 0:
+        bo = -bo
+        theta -= np.pi
+
+    # Set up the figure
+    fig, ax = plt.subplots(1, figsize=(8, 8))
+    ax.set_xlim(min(-1.01, -ro - 0.01), max(1.01, ro + 0.01))
+    ax.set_ylim(-1.01, max(1.01, bo + ro + 0.01))
+    ax.set_aspect(1)
+    ax.axis("off")
+
+    # Draw the two bodies
+    occulted = Ellipse((0, 0), 1.0 * 2, (1 - f) * 2, 0, fill=False, color="k")
+    ax.add_artist(occulted)
+    occulted_max = Circle(
+        (0, 0), 1.0, fill=False, color="k", alpha=0.1, ls="--", lw=1
+    )
+    ax.add_artist(occulted_max)
+    occulted_min = Circle(
+        (0, 0), 1.0 - f, fill=False, color="k", alpha=0.1, ls="--", lw=1
+    )
+    ax.add_artist(occulted_min)
+    occultor = Circle(
+        (bo * np.sin(theta), bo * np.cos(theta)), ro, fill=False, color="r"
+    )
+    ax.add_artist(occultor)
+    ax.plot(0, 0, "ko", ms=3)
+    ax.plot(bo * np.sin(theta), bo * np.cos(theta), "ro", ms=3)
+
+    # Get angles
+    phi, xi = get_angles(bo, ro, f, theta)
+
+    # Integration path along occultor (white --> red)
+    x = np.zeros(900)
+    y = np.zeros(900)
+    for k, phi_k in enumerate(np.linspace(phi[0], phi[1], 900)):
+        x0 = ro * np.cos(phi_k)
+        y0 = bo + ro * np.sin(phi_k)
+        x[k] = x0 * np.cos(theta) + y0 * np.sin(theta)
+        y[k] = -x0 * np.sin(theta) + y0 * np.cos(theta)
+    plt.scatter(
+        x,
+        y,
+        s=3,
+        zorder=99,
+        c=np.linspace(0, 0.7, 900),
+        cmap="Reds",
+        vmin=0,
+        vmax=1,
+    )
+
+    # Integration path along star (white --> black)
+    x = np.zeros(900)
+    y = np.zeros(900)
+    for k, xi_k in enumerate(np.linspace(xi[0], xi[1], 900)):
+        x[k] = np.cos(xi_k)
+        y[k] = (1 - f) * np.sin(xi_k)
+    plt.scatter(
+        x,
+        y,
+        s=3,
+        zorder=99,
+        c=np.linspace(0.1, 1.0, 900),
+        cmap="Greys",
+        vmin=0,
+        vmax=1,
+    )
+
+    plt.show()

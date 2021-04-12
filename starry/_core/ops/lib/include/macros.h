@@ -125,6 +125,11 @@
 #define STARRY_B_ONE_TOL 1e-6
 #endif
 
+//! Minimum value of the oblateness `f`
+#ifndef STARRY_MIN_F
+#define STARRY_MIN_F 1e-15
+#endif
+
 //! Tolerance for various functions that calculate phi, xi, and lam
 #ifndef STARRY_ANGLE_TOL
 #define STARRY_ANGLE_TOL 1e-13

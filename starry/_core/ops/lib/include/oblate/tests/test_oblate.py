@@ -4,35 +4,15 @@ import pytest
 import itertools
 
 
-@pytest.mark.xfail(reason="The C++ version can't currently handle f = 0.")
-@pytest.mark.parametrize("kwargs", [dict(bo=0.58, ro=0.4, theta=0.5)])
-def test_compare_to_numerical(solvers, kwargs):
-    """
-    Compare C++ implementation to numerical solution of Green's theorem.
-
-    """
-    # Check that they agree for f = 0
-    cppsT = solvers["cpp"].get_sT(f=0.0, **kwargs)
-    numsT = solvers["num"].get_sT(f=0.0, **kwargs)
-    assert np.allclose(cppsT, numsT)
-
-    # Check that the derivatives wrt f match
-    df = 1e-8
-    cppdsTdf = (solvers["cpp"].get_sT(f=df, **kwargs) - cppsT) / df
-    numdsTdf = (solvers["num"].get_sT(f=df, **kwargs) - numsT) / df
-    assert np.allclose(cppdsTdf, numdsTdf)
-
-
 class Compare:
     @pytest.mark.parametrize(
         "compare",
         [
             ("cpp", "py"),
-            ("num", "py"),
+            ("cpp", "lin"),
             ("cpp", "num"),
+            ("cpp", "brute"),
             ("brute", "num"),
-            ("brute", "cpp"),
-            ("brute", "py"),
         ],
     )
     def test_compare(self, solvers, kwargs, compare):
@@ -41,11 +21,10 @@ class Compare:
         max_error = kwargs.pop("max_error", 1e-8)
         atol = {
             ("cpp", "py"): 1e-12,
-            ("num", "py"): max_error,
+            ("cpp", "lin"): 1e-12,
             ("cpp", "num"): max_error,
+            ("cpp", "brute"): max(max_error, brute_error),
             ("brute", "num"): brute_error,
-            ("brute", "cpp"): max(max_error, brute_error),
-            ("brute", "py"): max(max_error, brute_error),
         }
         assert np.allclose(
             solvers[compare[0]].get_sT(**kwargs),
@@ -69,4 +48,16 @@ class TestKsqGreaterThanOne(Compare):
     ],
 )
 class TestKsqLessThanOne(Compare):
+    pass
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        dict(bo=0.95, ro=0.1, f=0.0, theta=0.8, max_error=1e-12),
+        dict(bo=0.95, ro=0.1, f=1e-15, theta=0.8, max_error=1e-12),
+        dict(bo=0.95, ro=0.1, f=1e-12, theta=0.8, max_error=1e-12),
+    ],
+)
+class TestNearlySpherical(Compare):
     pass
