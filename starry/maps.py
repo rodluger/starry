@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from . import config, legacy
 from ._constants import *
-from ._core import OpsYlm, OpsLD, OpsReflected, OpsRV, math
+from ._core import OpsYlm, OpsLD, OpsReflected, OpsRV, OpsOblate, math
 from ._core.utils import is_tensor
 from ._indices import integers, get_ylm_inds, get_ul_inds, get_ylmw_inds
 from ._plotting import (
@@ -35,6 +35,7 @@ __all__ = [
     "LimbDarkenedBase",
     "RVBase",
     "ReflectedBase",
+    "OblateBase",
 ]
 
 
@@ -76,7 +77,7 @@ class MapBase(object):
         # Basic properties
         self._inc = self._math.cast(0.5 * np.pi)
         self._obl = self._math.cast(0.0)
-        self._sigr = self._math.cast(0.0)
+        self._fobl = self._math.cast(0.0)
 
         # Units
         self.angle_unit = kwargs.pop("angle_unit", units.degree)
@@ -395,9 +396,11 @@ class MapBase(object):
             if self.lazy:
                 inc = get_val(self._inc)
                 obl = get_val(self._obl)
+                fproj = get_val(self._fproj)
             else:
                 inc = self._inc
                 obl = self._obl
+                fproj = self._fproj
 
             # Get the rotational phase
             if self.lazy:
@@ -415,8 +418,9 @@ class MapBase(object):
         else:
 
             inc = np.array(0.5 * np.pi)
-            obl = np.array(0)
-            theta = np.array([0])
+            obl = np.array(0.0)
+            fproj = np.array(0.0)
+            theta = np.array([0.0])
 
         # Render the map if needed
         image = kwargs.pop("image", None)  # undocumented, used internally
@@ -438,12 +442,13 @@ class MapBase(object):
                     obl = get_val(self._obl)
                     y = get_val(self._y)
                     f = get_val(self._f)
+                    fproj = get_val(self._fproj)
 
                     # Explicitly call the compiled version of `render`
                     image = get_val(self._amp).reshape(
                         -1, 1, 1
                     ) * self.ops.render(
-                        res, projection, theta, inc, obl, y, u, f
+                        res, projection, theta, inc, obl, fproj, y, u, f
                     )
 
                 else:
@@ -586,29 +591,35 @@ class MapBase(object):
             extent = (-1 - dx, 1, -1 - dx, 1)
 
             # Anti-aliasing at the edges
-            x = np.linspace(-1, 1, 10000)
-            y = np.sqrt(1 - x ** 2)
-            borders += [ax.fill_between(x, 1.1 * y, y, color="w", zorder=-1)]
-            borders += [ax.fill_betweenx(x, 1.1 * y, y, color="w", zorder=-1)]
-            borders += [ax.fill_between(x, -1.1 * y, -y, color="w", zorder=-1)]
+            xp = np.linspace(-1, 1, 10000)
+            yp = np.sqrt(1 - xp ** 2)
+            xm = xp
+            ym = -yp
+            if fproj > 0.0:
+                xpr = xp * np.cos(obl) - yp * (1 - fproj) * np.sin(obl)
+                ypr = xp * np.sin(obl) + yp * (1 - fproj) * np.cos(obl)
+                xmr = xm * np.cos(obl) - ym * (1 - fproj) * np.sin(obl)
+                ymr = xm * np.sin(obl) + ym * (1 - fproj) * np.cos(obl)
+                xp, yp = xpr, ypr
+                xm, ym = xmr, ymr
             borders += [
-                ax.fill_betweenx(x, -1.1 * y, -y, color="w", zorder=-1)
+                ax.fill_between(xp, 1.1 * yp, yp, color="w", zorder=-1)
             ]
-
+            borders += [
+                ax.fill_between(xm, 1.1 * ym, ym, color="w", zorder=-1)
+            ]
             # Grid lines
             if grid:
-                x = np.linspace(-1, 1, 10000)
-                y = np.sqrt(1 - x ** 2)
-                borders += ax.plot(x, y, "k-", alpha=1, lw=1.5, zorder=0)
-                borders += ax.plot(x, -y, "k-", alpha=1, lw=1.5, zorder=0)
-                lats = get_ortho_latitude_lines(inc=inc, obl=obl)
+                borders += ax.plot(xp, yp, "k-", alpha=1, lw=1.5, zorder=0)
+                borders += ax.plot(xm, ym, "k-", alpha=1, lw=1.5, zorder=0)
+                lats = get_ortho_latitude_lines(inc=inc, obl=obl, fproj=fproj)
                 latlines = [None for n in lats]
                 for n, l in enumerate(lats):
                     (latlines[n],) = ax.plot(
                         l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=0
                     )
                 lons = get_ortho_longitude_lines(
-                    inc=inc, obl=obl, theta=theta[0]
+                    inc=inc, obl=obl, fproj=fproj, theta=theta[0]
                 )
                 lonlines = [None for n in lons]
                 for n, l in enumerate(lons):
@@ -692,7 +703,7 @@ class MapBase(object):
                     and self.nw is None
                 ):
                     lons = get_ortho_longitude_lines(
-                        inc=inc, obl=obl, theta=theta[i]
+                        inc=inc, obl=obl, fproj=fproj, theta=theta[i]
                     )
                     for n, l in enumerate(lons):
                         lonlines[n].set_xdata(l[0])
@@ -1088,7 +1099,16 @@ class YlmBase(legacy.YlmBase):
 
         # Compute & return
         return self.ops.X(
-            theta, xo, yo, zo, ro, self._inc, self._obl, self._u, self._f
+            theta,
+            xo,
+            yo,
+            zo,
+            ro,
+            self._inc,
+            self._obl,
+            self._fproj,
+            self._u,
+            self._f,
         )
 
     def intensity_design_matrix(self, lat=0, lon=0):
@@ -1149,6 +1169,7 @@ class YlmBase(legacy.YlmBase):
             ro,
             self._inc,
             self._obl,
+            self._fproj,
             self._y,
             self._u,
             self._f,
@@ -1249,6 +1270,7 @@ class YlmBase(legacy.YlmBase):
             theta,
             self._inc,
             self._obl,
+            self._fproj,
             self._y,
             self._u,
             self._f,
@@ -1282,7 +1304,7 @@ class YlmBase(legacy.YlmBase):
             lat, lon = self.ops.compute_moll_grid(res)[0]
         else:
             latlon = self.ops.compute_ortho_grid_inc_obl(
-                res, self._inc, self._obl
+                res, self._inc, self._obl, self._fproj
             )[0]
             lat = latlon[0]
             lon = latlon[1]
@@ -2431,6 +2453,7 @@ class ReflectedBase(object):
             theta,
             self._inc,
             self._obl,
+            self._fproj,
             self._y,
             self._u,
             self._f,
@@ -2483,6 +2506,7 @@ class ReflectedBase(object):
             Rs = get_val(Rs)
             inc = get_val(self._inc)
             obl = get_val(self._obl)
+            fproj = get_val(self._fproj)
             y = get_val(self._y)
             u = get_val(self._u)
             f = get_val(self._f)
@@ -2491,6 +2515,7 @@ class ReflectedBase(object):
         else:
             inc = self._inc
             obl = self._obl
+            fproj = self._fproj
             y = self._y
             u = self._u
             f = self._f
@@ -2507,6 +2532,7 @@ class ReflectedBase(object):
                 theta,
                 inc,
                 obl,
+                fproj,
                 y,
                 u,
                 f,
@@ -2527,6 +2553,7 @@ class ReflectedBase(object):
                 theta,
                 inc,
                 obl,
+                fproj,
                 np.append([1.0], np.zeros(self.Ny - 1)),
                 u,
                 f,
@@ -2551,6 +2578,7 @@ class ReflectedBase(object):
                 theta,
                 inc,
                 obl,
+                fproj,
                 y,
                 u,
                 f,
@@ -2567,12 +2595,54 @@ class ReflectedBase(object):
         return super(ReflectedBase, self).show(**kwargs)
 
 
+class OblateBase(object):
+    """The oblate ``starry`` map class.
+
+    This class handles maps of oblate spheroids, such as fast-rotating
+    stars and planets or bodies with (moderate) tidal distortion.
+    It has all the same attributes and methods as :py:class:`starry.maps.YlmBase`,
+    with the additions and modifications listed below.
+
+    .. note::
+        Instantiate this class by calling :py:func:`starry.Map` with
+        ``oblate`` set to True.
+    """
+
+    _ops_class_ = OpsOblate
+
+    def reset(self, **kwargs):
+        self.f = kwargs.pop("f", 0.0)
+        super(OblateBase, self).reset(**kwargs)
+
+    @property
+    def f(self):
+        """The oblateness of the spheroid.
+
+        This is the ratio of the difference between the equatorial and
+        polar radii to the equatorial radius, and must be in the range
+        ``[0, 1)``.
+        """
+        return self._fobl
+
+    @f.setter
+    def f(self, value):
+        self._fobl = self._math.cast(value)
+
+    @property
+    def _fproj(self):
+        """The projected oblateness at the current inclination."""
+        return 1 - self._math.sqrt(
+            1 - self._fobl * (2 - self._fobl) * self._math.sin(self._inc) ** 2
+        )
+
+
 def Map(
     ydeg=0,
     udeg=0,
     nw=None,
     rv=False,
     reflected=False,
+    oblate=False,
     source_npts=1,
     lazy=None,
     **kwargs
@@ -2582,14 +2652,16 @@ def Map(
     This function is a class factory that returns either
     a :doc:`spherical harmonic map <SphericalHarmonicMap>`,
     a :doc:`limb darkened map <LimbDarkenedMap>`,
-    a :doc:`radial velocity map <RadialVelocityMap>`, or
-    a :doc:`reflected light map <ReflectedLightMap>`,
+    a :doc:`radial velocity map <RadialVelocityMap>`,
+    a :doc:`reflected light map <ReflectedLightMap>`, or
+    an :doc:`oblate map <OblateMap>`
     depending on the arguments provided by the user. The default is
     a :doc:`spherical harmonic map <SphericalHarmonicMap>`. If ``rv`` is True,
-    instantiates a :doc:`radial velocity map <RadialVelocityMap>` map, and
+    instantiates a :doc:`radial velocity map <RadialVelocityMap>` map,
     if ``reflected`` is True, instantiates a :doc:`reflected light map
-    <ReflectedLightMap>`. Otherwise, if ``ydeg`` is zero, instantiates a
-    :doc:`limb darkened map <LimbDarkenedMap>`.
+    <ReflectedLightMap>`, or if ``oblate`` is True, instantiates an
+    :doc:`oblate map <OblateMap>`. Otherwise, if ``ydeg`` is zero,
+    instantiates a :doc:`limb darkened map <LimbDarkenedMap>`.
 
     Args:
         ydeg (int, optional): Degree of the spherical harmonic map.
@@ -2602,6 +2674,8 @@ def Map(
             for modeling the Rossiter-McLaughlin effect. Defaults to False.
         reflected (bool, optional): If True, models light curves in reflected
             light. Defaults to False.
+        oblate (bool, optional): If True, models the object as an oblate
+            spheroid. Defaults to False.
         source_npts (int, optional): Number of points used to approximate the
             finite illumination source size. Default is 1. Valid only if
             `reflected` is True.
@@ -2628,7 +2702,12 @@ def Map(
         )
 
     # Limb-darkened?
-    if (ydeg == 0) and (rv is False) and (reflected is False):
+    if (
+        (ydeg == 0)
+        and (rv is False)
+        and (reflected is False)
+        and (oblate is False)
+    ):
 
         # TODO: Add support for wavelength-dependent limb darkening
         if nw is not None:
@@ -2647,13 +2726,16 @@ def Map(
     elif reflected:
         Bases = (ReflectedBase,) + Bases
         fdeg = 0
+    elif oblate:
+        Bases = (OblateBase,) + Bases
+        fdeg = 4  # TODO! Make this an user option
     else:
         fdeg = 0
 
-    # Ensure we're not doing both
-    if rv and reflected:
+    # Ensure we're not doing a combo
+    if np.count_nonzero([rv, reflected, oblate]) > 1:
         raise NotImplementedError(
-            "Radial velocity maps not implemented in reflected light."
+            "Combinations of `rv`, `reflected`, and `oblate` not implemented."
         )
 
     # Construct the class
@@ -2664,6 +2746,7 @@ def Map(
             limbdarkened=LimbDarkenedBase in Bases,
             reflected=ReflectedBase in Bases,
             rv=RVBase in Bases,
+            oblate=OblateBase in Bases,
             spectral=nw is not None,
             source_npts=source_npts,
         )

@@ -64,17 +64,22 @@ class _RadialVelocityMap(CustomBase, starry.maps.RVBase, starry.maps.MapBase):
     __doc__ = starry.maps.RVBase.__doc__
 
 
+class _OblateMap(CustomBase, starry.maps.OblateBase, starry.maps.MapBase):
+    __doc__ = starry.maps.OblateBase.__doc__
+
+
 starry._SphericalHarmonicMap = _SphericalHarmonicMap
 starry._LimbDarkenedMap = _LimbDarkenedMap
 starry._ReflectedLightMap = _ReflectedLightMap
 starry._RadialVelocityMap = _RadialVelocityMap
-
+starry._OblateMap = _OblateMap
 
 replace = {
     "_SphericalHarmonicMap": "Map",
     "_LimbDarkenedMap": "Map",
     "_ReflectedLightMap": "Map",
     "_RadialVelocityMap": "Map",
+    "_OblateMap": "Map",
 }
 
 

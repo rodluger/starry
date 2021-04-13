@@ -449,6 +449,7 @@ class System(object):
         ), "Reflected light map not allowed for the primary body."
         self._primary = primary
         self._rv = primary._map.__props__["rv"]
+        self._oblate = primary._map.__props__["oblate"]
         self._lazy = primary._lazy
         self._math = primary._math
         if self._lazy:
@@ -473,6 +474,9 @@ class System(object):
             assert (
                 sec._lazy == self._lazy
             ), "All bodies must have the same evaluation mode (lazy/greedy)."
+            assert not sec._map.__props__[
+                "oblate"
+            ], "Oblate secondary bodies are not currently supported."
 
         reflected = [sec._map.__props__["reflected"] for sec in secondaries]
         if np.all(reflected):

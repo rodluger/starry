@@ -15,3 +15,4 @@ arguments passed to it.
     LimbDarkenedMap
     RadialVelocityMap
     ReflectedLightMap
+    OblateMap

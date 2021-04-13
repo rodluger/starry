@@ -35,7 +35,14 @@ else:
     from .. import _c_ops
 
 
-__all__ = ["OpsYlm", "OpsLD", "OpsReflected", "OpsRV", "OpsSystem"]
+__all__ = [
+    "OpsYlm",
+    "OpsLD",
+    "OpsReflected",
+    "OpsRV",
+    "OpsOblate",
+    "OpsSystem",
+]
 
 
 class OpsYlm(object):
@@ -253,7 +260,7 @@ class OpsYlm(object):
         return tt.dot(pT, A1y)
 
     @autocompile
-    def render(self, res, projection, theta, inc, obl, y, u, f):
+    def render(self, res, projection, theta, inc, obl, fproj, y, u, f):
         """Render the map on a Cartesian grid."""
         # Compute the Cartesian grid
         xyz = ifelse(
@@ -262,7 +269,11 @@ class OpsYlm(object):
             ifelse(
                 tt.eq(projection, STARRY_MOLLWEIDE_PROJECTION),
                 self.compute_moll_grid(res)[-1],
-                self.compute_ortho_grid(res)[-1],
+                ifelse(
+                    tt.gt(fproj, 0.0),
+                    self.compute_ortho_grid_fproj(res, obl, fproj)[-1],
+                    self.compute_ortho_grid(res)[-1],
+                ),
             ),
         )
 
@@ -276,7 +287,7 @@ class OpsYlm(object):
                 self.left_project(
                     tt.transpose(tt.tile(y, [theta.shape[0], 1])),
                     inc,
-                    obl,
+                    ifelse(tt.gt(fproj, 0.0), 0.0 * obl, obl),
                     theta,
                 ),
                 tt.transpose(tt.tile(y, [theta.shape[0], 1])),
@@ -313,6 +324,23 @@ class OpsYlm(object):
     def expand_spot(self, amp, sigma, lat, lon):
         """Return the spherical harmonic expansion of a Gaussian spot [DEPRECATED]."""
         return self.spotYlm(amp, sigma, lat, lon)
+
+    @autocompile
+    def compute_ortho_grid_fproj(self, res, obl, fproj):
+        dx = 2.0 / (res - 0.01)
+        y, x = tt.mgrid[-1:1:dx, -1:1:dx]
+        xp = x * tt.cos(obl) + y * tt.sin(obl)
+        yp = -x * tt.sin(obl) + y * tt.cos(obl)
+        x = xp
+        y = yp / (1 - fproj)
+        z = tt.sqrt(1 - x ** 2 - y ** 2)
+        y = tt.set_subtensor(y[tt.isnan(z)], np.nan)
+        x = tt.reshape(x, [1, -1])
+        y = tt.reshape(y, [1, -1])
+        z = tt.reshape(z, [1, -1])
+        lat = tt.reshape(0.5 * np.pi - tt.arccos(y), [1, -1])
+        lon = tt.reshape(tt.arctan2(x, z), [1, -1])
+        return tt.concatenate((lat, lon)), tt.concatenate((x, y, z))
 
     @autocompile
     def compute_ortho_grid(self, res):
@@ -738,7 +766,7 @@ class OpsLD(object):
         return X
 
     @autocompile
-    def render(self, res, projection, theta, inc, obl, y, u, f):
+    def render(self, res, projection, theta, inc, obl, fproj, y, u, f):
         """Render the map on a Cartesian grid."""
         nframes = tt.shape(theta)[0]
         image = self.render_ld(res, u)
@@ -1170,6 +1198,7 @@ class OpsReflected(OpsYlm):
         theta,
         inc,
         obl,
+        fproj,
         y,
         u,
         f,
@@ -1357,6 +1386,10 @@ class OpsReflected(OpsYlm):
             return tt.sum(I, axis=2) / self.source_npts
 
 
+class OpsOblate(OpsYlm):
+    pass
+
+
 class OpsSystem(object):
     """Class housing ops for modeling Keplerian systems."""
 
@@ -1366,6 +1399,7 @@ class OpsSystem(object):
         secondaries,
         reflected=False,
         rv=False,
+        oblate=False,
         light_delay=False,
         texp=None,
         oversample=7,
@@ -1375,6 +1409,7 @@ class OpsSystem(object):
         self.primary = primary
         self.secondaries = secondaries
         self._reflected = reflected
+        self._oblate = oblate
         self._rv = rv
         self.nw = self.primary._map.nw
         self.light_delay = light_delay
@@ -1530,17 +1565,21 @@ class OpsSystem(object):
         ) + tt.shape_padright(sec_theta0)
 
         # Compute all the phase curves
-        phase_pri = pri_amp * self.primary.map.ops.X(
-            theta_pri,
-            tt.zeros_like(t),
-            tt.zeros_like(t),
-            tt.zeros_like(t),
-            math.to_tensor(0.0),
-            pri_inc,
-            pri_obl,
-            pri_u,
-            pri_f,
-        )
+        if self._oblate:
+            # TODO!
+            raise NotImplementedError("Oblate core not yet implemented.")
+        else:
+            phase_pri = pri_amp * self.primary.map.ops.X(
+                theta_pri,
+                tt.zeros_like(t),
+                tt.zeros_like(t),
+                tt.zeros_like(t),
+                math.to_tensor(0.0),
+                pri_inc,
+                pri_obl,
+                pri_u,
+                pri_f,
+            )
         if self._reflected:
             phase_sec = [
                 pri_amp
@@ -1603,23 +1642,27 @@ class OpsSystem(object):
                 tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
             )
             idx = tt.arange(b.shape[0])[b_occ]
-            occ_pri = tt.set_subtensor(
-                occ_pri[idx],
-                occ_pri[idx]
-                + pri_amp
-                * self.primary.map.ops.X(
-                    theta_pri[idx],
-                    xo[idx],
-                    yo[idx],
-                    zo[idx],
-                    ro,
-                    pri_inc,
-                    pri_obl,
-                    pri_u,
-                    pri_f,
+            if self._oblate:
+                # TODO!
+                raise NotImplementedError("Oblate core not yet implemented.")
+            else:
+                occ_pri = tt.set_subtensor(
+                    occ_pri[idx],
+                    occ_pri[idx]
+                    + pri_amp
+                    * self.primary.map.ops.X(
+                        theta_pri[idx],
+                        xo[idx],
+                        yo[idx],
+                        zo[idx],
+                        ro,
+                        pri_inc,
+                        pri_obl,
+                        pri_u,
+                        pri_f,
+                    )
+                    - phase_pri[idx],
                 )
-                - phase_pri[idx],
-            )
 
         # Compute occultations by the primary
         for i, sec in enumerate(self.secondaries):
@@ -1633,7 +1676,10 @@ class OpsSystem(object):
                 tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
             )
             idx = tt.arange(b.shape[0])[b_occ]
-            if self._reflected:
+            if self._oblate:
+                # TODO!
+                raise NotImplementedError("Oblate core not yet implemented.")
+            elif self._reflected:
                 occ_sec[i] = tt.set_subtensor(
                     occ_sec[i][idx],
                     occ_sec[i][idx]
@@ -1999,16 +2045,20 @@ class OpsSystem(object):
         ) + tt.shape_padright(sec_theta0)
 
         # Compute all the maps
-        img_pri = self.primary.map.ops.render(
-            res,
-            STARRY_ORTHOGRAPHIC_PROJECTION,
-            theta_pri,
-            pri_inc,
-            pri_obl,
-            pri_y,
-            pri_u,
-            pri_f,
-        )
+        if self._oblate:
+            # TODO!
+            raise NotImplementedError("Oblate core not yet implemented.")
+        else:
+            img_pri = self.primary.map.ops.render(
+                res,
+                STARRY_ORTHOGRAPHIC_PROJECTION,
+                theta_pri,
+                pri_inc,
+                pri_obl,
+                pri_y,
+                pri_u,
+                pri_f,
+            )
         if self._reflected:
             img_sec = tt.as_tensor_variable(
                 [

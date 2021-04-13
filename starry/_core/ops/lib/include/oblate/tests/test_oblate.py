@@ -1,7 +1,6 @@
 import oblate
 import numpy as np
 import pytest
-import itertools
 
 
 class Compare:
@@ -18,7 +17,6 @@ class Compare:
     )
     def test_compare(self, solvers, kwargs, compare):
         kwargs = dict(kwargs)
-        brute_error = 1e-3
         max_error_cpp_py = kwargs.pop("max_error_cpp_py", 1e-12)
         max_error_cpp_lin = kwargs.pop("max_error_cpp_lin", 1e-12)
         max_error_cpp_num = kwargs.pop("max_error_cpp_num", 2e-3)
