@@ -2622,6 +2622,77 @@ class OblateBase(object):
             1 - self._fobl * (2 - self._fobl) * self._math.sin(self._inc) ** 2
         )
 
+    def design_matrix(self, **kwargs):
+        r"""Compute and return the light curve design matrix :math:`A`.
+
+        This matrix is used to compute the flux :math:`f` from a vector of spherical
+        harmonic coefficients :math:`y` and the map amplitude :math:`a`:
+        :math:`f = a A y`.
+
+        Args:
+            xo (scalar or vector, optional): x coordinate of the occultor
+                relative to this body in units of this body's radius.
+            yo (scalar or vector, optional): y coordinate of the occultor
+                relative to this body in units of this body's radius.
+            zo (scalar or vector, optional): z coordinate of the occultor
+                relative to this body in units of this body's radius.
+            ro (scalar, optional): Radius of the occultor in units of
+                this body's radius.
+            theta (scalar or vector, optional): Angular phase of the body
+                in units of :py:attr:`angle_unit`.
+        """
+        # Orbital kwargs
+        theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
+
+        # Compute & return
+        return self.ops.X(
+            theta,
+            xo,
+            yo,
+            zo,
+            ro,
+            self._inc,
+            self._obl,
+            self._fproj,
+            self._u,
+            self._f,
+        )
+
+    def flux(self, **kwargs):
+        """
+        Compute and return the flux from the map.
+
+        Args:
+            xo (scalar or vector, optional): x coordinate of the occultor
+                relative to this body in units of this body's radius.
+            yo (scalar or vector, optional): y coordinate of the occultor
+                relative to this body in units of this body's radius.
+            zo (scalar or vector, optional): z coordinate of the occultor
+                relative to this body in units of this body's radius.
+            ro (scalar, optional): Radius of the occultor in units of
+                this body's radius.
+            theta (scalar or vector, optional): Angular phase of the body
+                in units of :py:attr:`angle_unit`.
+
+        """
+        # Orbital kwargs
+        theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
+
+        # Compute & return
+        return self.amp * self.ops.flux(
+            theta,
+            xo,
+            yo,
+            zo,
+            ro,
+            self._inc,
+            self._obl,
+            self._fproj,
+            self._y,
+            self._u,
+            self._f,
+        )
+
 
 def Map(
     ydeg=0,

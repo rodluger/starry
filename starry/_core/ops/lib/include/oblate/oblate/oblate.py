@@ -409,13 +409,6 @@ class PythonSolver:
         cosu = np.cos(u)
         diff = lambda x: np.diff(x)[0]
         D2 = 1 - sinu ** 2 / kc2
-        """
-        w2 = 1 / (2 * k2 - 1)
-        if w2 < 1:
-            sgn = 1
-        else:
-            sgn = -1
-        """
         if k2 >= 1:
             sgn = 1
         else:
@@ -476,6 +469,10 @@ class PythonSolver:
         """
         N = 2 * self.lmax + 4
         invw2 = 2 * k2 - 1
+        if k2 < 0.5:
+            sgn = -1
+        else:
+            sgn = 1
 
         V = np.zeros((N + 1, 2))
         for i, phi in enumerate([phi1, phi2]):
@@ -485,8 +482,23 @@ class PythonSolver:
             x = sinphi / invw2
 
             # The two boundary conditions
-            f0 = (2.0 / 3.0) * (1 - (1 - x) ** 1.5) * invw2
-            fN = sinphi ** (N + 1) / (N + 1) * hyp2f1(-0.5, N + 1, N + 2, x)
+            if sgn == 1:
+                f0 = (2.0 / 3.0) * (1 - (1 - x) ** 1.5) * invw2
+                fN = (
+                    sinphi ** (N + 1) / (N + 1) * hyp2f1(-0.5, N + 1, N + 2, x)
+                )
+            else:
+                # NOTE: These are the original expressions:
+                #
+                # f0 = ((2.0 / 3.0) * (1 - (1 - x + 0j) ** 1.5) * invw2).imag
+                # fN = -(
+                #    sinphi ** (N + 1)
+                #    / (N + 1)
+                #    * hyp2f1(-0.5, N + 1, N + 2, x + 0j)
+                # ).imag
+                #
+                f0 = (2.0 * invw2 / 3.0) * (x - 1) ** 1.5
+                fN = f0 * invw2 ** N * hyp2f1(1.5, -N, 2.5, 1 - x)
 
             # The recursion coefficients
             A = lambda j: (2 * j + (2 * j + 1) * x) * invw2 / (2 * j + 3)
@@ -659,7 +671,7 @@ class PythonSolver:
         tantheta = sintheta / costheta
         invtantheta = 1.0 / tantheta
         gamma = 1 - b ** 2 - r ** 2
-        sqrtgamma = np.sqrt(gamma)
+        sqrtgamma = np.sqrt(np.abs(gamma))
         w2 = 2 * b * r / gamma
         k2 = (gamma + 2 * b * r) / (4 * b * r)
 
@@ -912,7 +924,7 @@ class BruteSolver:
         return sT
 
 
-def draw(bo, ro, f, theta):
+def draw(bo=0.58, ro=0.4, f=0.2, theta=0.5, file=None):
 
     # Domain adjustment
     if bo < 0:
@@ -960,8 +972,8 @@ def draw(bo, ro, f, theta):
         y,
         s=3,
         zorder=99,
-        c=np.linspace(0, 0.7, 900),
-        cmap="hot",
+        c=np.linspace(0.1, 1.0, 900),
+        cmap="Greys_r",
         vmin=0,
         vmax=1,
     )
@@ -983,4 +995,9 @@ def draw(bo, ro, f, theta):
         vmax=1,
     )
 
-    plt.show()
+    # Save or display
+    if file is not None:
+        fig.savefig(file, bbox_inches="tight")
+        plt.close()
+    else:
+        plt.show()

@@ -3,7 +3,7 @@ from ...compat import Apply, Op, tt
 import numpy as np
 
 
-__all__ = ["sTOp", "rTReflectedOp", "sTReflectedOp"]
+__all__ = ["sTOp", "rTReflectedOp", "sTReflectedOp", "sTOblateOp"]
 
 
 class sTOp(Op):
@@ -204,3 +204,54 @@ class sTReflectedGradientOp(Op):
         outputs[2][0] = np.reshape(bbo, np.shape(bo))
         outputs[3][0] = np.array(np.reshape(bro, np.shape(ro)))
         outputs[4][0] = np.array(np.reshape(bsigr, np.shape(sigr)))
+
+
+class sTOblateOp(Op):
+    def __init__(self, func, N):
+        self.func = func
+        self.N = N
+        self._grad_op = sTOblateGradientOp(func)
+
+    def make_node(self, *inputs):
+        inputs = [tt.as_tensor_variable(i) for i in inputs]
+        outputs = [tt.TensorType(inputs[-1].dtype, (False, False))()]
+        return Apply(self, inputs, outputs)
+
+    def infer_shape(self, *args):
+        shapes = args[-1]
+        return [shapes[1] + (tt.as_tensor(self.N),)]
+
+    def R_op(self, inputs, eval_points):
+        if eval_points[0] is None:
+            return eval_points
+        return self.grad(inputs, eval_points)
+
+    def perform(self, node, inputs, outputs):
+        f, theta, bo, ro = inputs
+        sT = self.func(f, theta, bo, ro)
+        outputs[0][0] = sT
+
+    def grad(self, inputs, gradients):
+        return self._grad_op(*(inputs + gradients))
+
+
+class sTOblateGradientOp(Op):
+    def __init__(self, func):
+        self.func = func
+
+    def make_node(self, *inputs):
+        inputs = [tt.as_tensor_variable(i) for i in inputs]
+        outputs = [i.type() for i in inputs[:4]]
+        return Apply(self, inputs, outputs)
+
+    def infer_shape(self, *args):
+        shapes = args[-1]
+        return shapes[:4]
+
+    def perform(self, node, inputs, outputs):
+        f, theta, bo, ro, bsT = inputs
+        bf, btheta, bbo, bro = self.func(f, theta, bo, ro)
+        outputs[0][0] = np.reshape(bf, np.shape(f))
+        outputs[1][0] = np.reshape(btheta, np.shape(theta))
+        outputs[2][0] = np.reshape(bbo, np.shape(bo))
+        outputs[3][0] = np.array(np.reshape(bro, np.shape(ro)))

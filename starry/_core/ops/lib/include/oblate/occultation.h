@@ -287,12 +287,20 @@ protected:
     x = sinphi / invw2;
 
     // Boundary conditions
-    f0 = (2.0 / 3.0) * (1 - (1 - x) * sqrt(1 - x)) * invw2;
-    if (x < 0.5)
-      H = hyp2f1(-0.5, nmax + 1.0, nmax + 2.0, x);
-    else
-      H = hyp2f1_reparam(nmax, x);
-    fN = pow(sinphi, (nmax + 1.0)) / (nmax + 1.0) * H;
+    if (k2 > 0.5) {
+      f0 = (2.0 / 3.0) * (1 - (1 - x) * sqrt(1 - x)) * invw2;
+      if (x < 0.5)
+        H = hyp2f1(-0.5, nmax + 1.0, nmax + 2.0, x);
+      else
+        H = hyp2f1_reparam(nmax, x);
+      fN = pow(sinphi, (nmax + 1.0)) / (nmax + 1.0) * H;
+    } else {
+      // When k^2 < 1/2, sqrt(gamma) is imaginary,
+      // so we need to compute the *imaginary* part
+      // of the integral here!
+      f0 = (2.0 / 3.0) * invw2 * (x - 1) * sqrt(x - 1);
+      fN = f0 * pow(invw2, nmax) * hyp2f1(1.5, -1.0 * nmax, 2.5, A(1 - x));
+    }
 
     // Recursion coefficients
     funcA = [x, invw2](int n) {
@@ -313,12 +321,20 @@ protected:
     x = sinphi / invw2;
 
     // Boundary conditions
-    f0 = (2.0 / 3.0) * (1 - (1 - x) * sqrt(1 - x)) * invw2;
-    if (x < 0.5)
-      H = hyp2f1(-0.5, nmax + 1.0, nmax + 2.0, x);
-    else
-      H = hyp2f1_reparam(nmax, x);
-    fN = pow(sinphi, (nmax + 1.0)) / (nmax + 1.0) * H;
+    if (k2 > 0.5) {
+      f0 = (2.0 / 3.0) * (1 - (1 - x) * sqrt(1 - x)) * invw2;
+      if (x < 0.5)
+        H = hyp2f1(-0.5, nmax + 1.0, nmax + 2.0, x);
+      else
+        H = hyp2f1_reparam(nmax, x);
+      fN = pow(sinphi, (nmax + 1.0)) / (nmax + 1.0) * H;
+    } else {
+      // When k^2 < 1/2, sqrt(gamma) is imaginary,
+      // so we need to compute the *imaginary* part
+      // of the integral here!
+      f0 = (2.0 / 3.0) * invw2 * (x - 1) * sqrt(x - 1);
+      fN = f0 * pow(invw2, nmax) * hyp2f1(1.5, -1.0 * nmax, 2.5, A(1 - x));
+    }
 
     // Recursion coefficients
     funcA = [x, invw2](int n) {
@@ -473,9 +489,40 @@ protected:
 
 public:
   RowVector<A> sT;
+  RowVector<A> sT0;
   A phi1, phi2, xi1, xi2;
 
-  explicit Occultation(int deg) : deg(deg), ncoeff((deg + 1) * (deg + 1)) {}
+  explicit Occultation(int deg) : deg(deg), ncoeff((deg + 1) * (deg + 1)) {
+    compute_phase();
+  }
+
+  /**
+      Compute the solution vector in the case
+      of no occultation. The phase curve solution
+      vector for any value of `f` is just
+
+        sT = (1 - f) * sT0
+
+  */
+  inline void compute_phase() {
+    compute_L0(Lt);
+    sT0.setZero(ncoeff);
+    int mu, nu, n = 0;
+    for (int l = 0; l < deg + 1; ++l) {
+      for (int m = -l; m < l + 1; ++m) {
+        mu = l - m;
+        nu = l + m;
+        if (is_even(nu)) {
+          // Case 1
+          sT0(n) = Lt(mu / 2 + 2, nu / 2);
+        } else if ((l == 1) && (m == 0)) {
+          // Case 2
+          sT0(n) = 2 * pi<Scalar>() / 3;
+        }
+        ++n;
+      }
+    }
+  }
 
   /**
       Compute the full solution vector s^T.
@@ -501,7 +548,7 @@ public:
       bo = ro + STARRY_BO_EQUALS_RO_EQUALS_HALF_TOL;
     if (abs(bo) < STARRY_BO_EQUALS_ZERO_TOL)
       bo = STARRY_BO_EQUALS_ZERO_TOL;
-    if (ro < STARRY_RO_EQUALS_ZERO_TOL)
+    if ((ro > 0) && (ro < STARRY_RO_EQUALS_ZERO_TOL))
       ro = STARRY_RO_EQUALS_ZERO_TOL;
     if (abs(1 - bo - ro) < STARRY_BO_EQUALS_ONE_MINUS_RO_TOL)
       bo = 1 - ro + STARRY_BO_EQUALS_ONE_MINUS_RO_TOL;
@@ -514,7 +561,16 @@ public:
     }
 
     // Compute the angles of intersection
-    get_angles(bo, ro, f, theta, phi1, phi2, xi1, xi2);
+    if (ro == 0) {
+
+      // No occultation
+      sT = (1 - f) * sT0;
+      return;
+
+    } else {
+
+      get_angles(bo, ro, f, theta, phi1, phi2, xi1, xi2);
+    }
 
     // Special cases
     if ((phi1 == 0.0) && (phi2 == 0.0) && (xi1 == 0.0) && (xi2 == 0.0)) {
@@ -527,29 +583,13 @@ public:
                (xi2 == 2 * pi<Scalar>())) {
 
       // No occultation
-      compute_L0(Lt);
-      sT.setZero(ncoeff);
-      int mu, nu, n = 0;
-      for (int l = 0; l < deg + 1; ++l) {
-        for (int m = -l; m < l + 1; ++m) {
-          mu = l - m;
-          nu = l + m;
-          if (is_even(nu)) {
-            // Case 1
-            sT(n) = (1 - f) * Lt(mu / 2 + 2, nu / 2);
-          } else if ((l == 1) && (m == 0)) {
-            // Case 2
-            sT(n) = (1 - f) * (xi2 - xi1) / 3;
-          }
-          ++n;
-        }
-      }
+      sT = (1 - f) * sT0;
       return;
     }
 
     // Useful variables
     gamma = 1 - bo * bo - ro * ro;
-    sqrtgamma = sqrt(gamma);
+    sqrtgamma = sqrt(abs(gamma));
     k2 = (gamma + 2 * bo * ro) / (4 * bo * ro);
     kc2 = 1 - k2;
     w2 = 1.0 / (2 * k2 - 1);

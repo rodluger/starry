@@ -6,6 +6,7 @@ from .ops import (
     sTOp,
     rTReflectedOp,
     sTReflectedOp,
+    sTOblateOp,
     dotROp,
     tensordotRzOp,
     FOp,
@@ -48,7 +49,9 @@ __all__ = [
 class OpsYlm(object):
     """Class housing Theano operations for spherical harmonics maps."""
 
-    def __init__(self, ydeg, udeg, fdeg, nw, reflected=False, **kwargs):
+    def __init__(
+        self, ydeg, udeg, fdeg, nw, reflected=False, oblate=False, **kwargs
+    ):
         # Ingest kwargs
         self.ydeg = ydeg
         self.udeg = udeg
@@ -56,6 +59,7 @@ class OpsYlm(object):
         self.deg = ydeg + udeg + fdeg
         self.filter = (fdeg > 0) or (udeg > 0)
         self.nw = nw
+        self._oblate = oblate
         self._reflected = reflected
         self.Ny = (self.ydeg + 1) ** 2
 
@@ -1364,6 +1368,10 @@ class OpsReflected(OpsYlm):
 
 
 class OpsOblate(OpsYlm):
+    def __init__(self, *args, **kwargs):
+        super(OpsOblate, self).__init__(*args, oblate=True, **kwargs)
+        self._sT = sTOblateOp(self._c_ops.sTOblate, self._c_ops.N)
+
     @autocompile
     def render(self, res, projection, theta, inc, obl, fproj, y, u, f):
         """Render the map on a Cartesian grid."""
@@ -1437,6 +1445,39 @@ class OpsOblate(OpsYlm):
         lat = tt.reshape(0.5 * np.pi - tt.arccos(y), [1, -1])
         lon = tt.reshape(tt.arctan2(x, z), [1, -1])
         return tt.concatenate((lat, lon)), tt.concatenate((x, y, z))
+
+    @autocompile
+    def sT(self, f, theta, bo, ro):
+        return self._sT(f, theta, bo, ro)
+
+    @autocompile
+    def X(self, theta, xo, yo, zo, ro, inc, obl, fproj, u, f):
+        """Compute the light curve design matrix."""
+        # Determine shapes
+        rows = theta.shape[0]
+        cols = self.Ny
+        X = tt.zeros((rows, cols))
+
+        # Compute the occultation mask
+        bo = tt.sqrt(xo ** 2 + yo ** 2)
+        thetao = tt.arctan2(xo, yo)
+
+        # Compute filter operator
+        if self.filter:
+            F = self.F(u, f)
+
+        # Occultation + rotation operator
+        sT = self.sT(fproj, thetao, bo, ro)
+        sTA = ts.dot(sT, self.A)
+        if self.filter:
+            A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
+            sTA = tt.dot(sTA, A1InvFA1)
+        return self.right_project(sTA, inc, obl, theta)
+
+    @autocompile
+    def flux(self, theta, xo, yo, zo, ro, inc, obl, fproj, y, u, f):
+        """Compute the light curve."""
+        return tt.dot(self.X(theta, xo, yo, zo, ro, inc, obl, fproj, u, f), y)
 
 
 class OpsSystem(object):

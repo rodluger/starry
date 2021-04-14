@@ -15,7 +15,7 @@ class Compare:
         ],
         ids=["cpp-py", "cpp-lin", "cpp-num", "cpp-brute", "brute-num"],
     )
-    def test_compare(self, solvers, kwargs, compare):
+    def test_compare(self, solvers, kwargs, compare, request):
         kwargs = dict(kwargs)
         max_error_cpp_py = kwargs.pop("max_error_cpp_py", 1e-12)
         max_error_cpp_lin = kwargs.pop("max_error_cpp_lin", 1e-12)
@@ -29,15 +29,20 @@ class Compare:
             ("cpp", "brute"): max_error_cpp_brute,
             ("brute", "num"): max_error_brute_num,
         }
-        sT0 = solvers[compare[0]].get_sT(**kwargs)
-        sT1 = solvers[compare[1]].get_sT(**kwargs)
-        diff = np.abs(sT0 - sT1)
-        print(
-            "Med: {:.3e} | Max: {:.3e} | Tol: {:.3e}".format(
-                np.median(diff), np.max(diff), atol[compare]
+        try:
+            sT0 = solvers[compare[0]].get_sT(**kwargs)
+            sT1 = solvers[compare[1]].get_sT(**kwargs)
+            diff = np.abs(sT0 - sT1)
+            print(
+                "Med: {:.3e} | Max: {:.3e} | Tol: {:.3e}".format(
+                    np.median(diff), np.max(diff), atol[compare]
+                )
             )
-        )
-        assert np.allclose(sT0, sT1, atol=atol[compare])
+            assert np.allclose(sT0, sT1, atol=atol[compare])
+        except Exception as e:
+            file = "{}.pdf".format(request.node.callspec.id)
+            oblate.draw(file=file, **kwargs)
+            raise e
 
 
 @pytest.mark.parametrize("kwargs", [dict(bo=0.5, ro=0.1, f=0.1, theta=0.5)])
@@ -146,3 +151,19 @@ class TestNoOccultation(Compare):
 )
 class TestCompleteOccultation(Compare):
     pass
+
+
+@pytest.mark.parametrize(
+    "kwargs", [dict(bo=1.00058, ro=0.1, f=0.1, theta=-1.26629)],
+)
+class TestKsqLessThanHalf(Compare):
+    """
+    These configurations correspond to
+
+        1 - bo ** 2 - ro ** 2 < 0
+    
+    which is a special case for the J integral.
+    """
+
+    pass
+
