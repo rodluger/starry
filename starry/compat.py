@@ -7,6 +7,7 @@ from aesara_theano_fallback import sparse as ts
 from aesara_theano_fallback import change_flags, ifelse, USE_AESARA
 from aesara_theano_fallback.tensor import slinalg
 from aesara_theano_fallback.graph import basic, op, params_type, fg
+from inspect import getmro
 
 __all__ = [
     "theano",
@@ -68,13 +69,24 @@ def evaluator(**kwargs):
         model = kwargs_model
         if model is None:
             model = pm.Model.get_context()
-        get_val = lambda x: pmx.eval_in_model(x, model=model, point=point)
+
+        def get_val(x):
+            if Node not in getmro(type(x)):
+                return x
+            else:
+                return pmx.eval_in_model(x, model=model, point=point)
 
     else:
 
         # No point provided
 
         def get_val(x):
+
+            if Node not in getmro(type(x)):
+
+                # If it's not a tensor type, we don't
+                # have to do anything!
+                return x
 
             try:
 

@@ -961,7 +961,7 @@ def draw(bo, ro, f, theta):
         s=3,
         zorder=99,
         c=np.linspace(0, 0.7, 900),
-        cmap="Reds",
+        cmap="hot",
         vmin=0,
         vmax=1,
     )

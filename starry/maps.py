@@ -74,13 +74,8 @@ class MapBase(object):
         self._N = (ydeg + udeg + fdeg + 1) ** 2
         self._nw = nw
 
-        # Basic properties
-        self._inc = self._math.cast(0.5 * np.pi)
-        self._obl = self._math.cast(0.0)
-        self._fobl = self._math.cast(0.0)
-
         # Units
-        self.angle_unit = kwargs.pop("angle_unit", units.degree)
+        self.angle_unit = kwargs.get("angle_unit", units.degree)
 
         # Initialize
         self.reset(**kwargs)
@@ -254,23 +249,58 @@ class MapBase(object):
         else:
             raise ValueError("Invalid map index.")
 
-    def _check_kwargs(self, method, kwargs):
-        if not config.quiet:
-            for key in kwargs.keys():
-                message = "Invalid keyword `{0}` in call to `{1}()`. Ignoring."
-                message = message.format(key, method)
-                logger.warning(message)
+    def _get_norm(self, image_arr, **kwargs):
+        norm = kwargs.get("norm", None)
+        if norm is None:
+            vmin = np.nanmin(image_arr)
+            vmax = np.nanmax(image_arr)
+            if np.abs(vmin - vmax) < 1e-12:
+                vmin -= 1e-12
+                vmax += 1e-12
+            norm = colors.Normalize(vmin=vmin, vmax=vmax)
+        else:
+            return norm
 
-    def _get_flux_kwargs(self, kwargs):
-        xo = kwargs.pop("xo", 0.0)
-        yo = kwargs.pop("yo", 0.0)
-        zo = kwargs.pop("zo", 1.0)
-        ro = kwargs.pop("ro", 0.0)
-        theta = kwargs.pop("theta", 0.0)
-        theta, xo, yo, zo = self._math.vectorize(theta, xo, yo, zo)
-        theta, xo, yo, zo, ro = self._math.cast(theta, xo, yo, zo, ro)
-        theta *= self._angle_factor
-        return theta, xo, yo, zo, ro
+    def _get_projection(self, **kwargs):
+        return get_projection(kwargs.get("projection", "ortho"))
+
+    def _get_ortho_borders(self, **kwargs):
+        xp = np.linspace(-1, 1, 10000)
+        yp = np.sqrt(1 - xp ** 2)
+        xm = xp
+        ym = -yp
+        return xp, yp, xm, ym
+
+    def _updatefig(
+        self,
+        i,
+        img,
+        image,
+        img_overlay,
+        overlay,
+        projection,
+        grid,
+        lonlines,
+        latlines,
+        borders,
+        kwargs,
+    ):
+        img.set_array(image[i])
+        images = [img]
+        if overlay is not None:
+            img_overlay.set_array(overlay[i])
+            images += [img_overlay]
+        if (
+            projection == STARRY_ORTHOGRAPHIC_PROJECTION
+            and grid
+            and len(image) > 1
+            and self.nw is None
+        ):
+            lons = self._get_ortho_longitude_lines(i=i, **kwargs)
+            for n, l in enumerate(lons):
+                lonlines[n].set_xdata(l[0])
+                lonlines[n].set_ydata(l[1])
+        return tuple(images + lonlines + latlines + borders)
 
     def reset(self, **kwargs):
         """Reset all map coefficients and attributes.
@@ -295,7 +325,7 @@ class MapBase(object):
         f[0] = np.pi
         self._f = self._math.cast(f)
 
-        self._amp = self._math.cast(kwargs.pop("amp", np.ones(self.nw)))
+        self._amp = self._math.cast(kwargs.get("amp", np.ones(self.nw)))
 
         # Reset data and priors
         self._flux = None
@@ -303,12 +333,6 @@ class MapBase(object):
         self._mu = None
         self._L = None
         self._solution = None
-
-        # Check for bad kwargs, with the following exceptions
-        kwargs.pop("source_npts", None)
-        kwargs.pop("dr_oversample", None)
-        kwargs.pop("dr_lam", None)
-        self._check_kwargs("reset", kwargs)
 
     def show(self, **kwargs):
         """
@@ -370,112 +394,37 @@ class MapBase(object):
 
         """
         # Get kwargs
-        get_val = evaluator(**kwargs)
-        cmap = kwargs.pop("cmap", "plasma")
-        grid = kwargs.pop("grid", True)
-        interval = kwargs.pop("interval", 75)
-        file = kwargs.pop("file", None)
-        html5_video = kwargs.pop("html5_video", True)
-        norm = kwargs.pop("norm", None)
-        dpi = kwargs.pop("dpi", None)
-        figsize = kwargs.pop("figsize", None)
-        bitrate = kwargs.pop("bitrate", None)
-        colorbar = kwargs.pop("colorbar", False)
-        ax = kwargs.pop("ax", None)
+        cmap = kwargs.get("cmap", "plasma")
+        grid = kwargs.get("grid", True)
+        interval = kwargs.get("interval", 75)
+        file = kwargs.get("file", None)
+        html5_video = kwargs.get("html5_video", True)
+        dpi = kwargs.get("dpi", None)
+        figsize = kwargs.get("figsize", None)
+        bitrate = kwargs.get("bitrate", None)
+        colorbar = kwargs.get("colorbar", False)
+        ax = kwargs.get("ax", None)
         if ax is None:
             custom_ax = False
         else:
             custom_ax = True
 
-        # Ylm-base maps only
-        if not self.__props__["limbdarkened"]:
-
-            projection = get_projection(kwargs.get("projection", "ortho"))
-
-            # Get the map orientation
-            if self.lazy:
-                inc = get_val(self._inc)
-                obl = get_val(self._obl)
-                fproj = get_val(self._fproj)
-            else:
-                inc = self._inc
-                obl = self._obl
-                fproj = self._fproj
-
-            # Get the rotational phase
-            if self.lazy:
-                theta = get_val(
-                    self._math.vectorize(
-                        self._math.cast(kwargs.pop("theta", 0.0))
-                        * self._angle_factor
-                    )
-                )
-            else:
-                theta = np.atleast_1d(
-                    np.array(kwargs.pop("theta", 0.0)) * self._angle_factor
-                )
-
-        else:
-
-            inc = np.array(0.5 * np.pi)
-            obl = np.array(0.0)
-            fproj = np.array(0.0)
-            theta = np.array([0.0])
-
         # Render the map if needed
-        image = kwargs.pop("image", None)  # undocumented, used internally
-        illum = kwargs.pop("illum", None)  # undocumented, used internally
+        image = kwargs.get("image", None)  # undocumented, used internally
+        overlay = kwargs.get("overlay", None)  # undocumented, used internally
         if image is None:
-
-            # We need to evaluate the variables so we can plot the map!
-            if self.lazy:
-
-                # Get kwargs
-                res = kwargs.pop("res", 300)
-
-                # Evaluate the variables
-                u = get_val(self._u)
-
-                if not self.__props__["limbdarkened"]:
-
-                    inc = get_val(self._inc)
-                    obl = get_val(self._obl)
-                    y = get_val(self._y)
-                    f = get_val(self._f)
-                    fproj = get_val(self._fproj)
-
-                    # Explicitly call the compiled version of `render`
-                    image = get_val(self._amp).reshape(
-                        -1, 1, 1
-                    ) * self.ops.render(
-                        res, projection, theta, inc, obl, fproj, y, u, f
-                    )
-
-                else:
-
-                    # Explicitly call the compiled version of `render`
-                    image = get_val(self._amp).reshape(
-                        -1, 1, 1
-                    ) * self.ops.render_ld(res, u)
-
-            else:
-
-                # Easy!
-                if not self.__props__["limbdarkened"]:
-                    image = self.render(
-                        theta=theta / self._angle_factor, **kwargs
-                    )
-                else:
-                    image = self.render(**kwargs)
-                kwargs.pop("res", None)
-
+            image = self._render_greedy(**kwargs)
         if len(image.shape) == 3:
             nframes = image.shape[0]
         else:
             nframes = 1
             image = np.reshape(image, (1,) + image.shape)
-            if illum is not None:
-                illum = np.reshape(illum, (1,) + illum.shape)
+            if overlay is not None:
+                overlay = np.reshape(overlay, (1,) + overlay.shape)
+
+        # Additional kwargs
+        projection = self._get_projection(**kwargs)
+        norm = self._get_norm(image, **kwargs)
 
         # Animation
         animated = nframes > 1
@@ -483,10 +432,9 @@ class MapBase(object):
         latlines = []
         lonlines = []
 
-        if (
-            not self.__props__["limbdarkened"]
-            and projection != STARRY_ORTHOGRAPHIC_PROJECTION
-        ):
+        # Set up the figure
+        if projection != STARRY_ORTHOGRAPHIC_PROJECTION:
+
             # Set up the plot
             if figsize is None:
                 figsize = (7, 3.75)
@@ -591,58 +539,30 @@ class MapBase(object):
             extent = (-1 - dx, 1, -1 - dx, 1)
 
             # Anti-aliasing at the edges
-            xp = np.linspace(-1, 1, 10000)
-            yp = np.sqrt(1 - xp ** 2)
-            xm = xp
-            ym = -yp
-            if fproj > 0.0:
-                xpr = xp * np.cos(obl) - yp * (1 - fproj) * np.sin(obl)
-                ypr = xp * np.sin(obl) + yp * (1 - fproj) * np.cos(obl)
-                xmr = xm * np.cos(obl) - ym * (1 - fproj) * np.sin(obl)
-                ymr = xm * np.sin(obl) + ym * (1 - fproj) * np.cos(obl)
-                xp, yp = xpr, ypr
-                xm, ym = xmr, ymr
+            xp, yp, xm, ym = self._get_ortho_borders()
             borders += [
                 ax.fill_between(xp, 1.1 * yp, yp, color="w", zorder=-1)
             ]
             borders += [
                 ax.fill_between(xm, 1.1 * ym, ym, color="w", zorder=-1)
             ]
+
             # Grid lines
             if grid:
                 borders += ax.plot(xp, yp, "k-", alpha=1, lw=1.5, zorder=0)
                 borders += ax.plot(xm, ym, "k-", alpha=1, lw=1.5, zorder=0)
-                lats = get_ortho_latitude_lines(inc=inc, obl=obl, fproj=fproj)
+                lats = self._get_ortho_latitude_lines(**kwargs)
                 latlines = [None for n in lats]
                 for n, l in enumerate(lats):
                     (latlines[n],) = ax.plot(
                         l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=0
                     )
-                lons = get_ortho_longitude_lines(
-                    inc=inc, obl=obl, fproj=fproj, theta=theta[0]
-                )
+                lons = self._get_ortho_longitude_lines(**kwargs)
                 lonlines = [None for n in lons]
                 for n, l in enumerate(lons):
                     (lonlines[n],) = ax.plot(
                         l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=0
                     )
-
-        # Plot the first frame of the image
-        if norm is None or norm == "rv":
-            vmin = np.nanmin(image)
-            vmax = np.nanmax(image)
-            # Set a minimum contrast
-            if np.abs(vmin - vmax) < 1e-12:
-                vmin -= 1e-12
-                vmax += 1e-12
-            if norm is None:
-                norm = colors.Normalize(vmin=vmin, vmax=vmax)
-            elif norm == "rv":
-                try:
-                    norm = colors.TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
-                except AttributeError:  # pragma: no cover
-                    # TwoSlopeNorm was introduced in matplotlib 3.2
-                    norm = colors.Normalize(vmin=vmin, vmax=vmax)
 
         img = ax.imshow(
             image[0],
@@ -655,19 +575,19 @@ class MapBase(object):
             zorder=-3,
         )
 
-        if illum is not None:
-
-            # Apply the transparency filter for the illumination
+        if overlay is None:
+            img_overlay = None
+        else:
             cmapI = colors.LinearSegmentedColormap.from_list(
-                "illum", ["k", "k"], 256
+                "overlay", ["k", "k"], 256
             )
             cmapI._init()
             alphas = np.linspace(1.0, 0.0, cmapI.N + 3)
             cmapI._lut[:, -1] = alphas
             cmapI.set_under((0, 0, 0, 1))
             cmapI.set_over((0, 0, 0, 0))
-            img_illum = ax.imshow(
-                illum[0],
+            img_overlay = ax.imshow(
+                overlay[0],
                 origin="lower",
                 extent=extent,
                 cmap=cmapI,
@@ -689,30 +609,21 @@ class MapBase(object):
         # Display or save the image / animation
         if animated:
 
-            def updatefig(i):
-                img.set_array(image[i])
-                images = [img]
-                if illum is not None:
-                    img_illum.set_array(illum[i])
-                    images += [img_illum]
-                if (
-                    not self.__props__["limbdarkened"]
-                    and projection == STARRY_ORTHOGRAPHIC_PROJECTION
-                    and grid
-                    and len(theta) > 1
-                    and self.nw is None
-                ):
-                    lons = get_ortho_longitude_lines(
-                        inc=inc, obl=obl, fproj=fproj, theta=theta[i]
-                    )
-                    for n, l in enumerate(lons):
-                        lonlines[n].set_xdata(l[0])
-                        lonlines[n].set_ydata(l[1])
-                return tuple(images + lonlines + latlines + borders)
-
             ani = FuncAnimation(
                 fig,
-                updatefig,
+                self._updatefig,
+                fargs=(
+                    img,
+                    image,
+                    img_overlay,
+                    overlay,
+                    projection,
+                    grid,
+                    lonlines,
+                    latlines,
+                    borders,
+                    kwargs,
+                ),
                 interval=interval,
                 blit=True,
                 frames=image.shape[0],
@@ -776,19 +687,6 @@ class MapBase(object):
                     plt.close()
             elif not custom_ax:
                 plt.show()
-
-        # Check for invalid kwargs
-        kwargs.pop("point", None)
-        kwargs.pop("model", None)
-        if self.__props__["rv"]:
-            kwargs.pop("rv", None)
-        if not self.__props__["limbdarkened"]:
-            kwargs.pop("projection", None)
-        if self.__props__["reflected"]:
-            kwargs.pop("xs", None)
-            kwargs.pop("ys", None)
-            kwargs.pop("zs", None)
-        self._check_kwargs("show", kwargs)
 
     def limbdark_is_physical(self):
         """Check whether the limb darkening profile (if any) is physical.
@@ -1041,14 +939,56 @@ class YlmBase(legacy.YlmBase):
 
     _ops_class_ = OpsYlm
 
+    def _render_greedy(self, **kwargs):
+        get_val = evaluator(**kwargs)
+        amp = get_val(self._amp).reshape(-1, 1, 1)
+        return amp * self.ops.render(
+            kwargs.get("res", 300),
+            get_projection(kwargs.get("projection", "ortho")),
+            np.atleast_1d(get_val(kwargs.get("theta", 0.0)))
+            * self._angle_factor,
+            get_val(self._inc),
+            get_val(self._obl),
+            get_val(self._y),
+            get_val(self._u),
+            get_val(self._f),
+        )
+
+    def _get_ortho_latitude_lines(self, **kwargs):
+        get_val = evaluator(**kwargs)
+        inc = get_val(self._inc)
+        obl = get_val(self._obl)
+        return get_ortho_latitude_lines(inc=inc, obl=obl)
+
+    def _get_ortho_longitude_lines(self, i=0, **kwargs):
+        get_val = evaluator(**kwargs)
+        inc = get_val(self._inc)
+        obl = get_val(self._obl)
+        theta = (
+            np.atleast_1d(get_val(kwargs.get("theta", 0.0)))
+            * self._angle_factor
+        )
+        return get_ortho_longitude_lines(inc=inc, obl=obl, theta=theta[i])
+
+    def _get_flux_kwargs(self, kwargs):
+        xo = kwargs.get("xo", 0.0)
+        yo = kwargs.get("yo", 0.0)
+        zo = kwargs.get("zo", 1.0)
+        ro = kwargs.get("ro", 0.0)
+        theta = kwargs.get("theta", 0.0)
+        theta, xo, yo, zo = self._math.vectorize(theta, xo, yo, zo)
+        theta, xo, yo, zo, ro = self._math.cast(theta, xo, yo, zo, ro)
+        theta *= self._angle_factor
+        return theta, xo, yo, zo, ro
+
     def reset(self, **kwargs):
         if kwargs.get("inc", None) is not None:
-            self.inc = kwargs.pop("inc")
+            self.inc = kwargs.get("inc")
         else:
             self._inc = self._math.cast(0.5 * np.pi)
 
         if kwargs.get("obl", None) is not None:
-            self.obl = kwargs.pop("obl")
+            self.obl = kwargs.get("obl")
         else:
             self._obl = self._math.cast(0.0)
 
@@ -1094,21 +1034,9 @@ class YlmBase(legacy.YlmBase):
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
-        # Check for invalid kwargs
-        self._check_kwargs("design_matrix", kwargs)
-
         # Compute & return
         return self.ops.X(
-            theta,
-            xo,
-            yo,
-            zo,
-            ro,
-            self._inc,
-            self._obl,
-            self._fproj,
-            self._u,
-            self._f,
+            theta, xo, yo, zo, ro, self._inc, self._obl, self._u, self._f
         )
 
     def intensity_design_matrix(self, lat=0, lon=0):
@@ -1157,9 +1085,6 @@ class YlmBase(legacy.YlmBase):
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
-        # Check for invalid kwargs
-        self._check_kwargs("flux", kwargs)
-
         # Compute & return
         return self.amp * self.ops.flux(
             theta,
@@ -1169,7 +1094,6 @@ class YlmBase(legacy.YlmBase):
             ro,
             self._inc,
             self._obl,
-            self._fproj,
             self._y,
             self._u,
             self._f,
@@ -1201,13 +1125,10 @@ class YlmBase(legacy.YlmBase):
         theta *= self._angle_factor
 
         # If limb-darkened, allow a `limbdarken` keyword
-        if kwargs.pop("limbdarken", True) and self.udeg > 0:
+        if kwargs.get("limbdarken", True) and self.udeg > 0:
             ld = np.array(True)
         else:
             ld = np.array(False)
-
-        # Check for invalid kwargs
-        self._check_kwargs("intensity", kwargs)
 
         # Compute & return
         return self.amp * self.ops.intensity(
@@ -1270,7 +1191,6 @@ class YlmBase(legacy.YlmBase):
             theta,
             self._inc,
             self._obl,
-            self._fproj,
             self._y,
             self._u,
             self._f,
@@ -1304,7 +1224,7 @@ class YlmBase(legacy.YlmBase):
             lat, lon = self.ops.compute_moll_grid(res)[0]
         else:
             latlon = self.ops.compute_ortho_grid_inc_obl(
-                res, self._inc, self._obl, self._fproj
+                res, self._inc, self._obl
             )[0]
             lat = latlon[0]
             lon = latlon[1]
@@ -1803,6 +1723,38 @@ class LimbDarkenedBase(object):
 
     _ops_class_ = OpsLD
 
+    def _render_greedy(self, **kwargs):
+        get_val = evaluator(**kwargs)
+        amp = get_val(self._amp).reshape(-1, 1, 1)
+        return amp.reshape(-1, 1, 1) * self.ops.render_ld(
+            kwargs.get("res", 300), get_val(self._u)
+        )
+
+    def _get_projection(self, **kwargs):
+        projection = get_projection(kwargs.get("projection", "ortho"))
+        assert (
+            projection == STARRY_ORTHOGRAPHIC_PROJECTION
+        ), "Only orthographic projection is supported for limb-darkened maps."
+        return projection
+
+    def _get_ortho_latitude_lines(self, **kwargs):
+        return get_ortho_latitude_lines()
+
+    def _get_ortho_longitude_lines(self, i=0, **kwargs):
+        return get_ortho_longitude_lines()
+
+    def _updatefig(i):
+        return ()
+
+    def _get_flux_kwargs(self, kwargs):
+        xo = kwargs.get("xo", 0.0)
+        yo = kwargs.get("yo", 0.0)
+        zo = kwargs.get("zo", 1.0)
+        ro = kwargs.get("ro", 0.0)
+        xo, yo, zo = self._math.vectorize(xo, yo, zo)
+        xo, yo, zo, ro = self._math.cast(xo, yo, zo, ro)
+        return xo, yo, zo, ro
+
     def flux(self, **kwargs):
         """
         Compute and return the light curve.
@@ -1818,14 +1770,7 @@ class LimbDarkenedBase(object):
                 this body's radius.
         """
         # Orbital kwargs
-        theta = kwargs.pop("theta", None)
-        _, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
-
-        # Check for invalid kwargs
-        if theta is not None:
-            # If the user passed in `theta`, make sure a warning is raised
-            kwargs["theta"] = theta
-        self._check_kwargs("flux", kwargs)
+        xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
         # Compute & return
         return self.amp * self.ops.flux(xo, yo, zo, ro, self._u)
@@ -1905,10 +1850,26 @@ class RVBase(object):
 
     _ops_class_ = OpsRV
 
+    def _get_norm(self, image, **kwargs):
+        norm = kwargs.get("norm", None)
+        if norm is None:
+            vmin = np.nanmin(image)
+            vmax = np.nanmax(image)
+            if np.abs(vmin - vmax) < 1e-12:
+                vmin -= 1e-12
+                vmax += 1e-12
+            try:
+                norm = colors.TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
+            except AttributeError:  # pragma: no cover
+                # TwoSlopeNorm was introduced in matplotlib 3.2
+                norm = colors.Normalize(vmin=vmin, vmax=vmax)
+        else:
+            return norm
+
     def reset(self, **kwargs):
-        self.velocity_unit = kwargs.pop("velocity_unit", units.m / units.s)
-        self.veq = kwargs.pop("veq", 0.0)
-        self.alpha = kwargs.pop("alpha", 0.0)
+        self.velocity_unit = kwargs.get("velocity_unit", units.m / units.s)
+        self.veq = kwargs.get("veq", 0.0)
+        self.alpha = kwargs.get("alpha", 0.0)
         super(RVBase, self).reset(**kwargs)
 
     @property
@@ -2002,9 +1963,6 @@ class RVBase(object):
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
-        # Check for invalid kwargs
-        self._check_kwargs("rv", kwargs)
-
         # Compute
         return self.ops.rv(
             theta,
@@ -2039,7 +1997,7 @@ class RVBase(object):
 
         """
         # Compute the velocity-weighted intensity if `rv==True`
-        rv = kwargs.pop("rv", True)
+        rv = kwargs.get("rv", True)
         if rv:
             self._set_RV_filter()
         res = super(RVBase, self).intensity(**kwargs)
@@ -2075,7 +2033,7 @@ class RVBase(object):
         # Render the velocity map if `rv==True`
         # Override the `projection` kwarg if we're
         # plotting the radial velocity.
-        rv = kwargs.pop("rv", True)
+        rv = kwargs.get("rv", True)
         if rv:
             kwargs.pop("projection", None)
             self._set_RV_filter()
@@ -2091,8 +2049,7 @@ class RVBase(object):
         if rv:
             kwargs.pop("projection", None)
             self._set_RV_filter()
-            kwargs["cmap"] = kwargs.pop("cmap", "RdBu_r")
-            kwargs["norm"] = kwargs.pop("norm", "rv")
+            kwargs["cmap"] = kwargs.get("cmap", "RdBu_r")
         res = super(RVBase, self).show(rv=rv, **kwargs)
         if rv:
             self._unset_RV_filter()
@@ -2139,7 +2096,7 @@ class ReflectedBase(object):
     _ops_class_ = OpsReflected
 
     def reset(self, **kwargs):
-        self.roughness = kwargs.pop("roughness", self._math.cast(0.0))
+        self.roughness = kwargs.get("roughness", self._math.cast(0.0))
         super(ReflectedBase, self).reset(**kwargs)
 
     @property
@@ -2165,15 +2122,15 @@ class ReflectedBase(object):
         self._sigr = self._math.cast(value) * self._angle_factor
 
     def _get_flux_kwargs(self, kwargs):
-        xo = kwargs.pop("xo", 0.0)
-        yo = kwargs.pop("yo", 0.0)
-        zo = kwargs.pop("zo", 1.0)
-        ro = kwargs.pop("ro", 0.0)
-        xs = kwargs.pop("xs", 0.0)
-        ys = kwargs.pop("ys", 0.0)
-        zs = kwargs.pop("zs", 1.0)
-        Rs = kwargs.pop("rs", 0.0)
-        theta = kwargs.pop("theta", 0.0)
+        xo = kwargs.get("xo", 0.0)
+        yo = kwargs.get("yo", 0.0)
+        zo = kwargs.get("zo", 1.0)
+        ro = kwargs.get("ro", 0.0)
+        xs = kwargs.get("xs", 0.0)
+        ys = kwargs.get("ys", 0.0)
+        zs = kwargs.get("zs", 1.0)
+        Rs = kwargs.get("rs", 0.0)
+        theta = kwargs.get("theta", 0.0)
         theta, xs, ys, zs, xo, yo, zo = self._math.vectorize(
             theta, xs, ys, zs, xo, yo, zo
         )
@@ -2214,9 +2171,6 @@ class ReflectedBase(object):
         """
         # Orbital kwargs
         theta, xs, ys, zs, Rs, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
-
-        # Check for invalid kwargs
-        self._check_kwargs("X", kwargs)
 
         # Compute & return
         return self.ops.X(
@@ -2263,9 +2217,6 @@ class ReflectedBase(object):
         """
         # Orbital kwargs
         theta, xs, ys, zs, Rs, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
-
-        # Check for invalid kwargs
-        self._check_kwargs("flux", kwargs)
 
         # Compute & return
         return self.amp * self.ops.flux(
@@ -2453,7 +2404,6 @@ class ReflectedBase(object):
             theta,
             self._inc,
             self._obl,
-            self._fproj,
             self._y,
             self._u,
             self._f,
@@ -2478,17 +2428,17 @@ class ReflectedBase(object):
 
         # Get kwargs
         get_val = evaluator(**kwargs)
-        res = kwargs.pop("res", 300)
+        res = kwargs.get("res", 300)
         projection = get_projection(kwargs.get("projection", "ortho"))
-        theta = self._math.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
-        xs = self._math.cast(kwargs.pop("xs", 0))
-        ys = self._math.cast(kwargs.pop("ys", 0))
-        zs = self._math.cast(kwargs.pop("zs", 1))
-        Rs = self._math.cast(kwargs.pop("rs", 0))
+        theta = self._math.cast(kwargs.get("theta", 0.0)) * self._angle_factor
+        xs = self._math.cast(kwargs.get("xs", 0))
+        ys = self._math.cast(kwargs.get("ys", 0))
+        zs = self._math.cast(kwargs.get("zs", 1))
+        Rs = self._math.cast(kwargs.get("rs", 0))
         theta, xs, ys, zs = self._math.vectorize(theta, xs, ys, zs)
-        illuminate = int(kwargs.pop("illuminate", True))
-        on94_exact = int(kwargs.pop("on94_exact", False))
-        screen = bool(kwargs.pop("screen", True))
+        illuminate = int(kwargs.get("illuminate", True))
+        on94_exact = int(kwargs.get("on94_exact", False))
+        screen = bool(kwargs.get("screen", True))
 
         if self.nw is None:
             amp = self.amp
@@ -2497,29 +2447,19 @@ class ReflectedBase(object):
             # so we must reshape `amp` to take the product correctly
             amp = self.amp[:, np.newaxis, np.newaxis]
 
-        if self.lazy:
-            # Evaluate the variables
-            theta = get_val(theta)
-            xs = get_val(xs)
-            ys = get_val(ys)
-            zs = get_val(zs)
-            Rs = get_val(Rs)
-            inc = get_val(self._inc)
-            obl = get_val(self._obl)
-            fproj = get_val(self._fproj)
-            y = get_val(self._y)
-            u = get_val(self._u)
-            f = get_val(self._f)
-            sigr = get_val(self._sigr)
-            amp = get_val(amp)
-        else:
-            inc = self._inc
-            obl = self._obl
-            fproj = self._fproj
-            y = self._y
-            u = self._u
-            f = self._f
-            sigr = self._sigr
+        # Evaluate the variables
+        theta = get_val(theta)
+        xs = get_val(xs)
+        ys = get_val(ys)
+        zs = get_val(zs)
+        Rs = get_val(Rs)
+        inc = get_val(self._inc)
+        obl = get_val(self._obl)
+        y = get_val(self._y)
+        u = get_val(self._u)
+        f = get_val(self._f)
+        sigr = get_val(self._sigr)
+        amp = get_val(amp)
 
         if screen and illuminate:
 
@@ -2532,7 +2472,6 @@ class ReflectedBase(object):
                 theta,
                 inc,
                 obl,
-                fproj,
                 y,
                 u,
                 f,
@@ -2553,7 +2492,6 @@ class ReflectedBase(object):
                 theta,
                 inc,
                 obl,
-                fproj,
                 np.append([1.0], np.zeros(self.Ny - 1)),
                 u,
                 f,
@@ -2566,7 +2504,7 @@ class ReflectedBase(object):
             )
             if np.nanmax(illum) > 0:
                 illum /= np.nanmax(illum)
-            kwargs["illum"] = illum
+            kwargs["overlay"] = illum
 
         else:
 
@@ -2578,7 +2516,6 @@ class ReflectedBase(object):
                 theta,
                 inc,
                 obl,
-                fproj,
                 y,
                 u,
                 f,
@@ -2610,8 +2547,58 @@ class OblateBase(object):
 
     _ops_class_ = OpsOblate
 
+    def _render_greedy(self, **kwargs):
+        get_val = evaluator(**kwargs)
+        amp = get_val(self._amp).reshape(-1, 1, 1)
+        return amp * self.ops.render(
+            kwargs.get("res", 300),
+            get_projection(kwargs.get("projection", "ortho")),
+            np.atleast_1d(get_val(kwargs.get("theta", 0.0)))
+            * self._angle_factor,
+            get_val(self._inc),
+            get_val(self._obl),
+            get_val(self._fproj),
+            get_val(self._y),
+            get_val(self._u),
+            get_val(self._f),
+        )
+
+    def _get_ortho_borders(self, **kwargs):
+        get_val = evaluator(**kwargs)
+        obl = get_val(self._obl)
+        fproj = get_val(self._fproj)
+        xp = np.linspace(-1, 1, 10000)
+        yp = np.sqrt(1 - xp ** 2)
+        xm = xp
+        ym = -yp
+        xpr = xp * np.cos(obl) - yp * (1 - fproj) * np.sin(obl)
+        ypr = xp * np.sin(obl) + yp * (1 - fproj) * np.cos(obl)
+        xmr = xm * np.cos(obl) - ym * (1 - fproj) * np.sin(obl)
+        ymr = xm * np.sin(obl) + ym * (1 - fproj) * np.cos(obl)
+        return xpr, ypr, xmr, ymr
+
+    def _get_ortho_latitude_lines(self, **kwargs):
+        get_val = evaluator(**kwargs)
+        inc = get_val(self._inc)
+        obl = get_val(self._obl)
+        fproj = get_val(self._fproj)
+        return get_ortho_latitude_lines(inc=inc, obl=obl, fproj=fproj)
+
+    def _get_ortho_longitude_lines(self, i=0, **kwargs):
+        get_val = evaluator(**kwargs)
+        inc = get_val(self._inc)
+        obl = get_val(self._obl)
+        fproj = get_val(self._fproj)
+        theta = (
+            np.atleast_1d(get_val(kwargs.get("theta", 0.0)))
+            * self._angle_factor
+        )
+        return get_ortho_longitude_lines(
+            inc=inc, obl=obl, fproj=fproj, theta=theta[i]
+        )
+
     def reset(self, **kwargs):
-        self.f = kwargs.pop("f", 0.0)
+        self.f = kwargs.get("f", 0.0)
         super(OblateBase, self).reset(**kwargs)
 
     @property
@@ -2644,6 +2631,7 @@ def Map(
     reflected=False,
     oblate=False,
     source_npts=1,
+    gdeg=4,
     lazy=None,
     **kwargs
 ):
@@ -2668,6 +2656,8 @@ def Map(
             Defaults to 0.
         udeg (int, optional): Degree of the limb darkening filter.
             Defaults to 0.
+        gdeg (int, optional): Degree of the gravity darkening filter.
+            Defaults to 4. Enabled only if `oblate` is True.
         nw (int, optional): Number of wavelength bins. Defaults to None
             (for monochromatic light curves).
         rv (bool, optional): If True, enable computation of radial velocities
@@ -2688,6 +2678,8 @@ def Map(
     if nw is not None:
         nw = int(nw)
         assert nw > 0, "Number of wavelength bins must be positive."
+    gdeg = int(gdeg)
+    assert gdeg >= 0, "Keyword `gdeg` must be positive."
     source_npts = int(source_npts)
     if source_npts < 1:
         source_npts = 1
@@ -2728,14 +2720,14 @@ def Map(
         fdeg = 0
     elif oblate:
         Bases = (OblateBase,) + Bases
-        fdeg = 4  # TODO! Make this an user option
+        fdeg = gdeg
     else:
         fdeg = 0
 
     # Ensure we're not doing a combo
     if np.count_nonzero([rv, reflected, oblate]) > 1:
         raise NotImplementedError(
-            "Combinations of `rv`, `reflected`, and `oblate` not implemented."
+            "Combinations of `rv`, `reflected`, and `oblate` not yet implemented."
         )
 
     # Construct the class

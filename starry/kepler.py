@@ -509,6 +509,7 @@ class System(object):
             self._secondaries,
             reflected=self._reflected,
             rv=self._rv,
+            oblate=self._oblate,
             light_delay=self._light_delay,
             texp=self._texp,
             oversample=self._oversample,
@@ -646,8 +647,19 @@ class System(object):
             self._primary._prot,
             self._primary._t0,
             self._primary._theta0,
-            self._primary._map._inc,
-            self._primary._map._obl,
+            getattr(
+                self._primary._map,
+                "_inc",
+                self._math.to_array_or_tensor(0.5 * np.pi),
+            ),
+            getattr(
+                self._primary._map, "_obl", self._math.to_array_or_tensor(0.0)
+            ),
+            getattr(
+                self._primary._map,
+                "_fproj",
+                self._math.to_array_or_tensor(0.0),
+            ),
             self._primary._map._y,
             self._primary._map._u,
             self._primary._map._f,
@@ -680,10 +692,22 @@ class System(object):
                 [sec._inc for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
-                [sec._map._inc for sec in self._secondaries]
+                [
+                    getattr(
+                        sec._map,
+                        "_inc",
+                        self._math.to_array_or_tensor(0.5 * np.pi),
+                    )
+                    for sec in self._secondaries
+                ]
             ),
             self._math.to_array_or_tensor(
-                [sec._map._obl for sec in self._secondaries]
+                [
+                    getattr(
+                        sec._map, "_obl", self._math.to_array_or_tensor(0.0)
+                    )
+                    for sec in self._secondaries
+                ]
             ),
             self._math.to_array_or_tensor(
                 [sec._map._y for sec in self._secondaries]
@@ -695,7 +719,12 @@ class System(object):
                 [sec._map._f for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
-                [sec._map._sigr for sec in self._secondaries]
+                [
+                    getattr(
+                        sec._map, "_sigr", self._math.to_array_or_tensor(0.0)
+                    )
+                    for sec in self._secondaries
+                ]
             ),
         )
 
@@ -711,13 +740,12 @@ class System(object):
         r = r / self._primary._r
 
         # Evaluate if needed
-        if self._lazy:
-            img_pri = get_val(img_pri)
-            img_sec = get_val(img_sec)
-            x = get_val(x)
-            y = get_val(y)
-            z = get_val(z)
-            r = get_val(r)
+        img_pri = get_val(img_pri)
+        img_sec = get_val(img_sec)
+        x = get_val(x)
+        y = get_val(y)
+        z = get_val(z)
+        r = get_val(r)
 
         # We need this to be of shape (nplanet, nframe)
         x = x.T
@@ -881,8 +909,19 @@ class System(object):
             self._primary._t0,
             self._primary._theta0,
             self._math.to_array_or_tensor(1.0),
-            self._primary._map._inc,
-            self._primary._map._obl,
+            getattr(
+                self._primary._map,
+                "_inc",
+                self._math.to_array_or_tensor(0.5 * np.pi),
+            ),
+            getattr(
+                self._primary._map, "_obl", self._math.to_array_or_tensor(0.0)
+            ),
+            getattr(
+                self._primary._map,
+                "_fproj",
+                self._math.to_array_or_tensor(0.0),
+            ),
             self._primary._map._u,
             self._primary._map._f,
             self._math.to_array_or_tensor(
@@ -914,16 +953,27 @@ class System(object):
                 [sec._inc for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
+                np.ones(
+                    len(self._secondaries)
+                )  # we treat `amp` seprately in `flux()`
+            ),
+            self._math.to_array_or_tensor(
                 [
-                    self._math.to_array_or_tensor(1.0)
+                    getattr(
+                        sec._map,
+                        "_inc",
+                        self._math.to_array_or_tensor(0.5 * np.pi),
+                    )
                     for sec in self._secondaries
                 ]
             ),
             self._math.to_array_or_tensor(
-                [sec._map._inc for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
-                [sec._map._obl for sec in self._secondaries]
+                [
+                    getattr(
+                        sec._map, "_obl", self._math.to_array_or_tensor(0.0)
+                    )
+                    for sec in self._secondaries
+                ]
             ),
             self._math.to_array_or_tensor(
                 [sec._map._u for sec in self._secondaries]
@@ -932,7 +982,12 @@ class System(object):
                 [sec._map._f for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
-                [sec._map._sigr for sec in self._secondaries]
+                [
+                    getattr(
+                        sec._map, "_sigr", self._math.to_array_or_tensor(0.0)
+                    )
+                    for sec in self._secondaries
+                ]
             ),
         )
 
@@ -1055,8 +1110,19 @@ class System(object):
             self._primary._t0,
             self._primary._theta0,
             self._primary._map._amp,
-            self._primary._map._inc,
-            self._primary._map._obl,
+            getattr(
+                self._primary._map,
+                "_inc",
+                self._math.to_array_or_tensor(0.5 * np.pi),
+            ),
+            getattr(
+                self._primary._map, "_obl", self._math.to_array_or_tensor(0.0)
+            ),
+            getattr(
+                self._primary._map,
+                "_fproj",
+                self._math.to_array_or_tensor(0.0),
+            ),
             self._primary._map._y,
             self._primary._map._u,
             self._primary._map._alpha,
@@ -1093,10 +1159,22 @@ class System(object):
                 [sec._map._amp for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
-                [sec._map._inc for sec in self._secondaries]
+                [
+                    getattr(
+                        sec._map,
+                        "_inc",
+                        self._math.to_array_or_tensor(0.5 * np.pi),
+                    )
+                    for sec in self._secondaries
+                ]
             ),
             self._math.to_array_or_tensor(
-                [sec._map._obl for sec in self._secondaries]
+                [
+                    getattr(
+                        sec._map, "_obl", self._math.to_array_or_tensor(0.0)
+                    )
+                    for sec in self._secondaries
+                ]
             ),
             self._math.to_array_or_tensor(
                 [sec._map._y for sec in self._secondaries]
@@ -1108,7 +1186,12 @@ class System(object):
                 [sec._map._alpha for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
-                [sec._map._sigr for sec in self._secondaries]
+                [
+                    getattr(
+                        sec._map, "_sigr", self._math.to_array_or_tensor(0.0)
+                    )
+                    for sec in self._secondaries
+                ]
             ),
             self._math.to_array_or_tensor(
                 [sec._map._veq for sec in self._secondaries]

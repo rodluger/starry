@@ -260,7 +260,7 @@ class OpsYlm(object):
         return tt.dot(pT, A1y)
 
     @autocompile
-    def render(self, res, projection, theta, inc, obl, fproj, y, u, f):
+    def render(self, res, projection, theta, inc, obl, y, u, f):
         """Render the map on a Cartesian grid."""
         # Compute the Cartesian grid
         xyz = ifelse(
@@ -269,11 +269,7 @@ class OpsYlm(object):
             ifelse(
                 tt.eq(projection, STARRY_MOLLWEIDE_PROJECTION),
                 self.compute_moll_grid(res)[-1],
-                ifelse(
-                    tt.gt(fproj, 0.0),
-                    self.compute_ortho_grid_fproj(res, obl, fproj)[-1],
-                    self.compute_ortho_grid(res)[-1],
-                ),
+                self.compute_ortho_grid(res)[-1],
             ),
         )
 
@@ -287,7 +283,7 @@ class OpsYlm(object):
                 self.left_project(
                     tt.transpose(tt.tile(y, [theta.shape[0], 1])),
                     inc,
-                    ifelse(tt.gt(fproj, 0.0), 0.0 * obl, obl),
+                    obl,
                     theta,
                 ),
                 tt.transpose(tt.tile(y, [theta.shape[0], 1])),
@@ -324,23 +320,6 @@ class OpsYlm(object):
     def expand_spot(self, amp, sigma, lat, lon):
         """Return the spherical harmonic expansion of a Gaussian spot [DEPRECATED]."""
         return self.spotYlm(amp, sigma, lat, lon)
-
-    @autocompile
-    def compute_ortho_grid_fproj(self, res, obl, fproj):
-        dx = 2.0 / (res - 0.01)
-        y, x = tt.mgrid[-1:1:dx, -1:1:dx]
-        xp = x * tt.cos(obl) + y * tt.sin(obl)
-        yp = -x * tt.sin(obl) + y * tt.cos(obl)
-        x = xp
-        y = yp / (1 - fproj)
-        z = tt.sqrt(1 - x ** 2 - y ** 2)
-        y = tt.set_subtensor(y[tt.isnan(z)], np.nan)
-        x = tt.reshape(x, [1, -1])
-        y = tt.reshape(y, [1, -1])
-        z = tt.reshape(z, [1, -1])
-        lat = tt.reshape(0.5 * np.pi - tt.arccos(y), [1, -1])
-        lon = tt.reshape(tt.arctan2(x, z), [1, -1])
-        return tt.concatenate((lat, lon)), tt.concatenate((x, y, z))
 
     @autocompile
     def compute_ortho_grid(self, res):
@@ -695,10 +674,9 @@ class OpsYlm(object):
 class OpsLD(object):
     """Class housing Theano operations for limb-darkened maps."""
 
-    def __init__(self, ydeg, udeg, fdeg, nw, reflected=False, **kwargs):
+    def __init__(self, ydeg, udeg, fdeg, nw, **kwargs):
         # Sanity checks
         assert ydeg == fdeg == 0
-        assert reflected is False
 
         # Ingest kwargs
         self.udeg = udeg
@@ -766,7 +744,7 @@ class OpsLD(object):
         return X
 
     @autocompile
-    def render(self, res, projection, theta, inc, obl, fproj, y, u, f):
+    def render(self, res, projection, theta, inc, obl, y, u, f):
         """Render the map on a Cartesian grid."""
         nframes = tt.shape(theta)[0]
         image = self.render_ld(res, u)
@@ -1198,7 +1176,6 @@ class OpsReflected(OpsYlm):
         theta,
         inc,
         obl,
-        fproj,
         y,
         u,
         f,
@@ -1387,7 +1364,79 @@ class OpsReflected(OpsYlm):
 
 
 class OpsOblate(OpsYlm):
-    pass
+    @autocompile
+    def render(self, res, projection, theta, inc, obl, fproj, y, u, f):
+        """Render the map on a Cartesian grid."""
+        # Compute the Cartesian grid
+        xyz = ifelse(
+            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+            self.compute_rect_grid(res)[-1],
+            ifelse(
+                tt.eq(projection, STARRY_MOLLWEIDE_PROJECTION),
+                self.compute_moll_grid(res)[-1],
+                self.compute_ortho_grid_fproj(res, obl, fproj)[-1],
+            ),
+        )
+
+        # Compute the polynomial basis
+        pT = self.pT(xyz[0], xyz[1], xyz[2])
+
+        # If orthographic, rotate the map to the correct frame
+        if self.nw is None:
+            Ry = ifelse(
+                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                self.left_project(
+                    tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+                    inc,
+                    0.0 * obl,
+                    theta,
+                ),
+                tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+            )
+        else:
+            Ry = ifelse(
+                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                self.left_project(y, inc, obl, tt.tile(theta[0], self.nw)),
+                y,
+            )
+
+        # Change basis to polynomials
+        A1Ry = ts.dot(self.A1, Ry)
+
+        # Apply the filter *only if orthographic*
+        if self.filter:
+            f0 = tt.zeros_like(f)
+            f0 = tt.set_subtensor(f0[0], np.pi)
+            u0 = tt.zeros_like(u)
+            u0 = tt.set_subtensor(u0[0], -1.0)
+            A1Ry = ifelse(
+                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                tt.dot(self.F(u, f), A1Ry),
+                tt.dot(self.F(u0, f0), A1Ry),
+            )
+
+        # Dot the polynomial into the basis
+        res = tt.reshape(tt.dot(pT, A1Ry), [res, res, -1])
+
+        # We need the shape to be (nframes, npix, npix)
+        return res.dimshuffle(2, 0, 1)
+
+    @autocompile
+    def compute_ortho_grid_fproj(self, res, obl, fproj):
+        dx = 2.0 / (res - 0.01)
+        y, x = tt.mgrid[-1:1:dx, -1:1:dx]
+        xp = x * tt.cos(obl) + y * tt.sin(obl)
+        yp = -x * tt.sin(obl) + y * tt.cos(obl)
+        x = xp
+        y = yp / (1 - fproj)
+        z = tt.sqrt(1 - x ** 2 - y ** 2)
+        y = tt.set_subtensor(y[tt.isnan(z)], np.nan)
+        x = tt.reshape(x, [1, -1])
+        y = tt.reshape(y, [1, -1])
+        z = tt.reshape(z, [1, -1])
+        lat = tt.reshape(0.5 * np.pi - tt.arccos(y), [1, -1])
+        lon = tt.reshape(tt.arctan2(x, z), [1, -1])
+        return tt.concatenate((lat, lon)), tt.concatenate((x, y, z))
 
 
 class OpsSystem(object):
@@ -1480,6 +1529,7 @@ class OpsSystem(object):
         pri_amp,
         pri_inc,
         pri_obl,
+        pri_fproj,
         pri_u,
         pri_f,
         sec_r,
@@ -1812,6 +1862,7 @@ class OpsSystem(object):
         pri_amp,
         pri_inc,
         pri_obl,
+        pri_fproj,
         pri_y,
         pri_u,
         pri_alpha,
@@ -1871,6 +1922,7 @@ class OpsSystem(object):
             pri_amp,
             pri_inc,
             pri_obl,
+            pri_fproj,
             pri_u,
             pri_f,
             sec_r,
@@ -1901,6 +1953,7 @@ class OpsSystem(object):
             pri_amp,
             pri_inc,
             pri_obl,
+            pri_fproj,
             pri_u,
             pri_f0,
             sec_r,
@@ -1988,6 +2041,7 @@ class OpsSystem(object):
         pri_theta0,
         pri_inc,
         pri_obl,
+        pri_fproj,
         pri_y,
         pri_u,
         pri_f,
