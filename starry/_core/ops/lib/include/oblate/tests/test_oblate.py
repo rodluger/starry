@@ -40,7 +40,7 @@ class Compare:
             )
             assert np.allclose(sT0, sT1, atol=atol[compare])
         except Exception as e:
-            file = "{}.pdf".format(request.node.callspec.id)
+            file = "{}.pdf".format(request.node.location[-1])
             oblate.draw(file=file, **kwargs)
             raise e
 
@@ -167,3 +167,33 @@ class TestKsqLessThanHalf(Compare):
 
     pass
 
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        dict(
+            bo=1.0998151795596858, ro=0.1, f=0.1, theta=-1.4797462082413333
+        ),  # This shouldn't be an occultation!
+        dict(
+            bo=1.004987562112089, ro=0.1, f=0.1, theta=1.4711276743037345
+        ),  # Angle finding failed?
+        dict(
+            bo=1.0961596159615965, ro=0.1, f=0.1, theta=1.5707963267948966
+        ),  # P integration has the wrong sign
+        dict(
+            bo=1.0956051937836104, ro=0.1, f=0.1, theta=1.5616688245611983
+        ),  # P integration has the wrong sign
+        dict(
+            bo=1.0476234129628497, ro=0.05, f=0.1, theta=-1.28036820589747
+        ),  # This shouldn't be an occultation!
+        dict(
+            bo=1.4251233204133293, ro=0.5, f=0.1, theta=1.3587016514315267
+        ),  # P integration has the wrong sign
+    ],
+)
+class TestFailing(Compare):
+    """
+    Currently failing tests.
+    """
+
+    pass

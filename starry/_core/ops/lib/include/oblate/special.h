@@ -81,7 +81,7 @@ inline ADScalar<Scalar, N> hypspecial1(const int &n,
   using A = ADScalar<Scalar, N>;
   if ((0 <= z) && (z <= 0.85)) {
     return hyp2f1(-0.5, n + 1.0, n + 2.0, z);
-  } else if ((0.85 < z) && (z <= 1)) {
+  } else if ((0.85 < z) && (z < 1)) {
     A c1 = -2.0 * (n + 1.0) / 3.0 * pow(A(1.0 - z), 1.5);
     A c2 = 2.0 / 3.0;
     for (int m = 1; m < n + 1; ++m)
@@ -90,14 +90,11 @@ inline ADScalar<Scalar, N> hypspecial1(const int &n,
            c2 * hyp2f1(-0.5, n + 1.0, -0.5, A(1.0 - z));
   } else if (z < 0) {
     return sqrt(1.0 - z) * hyp2f1(-0.5, 1.0, n + 2.0, A(z / (z - 1.0)));
+  } else if (z == 1) {
+    return A(INFINITY);
   } else {
-    // Result is imaginary!
-    // This branch should never be encountered.
-    std::stringstream args;
-    args << "n = " << n << ", "
-         << "z = " << z;
-    throw StarryException("Series for 2F1 did not converge.",
-                          "oblate/special.h", "hypspecial1", args.str());
+    // TODO: Code this up!
+    return A(NAN);
   }
 }
 
