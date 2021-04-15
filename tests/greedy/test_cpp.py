@@ -5,7 +5,7 @@ Tests for C++ functions.
 """
 from starry import _c_ops as Ops
 import numpy as np
-from mpmath import ellipe, ellipf
+from mpmath import ellipe, ellipf, hyp2f1
 import pytest
 
 
@@ -91,3 +91,23 @@ def test_F():
                 ), "k2={:0.1f}, phi1={:0.2f}, phi2={:0.2f}: {:0.3f} != {:0.3f}".format(
                     k2, phi1, phi2, F_starry, F_mpmath
                 )
+
+
+@cpp
+def test_hypspecial1():
+    for i, ydeg in enumerate([0, 10, 20]):
+        N = 2 * ydeg + 4
+        for z in np.linspace(-3, 1, 1000, endpoint=False):
+            f1 = float(hyp2f1(-0.5, N + 1, N + 2, z).real)
+            f2, _ = Ops.hypspecial1(N, z)
+            assert np.abs((f1 - f2) / f1) < 1e-12
+
+
+@cpp
+def test_hypspecial2():
+    for i, ydeg in enumerate([0, 10, 20]):
+        N = 2 * ydeg + 4
+        for z in np.linspace(-3, 1, 1000, endpoint=False):
+            f1 = float(hyp2f1(1, N + 2.5, 2.5, z).real)
+            f2, _ = Ops.hypspecial2(N, z)
+            assert np.abs((f1 - f2) / f1) < 1e-12

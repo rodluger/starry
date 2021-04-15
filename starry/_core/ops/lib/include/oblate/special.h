@@ -70,6 +70,52 @@ inline ADScalar<Scalar, N> hyp2f1(const Scalar &a, const Scalar &b,
 }
 
 /**
+ * Special case of 2F1, defined as
+ *
+ *    2F1(-1/2, n + 1, n + 2, z)
+ *
+ */
+template <typename Scalar, int N>
+inline ADScalar<Scalar, N> hypspecial1(const int &n,
+                                       const ADScalar<Scalar, N> &z) {
+  using A = ADScalar<Scalar, N>;
+  if ((0 <= z) && (z <= 0.85)) {
+    return hyp2f1(-0.5, n + 1.0, n + 2.0, z);
+  } else if ((0.85 < z) && (z <= 1)) {
+    A c1 = -2.0 * (n + 1.0) / 3.0 * pow(A(1.0 - z), 1.5);
+    A c2 = 2.0 / 3.0;
+    for (int m = 1; m < n + 1; ++m)
+      c2 *= 2.0 * (m + 1.0) / (3.0 + 2.0 * m);
+    return c1 * hyp2f1(n + 2.5, 1.0, 2.5, A(1.0 - z)) +
+           c2 * hyp2f1(-0.5, n + 1.0, -0.5, A(1.0 - z));
+  } else if (z < 0) {
+    return sqrt(1.0 - z) * hyp2f1(-0.5, 1.0, n + 2.0, A(z / (z - 1.0)));
+  } else {
+    // Result is imaginary!
+    // This branch should never be encountered.
+    std::stringstream args;
+    args << "n = " << n << ", "
+         << "z = " << z;
+    throw StarryException("Series for 2F1 did not converge.",
+                          "oblate/special.h", "hypspecial1", args.str());
+  }
+}
+
+/**
+ * Special case of 2F1, defined as
+ *
+ *    2F1(1, n + 5/2, 5/2, z)
+ *
+ */
+template <typename Scalar, int N>
+inline ADScalar<Scalar, N> hypspecial2(const int &n,
+                                       const ADScalar<Scalar, N> &z) {
+  using A = ADScalar<Scalar, N>;
+  return 3.0 / ((2.0 * n + 3.0) * (1.0 - z)) *
+         hyp2f1(1.0, -1.0 * n, -1.0 * n - 0.5, A(1.0 / (1.0 - z)));
+}
+
+/**
   Integrand of the `pT_2` term, for numerical integration.
 
 */

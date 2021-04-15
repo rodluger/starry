@@ -497,8 +497,13 @@ class PythonSolver:
                 #    * hyp2f1(-0.5, N + 1, N + 2, x + 0j)
                 # ).imag
                 #
-                f0 = (2.0 * invw2 / 3.0) * (x - 1) ** 1.5
-                fN = f0 * invw2 ** N * hyp2f1(1.5, -N, 2.5, 1 - x)
+                term = (2.0 / 3.0) * (x - 1) ** 1.5
+                f0 = term * invw2
+                # This is equivalent:
+                # fN = f0 * invw2 ** N * hyp2f1(1.5, -N, 2.5, 1 - x)
+                fN = (
+                    term * sinphi ** (N + 1) * hyp2f1(1.0, N + 2.5, 2.5, 1 - x)
+                )
 
             # The recursion coefficients
             A = lambda j: (2 * j + (2 * j + 1) * x) * invw2 / (2 * j + 3)
@@ -507,6 +512,29 @@ class PythonSolver:
 
             # Solve the linear system
             V[:, i] = self.solve(f0, fN, A, B, C, N)
+
+        # DEBUG
+        """
+        func = (
+            lambda z: np.cos(z)
+            * np.sin(z) ** N
+            * np.sqrt(np.abs(1 - np.sin(z) / invw2))
+        )
+        print(integrate(func, phi1, phi2))
+
+        sinphi = np.sin(phi1)
+        x = sinphi / invw2
+        term = (2.0 / 3.0) * (x - 1) ** 1.5
+        fN1 = term * sinphi ** (N + 1) * hyp2f1(1.0, N + 2.5, 2.5, 1 - x)
+        sinphi = np.sin(phi2)
+        x = sinphi / invw2
+        term = (2.0 / 3.0) * (x - 1) ** 1.5
+        fN2 = term * sinphi ** (N + 1) * hyp2f1(1.0, N + 2.5, 2.5, 1 - x)
+        print(fN2 - fN1)
+
+        print(integrate(func, 0, phi1) - fN1)
+        print(integrate(func, 0, phi2) - fN2)
+        """
 
         return np.diff(V, axis=1)
 

@@ -12,6 +12,7 @@
 // Includes
 #include "basis.h"
 #include "oblate/ellip.h"
+#include "oblate/special.h"
 #include "ops.h"
 #include "reflected/scatter.h"
 #include "sturm.h"
@@ -534,6 +535,26 @@ PYBIND11_MODULE(_c_ops, m) {
         starry::oblate::ellip::IncompleteEllipticIntegrals<double, 3>(k2_ad,
                                                                       phi_ad);
     return py::make_tuple(integrals.F.value(), integrals.F.derivatives());
+  });
+
+  // Special hypergeometric function #1
+  m.def("hypspecial1", [](const int &n, const double &z) {
+    using A = ADScalar<double, 1>;
+    A z_ad;
+    z_ad.value() = z;
+    z_ad.derivatives() = Vector<double>::Unit(1, 0);
+    auto result = starry::oblate::special::hypspecial1(n, z_ad);
+    return py::make_tuple(result.value(), result.derivatives());
+  });
+
+  // Special hypergeometric function #2
+  m.def("hypspecial2", [](const int &n, const double &z) {
+    using A = ADScalar<double, 1>;
+    A z_ad;
+    z_ad.value() = z;
+    z_ad.derivatives() = Vector<double>::Unit(1, 0);
+    auto result = starry::oblate::special::hypspecial2(n, z_ad);
+    return py::make_tuple(result.value(), result.derivatives());
   });
 
 #else

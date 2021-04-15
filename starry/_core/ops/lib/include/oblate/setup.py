@@ -122,6 +122,7 @@ ext_modules = [
             get_pybind_include(user=True),
             ".",
             "../../vendor/eigen_3.3.5",
+            "../../vendor/boost_1_75_0",
         ],
         language="c++",
         define_macros=[(key, value) for key, value in macros.items()],
