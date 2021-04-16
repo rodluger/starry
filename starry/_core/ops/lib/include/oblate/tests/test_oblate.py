@@ -1,6 +1,7 @@
 import oblate
 import numpy as np
 import pytest
+import matplotlib.pyplot as plt
 
 
 class Compare:
@@ -171,24 +172,28 @@ class TestKsqLessThanHalf(Compare):
 @pytest.mark.parametrize(
     "kwargs",
     [
+        dict(bo=1.0998151795596858, ro=0.1, f=0.1, theta=-1.4797462082413333),
+        dict(bo=1.0476234129628497, ro=0.05, f=0.1, theta=-1.28036820589747),
         dict(
-            bo=1.0998151795596858, ro=0.1, f=0.1, theta=-1.4797462082413333
-        ),  # This shouldn't be an occultation!
-        dict(
-            bo=1.004987562112089, ro=0.1, f=0.1, theta=1.4711276743037345
-        ),  # Angle finding failed?
-        dict(
-            bo=1.0961596159615965, ro=0.1, f=0.1, theta=1.5707963267948966
-        ),  # P integration has the wrong sign
-        dict(
-            bo=1.0956051937836104, ro=0.1, f=0.1, theta=1.5616688245611983
-        ),  # P integration has the wrong sign
-        dict(
-            bo=1.0476234129628497, ro=0.05, f=0.1, theta=-1.28036820589747
-        ),  # This shouldn't be an occultation!
-        dict(
-            bo=1.4251233204133293, ro=0.5, f=0.1, theta=1.3587016514315267
-        ),  # P integration has the wrong sign
+            bo=1.004987562112089,
+            ro=0.1,
+            f=0.1,
+            theta=1.4711276743037345,
+            max_error_cpp_py=1e-6,
+            max_error_cpp_lin=1e-6,
+        ),
+    ],
+)
+class TestEdgeCases(Compare):
+    pass
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        dict(bo=1.0961596159615965, ro=0.1, f=0.1, theta=1.5707963267948966),
+        dict(bo=1.0956051937836104, ro=0.1, f=0.1, theta=1.5616688245611983),
+        dict(bo=1.4251233204133293, ro=0.5, f=0.1, theta=1.3587016514315267),
     ],
 )
 class TestFailing(Compare):
@@ -197,3 +202,50 @@ class TestFailing(Compare):
     """
 
     pass
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [dict(bo=1.0961596159615965, ro=0.1, f=0.1, theta=1.5707963267948966)],
+)
+class TestDebug(Compare):
+    def test_debug(kwargs):
+
+        sTcpp = oblate.CppSolver(2).get_sT(**kwargs)
+        sTpy = oblate.PythonSolver(2).get_sT(**kwargs)
+        sTlin = oblate.NumericalSolver(2, linear=True).get_sT(**kwargs)
+        sTnum = oblate.NumericalSolver(2, linear=False).get_sT(**kwargs)
+        sTbrute = oblate.BruteSolver(2).get_sT(**kwargs)
+
+        icpp = np.isnan(sTcpp)
+        ipy = np.isnan(sTpy)
+        inum = np.isnan(sTnum)
+        ilin = np.isnan(sTlin)
+        sTcpp[icpp] = -1.0
+        sTpy[ipy] = -1.0
+        sTnum[inum] = -1.0
+        sTlin[ilin] = -1.0
+
+        fig, ax = plt.subplots(3, figsize=(10, 8))
+
+        ax[0].plot(sTcpp, label="c++")
+        ax[0].plot(np.arange(len(sTcpp))[icpp], sTcpp[icpp], "ro")
+        ax[0].plot(sTpy, label="py")
+        ax[0].plot(np.arange(len(sTpy))[ipy], sTpy[ipy], "ro")
+        ax[0].legend()
+
+        ax[1].plot(sTcpp, label="c++")
+        ax[1].plot(np.arange(len(sTcpp))[icpp], sTcpp[icpp], "ro")
+        ax[1].plot(sTlin, label="lin")
+        ax[1].plot(np.arange(len(sTlin))[ilin], sTlin[ilin], "ro")
+        ax[1].legend()
+
+        ax[2].plot(sTnum, label="num")
+        ax[2].plot(np.arange(len(sTnum))[inum], sTlin[inum], "ro")
+        ax[2].plot(sTbrute, label="brute")
+        ax[2].legend()
+
+        oblate.draw(**kwargs)
+
+        plt.show()
+

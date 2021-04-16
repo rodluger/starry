@@ -93,8 +93,11 @@ inline ADScalar<Scalar, N> hypspecial1(const int &n,
   } else if (z == 1) {
     return A(INFINITY);
   } else {
-    // TODO: Code this up!
-    return A(NAN);
+    std::stringstream args;
+    args << "n_ = " << n << ", "
+         << "z = " << z;
+    throw StarryException("Complex result in `hyp2f1`.", "oblate/special.h",
+                          "hypspecial1", args.str());
   }
 }
 

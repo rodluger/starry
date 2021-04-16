@@ -1,7 +1,8 @@
 from ._c_ops import sT, angles
 import numpy as np
 from scipy.integrate import quad
-from mpmath import ellipe, ellipf
+import mpmath
+from mpmath import ellipe, ellipf, findroot, mpf, mpc
 from scipy.special import comb, hyp2f1
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, Ellipse
@@ -16,7 +17,8 @@ __all__ = [
 ]
 
 
-def quartic_coeffs(b, xo, yo, ro):
+def quartic_coeffs(f, xo, yo, ro):
+    b = 1 - f
     A = (1 - b ** 2) ** 2
     B = -4 * xo * (1 - b ** 2)
     C = -2 * (
@@ -32,13 +34,13 @@ def quartic_coeffs(b, xo, yo, ro):
         - 2 * b ** 2 * (ro ** 2 - xo ** 2 + yo ** 2)
         + (ro ** 2 - xo ** 2 - yo ** 2) ** 2
     )
-    return np.array([A, B, C, D, E])
+    return [A, B, C, D, E]
 
 
 def find_intersections(bo, ro, f, theta):
-    x0 = bo * np.sin(theta)
-    y0 = bo * np.cos(theta)
-    coeff = quartic_coeffs(1 - f, x0, y0, ro)
+    coeff = np.array(
+        quartic_coeffs(f, bo * np.sin(theta), bo * np.cos(theta), ro)
+    )
     return np.roots(coeff), np.polyval(np.abs(coeff), np.abs(np.roots(coeff)))
 
 
@@ -50,6 +52,10 @@ def circle_err(x, y, bo, ro, theta):
 
 
 def get_angles(bo, ro, f, theta):
+
+    # HACK to avoid instabilities
+    if f < 1e-10:
+        f = 0
 
     # Domain adjustment
     if bo < 0:
@@ -64,7 +70,22 @@ def get_angles(bo, ro, f, theta):
 
     # Get roots of quartic
     roots, err = find_intersections(bo, ro, f, theta)
-    roots = np.real(roots)[np.isclose(roots, np.real(roots), atol=0.0001)]
+
+    # Polish the roots with 30 decimal places of precision
+    try:
+        polished_roots = []
+        with mpmath.workdps(30):
+            xo = bo * mpmath.sin(theta)
+            yo = bo * mpmath.cos(theta)
+            A, B, C, D, E = quartic_coeffs(mpf(f), xo, yo, mpf(ro))
+            poly = lambda x: A * x ** 4 + B * x ** 3 + C * x ** 2 + D * x + E
+            for i, root in enumerate(roots):
+                polished_root = findroot(poly, root)
+                if np.abs(float(polished_root.imag)) < 1e-15:
+                    polished_roots += [float(polished_root.real)]
+        roots = np.array(polished_roots)
+    except:
+        pass
 
     # Remove duplicate roots
     """
@@ -130,7 +151,7 @@ def get_angles(bo, ro, f, theta):
     elif len(roots) < 2:
 
         # Is the center of the circle outside the ellipse?
-        if abs(yo) > (1 - f) * np.sqrt(1 - xo * xo):
+        if (np.abs(xo) > 1) or abs(yo) > (1 - f) * np.sqrt(1 - xo * xo):
 
             # Is the center of the ellipse outside the circle?
             if bo > ro:
@@ -961,8 +982,8 @@ def draw(bo=0.58, ro=0.4, f=0.2, theta=0.5, file=None):
 
     # Set up the figure
     fig, ax = plt.subplots(1, figsize=(8, 8))
-    ax.set_xlim(min(-1.01, -ro - 0.01), max(1.01, ro + 0.01))
-    ax.set_ylim(-1.01, max(1.01, bo + ro + 0.01))
+    ax.set_xlim(-1.01 - 2 * ro, 1.01 + 2 * ro)
+    ax.set_ylim(-1.01 - 2 * ro, 1.01 + 2 * ro)
     ax.set_aspect(1)
     ax.axis("off")
 
@@ -986,42 +1007,50 @@ def draw(bo=0.58, ro=0.4, f=0.2, theta=0.5, file=None):
 
     # Get angles
     phi, xi = get_angles(bo, ro, f, theta)
+    ax.set_title(
+        r"$\phi: [{:.0f}^\circ, {:.0f}^\circ] \,\,\,\,\,\,\,\,\,\,\,\,\,\,\, \xi: [{:.0f}^\circ, {:.0f}^\circ]$".format(
+            *(phi * 180 / np.pi), *(xi * 180 / np.pi)
+        ),
+        fontsize=12,
+    )
 
     # Integration path along occultor (white --> red)
-    x = np.zeros(900)
-    y = np.zeros(900)
-    for k, phi_k in enumerate(np.linspace(phi[0], phi[1], 900)):
+    x = np.zeros(10000)
+    y = np.zeros(10000)
+    for k, phi_k in enumerate(np.linspace(phi[0], phi[1], 10000)):
         x0 = ro * np.cos(phi_k)
         y0 = bo + ro * np.sin(phi_k)
         x[k] = x0 * np.cos(theta) + y0 * np.sin(theta)
         y[k] = -x0 * np.sin(theta) + y0 * np.cos(theta)
-    plt.scatter(
-        x,
-        y,
-        s=3,
-        zorder=99,
-        c=np.linspace(0.1, 1.0, 900),
-        cmap="Greys_r",
-        vmin=0,
-        vmax=1,
-    )
+    plt.plot(x, y, "r", zorder=99)
+    plt.plot(x[0], y[0], "ro", zorder=100, ms=5)
+    plt.plot(x[-1], y[-1], "ro", zorder=100, ms=5)
+    for i in [len(x) // 4, len(x) // 2, (3 * len(x)) // 4, len(x) - 2]:
+        plt.annotate(
+            "",
+            xytext=(x[i], y[i]),
+            xy=(x[i + 1], y[i + 1]),
+            arrowprops=dict(arrowstyle="->", color="r"),
+            size=15,
+        )
 
     # Integration path along star (white --> black)
-    x = np.zeros(900)
-    y = np.zeros(900)
-    for k, xi_k in enumerate(np.linspace(xi[0], xi[1], 900)):
+    x = np.zeros(10000)
+    y = np.zeros(10000)
+    for k, xi_k in enumerate(np.linspace(xi[0], xi[1], 10000)):
         x[k] = np.cos(xi_k)
         y[k] = (1 - f) * np.sin(xi_k)
-    plt.scatter(
-        x,
-        y,
-        s=3,
-        zorder=99,
-        c=np.linspace(0.1, 1.0, 900),
-        cmap="Greys",
-        vmin=0,
-        vmax=1,
-    )
+    plt.plot(x, y, "k", zorder=99)
+    plt.plot(x[0], y[0], "ko", zorder=101, ms=3)
+    plt.plot(x[-1], y[-1], "ko", zorder=101, ms=3)
+    for i in [len(x) // 4, len(x) // 2, (3 * len(x)) // 4, len(x) - 2]:
+        plt.annotate(
+            "",
+            xytext=(x[i], y[i]),
+            xy=(x[i + 1], y[i + 1]),
+            arrowprops=dict(arrowstyle="->", color="k"),
+            size=15,
+        )
 
     # Save or display
     if file is not None:
