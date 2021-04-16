@@ -210,11 +210,14 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
     }
   }
 
+  // TODO: Duplicate roots should be allowed when
+  // theta is +/- pi / 2 !!!
+
   // Finally, discard any duplicate roots
   // We'll discard *both*, since this corresponds
   // to a grazing configuration which we can just
   // ignore!
-  for (int n = 0; n < nroots; ++n) {
+  for (int n = 0; n < 4; ++n) {
     for (int m = 0; m < n; ++m) {
       if (abs(roots[n] - roots[m]) < STARRY_ROOT_TOL_DUP) {
         if (good_roots(n) && good_roots(m)) {
@@ -379,7 +382,7 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
       phi1 = theta + atan2(y - yo, x(0) - xo);
       xi1 = atan2(sqrt(1 - x(0) * x(0)), x(0));
     } else {
-      phi1 = theta + atan2(y + yo, x(0) - xo);
+      phi1 = theta - atan2(y + yo, x(0) - xo);
       xi1 = atan2(-sqrt(1 - x(0) * x(0)), x(0));
     }
 
@@ -390,7 +393,7 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
       phi2 = theta + atan2(y - yo, x(1) - xo);
       xi2 = atan2(sqrt(1 - x(1) * x(1)), x(1));
     } else {
-      phi2 = theta + atan2(y + yo, x(1) - xo);
+      phi2 = theta - atan2(y + yo, x(1) - xo);
       xi2 = atan2(-sqrt(1 - x(1) * x(1)), x(1));
     }
 
@@ -399,6 +402,8 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
     phi2 = angle(phi2);
     xi1 = angle(xi1);
     xi2 = angle(xi2);
+
+    // xi is always counter-clockwise
     if (xi1 > xi2) {
       std::swap(xi1, xi2);
       std::swap(phi1, phi2);
@@ -422,8 +427,12 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
         phi1 += 2 * pi<Scalar>();
       } else {
         phi2 += 2 * pi<Scalar>();
-        std::swap(phi1, phi2);
       }
+    }
+
+    // phi is always clockwise
+    if (phi2 > phi1) {
+      std::swap(phi1, phi2);
     }
 
   } else {

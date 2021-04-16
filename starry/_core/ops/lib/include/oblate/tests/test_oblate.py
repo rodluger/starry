@@ -182,41 +182,53 @@ class TestKsqLessThanHalf(Compare):
             max_error_cpp_py=1e-6,
             max_error_cpp_lin=1e-6,
         ),
+        dict(bo=1.0956051937836104, ro=0.1, f=0.1, theta=1.5616688245611983),
+        dict(
+            bo=1.4251233204133293,
+            ro=0.5,
+            f=0.1,
+            theta=1.3587016514315267,
+            max_error_cpp_py=1e-6,
+            max_error_cpp_lin=1e-6,
+        ),
     ],
 )
 class TestEdgeCases(Compare):
     pass
 
 
+@pytest.mark.xfail
 @pytest.mark.parametrize(
     "kwargs",
     [
+        dict(bo=0.9568856885688621, ro=0.1, f=0.25, theta=-1.5707962222892058),
         dict(bo=1.0961596159615965, ro=0.1, f=0.1, theta=1.5707963267948966),
-        dict(bo=1.0956051937836104, ro=0.1, f=0.1, theta=1.5616688245611983),
-        dict(bo=1.4251233204133293, ro=0.5, f=0.1, theta=1.3587016514315267),
     ],
 )
 class TestFailing(Compare):
     """
-    Currently failing tests.
+    Root solver fails when theta is very close to +/- pi/2 since the
+    roots have the same x coordinate and get thrown out as
+    duplicate roots.
+    
     """
 
     pass
 
 
 @pytest.mark.parametrize(
-    "kwargs",
-    [dict(bo=1.0961596159615965, ro=0.1, f=0.1, theta=1.5707963267948966)],
+    "kwargs", [],
 )
 class TestDebug(Compare):
-    def test_debug(kwargs):
-
+    def test_debug(self, kwargs):
+        # All the solvers
         sTcpp = oblate.CppSolver(2).get_sT(**kwargs)
         sTpy = oblate.PythonSolver(2).get_sT(**kwargs)
         sTlin = oblate.NumericalSolver(2, linear=True).get_sT(**kwargs)
         sTnum = oblate.NumericalSolver(2, linear=False).get_sT(**kwargs)
         sTbrute = oblate.BruteSolver(2).get_sT(**kwargs)
 
+        # NaN indices
         icpp = np.isnan(sTcpp)
         ipy = np.isnan(sTpy)
         inum = np.isnan(sTnum)
@@ -226,6 +238,7 @@ class TestDebug(Compare):
         sTnum[inum] = -1.0
         sTlin[ilin] = -1.0
 
+        # Plot comparison
         fig, ax = plt.subplots(3, figsize=(10, 8))
 
         ax[0].plot(sTcpp, label="c++")
@@ -245,7 +258,7 @@ class TestDebug(Compare):
         ax[2].plot(sTbrute, label="brute")
         ax[2].legend()
 
+        # View geometry
         oblate.draw(**kwargs)
-
         plt.show()
 

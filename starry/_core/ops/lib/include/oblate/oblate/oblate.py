@@ -122,9 +122,16 @@ def get_angles(bo, ro, f, theta):
                 phi.append(phi_pos)
                 xi.append(xi_pos)
 
-        # Wrap and sort the angles
+        # DEBUG
+        print(roots)
+        print(np.array(phi) * 180 / np.pi)
+        print(np.array(xi) * 180 / np.pi)
+
+        # Wrap the angles
         phi = np.array(phi) % (2 * np.pi)
         xi = np.array(xi) % (2 * np.pi)
+
+        # xi is always counter-clockwise
         if xi[0] > xi[1]:
             xi = xi[::-1]
             phi = phi[::-1]
@@ -146,7 +153,10 @@ def get_angles(bo, ro, f, theta):
                 phi[0] += 2 * np.pi
             else:
                 phi[1] += 2 * np.pi
-                phi = [phi[1], phi[0]]
+
+        # phi is always clockwise
+        if phi[1] > phi[0]:
+            phi = phi[::-1]
 
     elif len(roots) < 2:
 
