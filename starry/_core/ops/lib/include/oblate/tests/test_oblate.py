@@ -262,3 +262,26 @@ class TestDebug(Compare):
         oblate.draw(**kwargs)
         plt.show()
 
+
+@pytest.mark.parametrize(
+    "kwargs", [],
+)
+class TestCurrent(Compare):
+    pass
+
+
+"""
+TestBoEqualsRo::test_compare[cpp-py-kwargs1] - RuntimeError: Something went wrong in starry! 
+TestBoEqualsRo::test_compare[cpp-lin-kwargs1] - RuntimeError: Something went wrong in starry! 
+TestBoEqualsRo::test_compare[cpp-num-kwargs1] - RuntimeError: Something went wrong in starry! 
+TestBoEqualsRo::test_compare[cpp-brute-kwargs1] - RuntimeError: Something went wrong in starry! 
+TestEdgeCases::test_compare[cpp-py-kwargs3] - assert False
+TestEdgeCases::test_compare[cpp-py-kwargs4] - assert False
+TestEdgeCases::test_compare[cpp-lin-kwargs3] - assert False
+TestEdgeCases::test_compare[cpp-lin-kwargs4] - assert False
+TestEdgeCases::test_compare[cpp-num-kwargs3] - assert False
+TestEdgeCases::test_compare[cpp-num-kwargs4] - assert False
+TestEdgeCases::test_compare[cpp-brute-kwargs3] - assert False
+TestEdgeCases::test_compare[cpp-brute-kwargs4] - assert False
+"""
+

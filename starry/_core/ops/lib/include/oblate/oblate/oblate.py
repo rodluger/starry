@@ -87,15 +87,6 @@ def get_angles(bo, ro, f, theta):
     except:
         pass
 
-    # Remove duplicate roots
-    """
-    tol = 1e-6
-    roots = np.zeros(0)
-    for x in roots_real:
-        if np.all(np.abs(x - roots) > tol):
-            roots = np.append(roots, x)
-    """
-
     # Center of occultor in this frame
     xo = bo * np.sin(theta)
     yo = bo * np.cos(theta)
@@ -121,11 +112,6 @@ def get_angles(bo, ro, f, theta):
             else:
                 phi.append(phi_pos)
                 xi.append(xi_pos)
-
-        # DEBUG
-        print(roots)
-        print(np.array(phi) * 180 / np.pi)
-        print(np.array(xi) * 180 / np.pi)
 
         # Wrap the angles
         phi = np.array(phi) % (2 * np.pi)

@@ -112,6 +112,11 @@
 #define STARRY_ROOT_TOL_DUP 1e-7
 #endif
 
+//! Tolerance for quartic root polishing
+#ifndef STARRY_ROOT_TOL_FINAL
+#define STARRY_ROOT_TOL_FINAL 1e-13
+#endif
+
 //! Maximum number of root polishing iterations
 #ifndef STARRY_ROOT_MAX_ITER
 #define STARRY_ROOT_MAX_ITER 50
