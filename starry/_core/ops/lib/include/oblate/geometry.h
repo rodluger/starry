@@ -172,8 +172,10 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
               if (minerr <= STARRY_ROOT_TOL_HIGH)
                 break;
             }
+            if ((fA == 0.0) || (fB == 0.0))
+              break;
             df = -s0 * b * roots[n] / fA + s1 * (roots[n] - xo) / fB;
-            if (isnan(df.real()))
+            if (df == 0.0)
               break;
             roots[n] -= f / df;
           }
