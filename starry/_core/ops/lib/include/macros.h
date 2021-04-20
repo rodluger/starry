@@ -137,7 +137,7 @@
 
 //! Minimum value of the oblateness `f`
 #ifndef STARRY_MIN_F
-#define STARRY_MIN_F 1e-12
+#define STARRY_MIN_F 1e-6
 #endif
 
 //! Tolerance at singular point `bo ~ 1 - ro`
