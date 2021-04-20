@@ -537,6 +537,8 @@ public:
       costheta = costheta > 0 ? STARRY_T_TOL : -STARRY_T_TOL;
       theta = sintheta > 0 ? 0.5 * pi<Scalar>() : 1.5 * pi<Scalar>();
     }
+    if (f < STARRY_MIN_F)
+      f = STARRY_MIN_F;
 
     // Compute the angles of intersection
     if (ro == 0) {

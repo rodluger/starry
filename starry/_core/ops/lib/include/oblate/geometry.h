@@ -118,13 +118,13 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
 
   // Polish the roots using Newton's method on the *original*
   // function, which is more stable than the quartic expression.
-  Complex fA, fB, f, df, minxc, minyc;
+  Complex root, fA, fB, f, df, minxc, minyc;
   Scalar absf, minerr;
   Scalar p, q, v, w, t;
-  Vector<Scalar> error(18);
-  Vector<Complex> xc(18), yc(18);
-  Vector<Scalar> sgn0(18), sgn1(18);
-  Vector<int> keep(18);
+  Vector<Scalar> error(16);
+  Vector<Complex> xc(16), yc(16);
+  Vector<Scalar> sgn0(16), sgn1(16);
+  Vector<int> keep(16);
   error.setZero();
   xc.setZero();
   yc.setZero();
@@ -149,24 +149,27 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
 
          f = y1 - y2
     */
-    fA = sqrt(1.0 - roots[n] * roots[n]);
-    fB = sqrt(ro2 - (roots[n] - xo) * (roots[n] - xo));
+    Complex fA0 = sqrt(1.0 - roots[n] * roots[n]);
+    Complex fB0 = sqrt(ro2 - (roots[n] - xo) * (roots[n] - xo));
     for (Scalar s0 = -1; s0 < 2; s0 += 2) {
       for (Scalar s1 = -1; s1 < 2; s1 += 2) {
 
         // If the error is moderately small, keep & polish this root
-        minerr = abs(s0 * b * fA - (yo + s1 * fB));
+        minerr = abs(s0 * b * fA0 - (yo + s1 * fB0));
+
         if (minerr < STARRY_ROOT_TOL_LOW) {
 
           // Apply Newton's method to polish the root
-          for (int k = 0; k < STARRY_ROOT_MAX_ITER; ++k) {
-            fA = sqrt(1.0 - roots[n] * roots[n]);
-            fB = sqrt(ro2 - (roots[n] - xo) * (roots[n] - xo));
+          root = roots[n];
+          int k = 0;
+          for (k = 0; k < STARRY_ROOT_MAX_ITER; ++k) {
+            fA = sqrt(1.0 - root * root);
+            fB = sqrt(ro2 - (root - xo) * (root - xo));
             f = s0 * b * fA - (yo + s1 * fB);
             absf = abs(f);
             if (absf <= minerr) {
               minerr = absf;
-              minxc = roots[n];
+              minxc = root;
               minyc = s0 * b * fA;
               // Break if the error is close to mach eps
               if (minerr <= STARRY_ROOT_TOL_HIGH)
@@ -174,10 +177,33 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
             }
             if ((fA == 0.0) || (fB == 0.0))
               break;
-            df = -s0 * b * roots[n] / fA + s1 * (roots[n] - xo) / fB;
+            df = -s0 * b * root / fA + s1 * (root - xo) / fB;
             if (df == 0.0)
               break;
-            roots[n] -= f / df;
+            root -= f / df;
+          }
+
+          // The Newton solver will not converge if the root is
+          // at x = +/- 1 or x = xo +/- ro since the derivative
+          // at those points is infinite. Typically the solver
+          // oscillates around the root and never converges.
+          // Let's nudge it if needed.
+          if (k == STARRY_ROOT_MAX_ITER) {
+            Scalar singular_points[] = {-1.0, 1.0, xo - ro, xo + ro};
+            for (auto const &point : singular_points) {
+              if (abs(root - point) < STARRY_ROOT_TOL_INF_DERIV) {
+                minxc = point;
+                fA = sqrt(1.0 - point * point);
+                fB = sqrt(ro2 - (point - xo) * (point - xo));
+                f = s0 * b * fA - (yo + s1 * fB);
+                absf = abs(f);
+                if (absf <= minerr) {
+                  minerr = absf;
+                  minxc = root;
+                  minyc = s0 * b * fA;
+                }
+              }
+            }
           }
 
           // Store this root (regardless of convergence)
@@ -200,56 +226,35 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
     }
   }
 
-  // The Newton solver will not converge if the root is
-  // at x = +/- 1 since the derivative is infinite. Here we
-  // explicitly add these two roots. If they are not solutions
-  // to the problem, they get discarded in the next step.
-  Scalar s1 = 1.0;
-  for (m = 16; m < 18; ++m) {
-    keep(m) = 1;
-    xc(m) = s1;
-    yc(m) = 0.0;
-    sgn0(m) = 1;
-    if (yo < 0) {
-      error(m) = abs(yo + sqrt(ro2 - (xc(m) - xo) * (xc(m) - xo)));
-      sgn1(m) = 1;
-    } else {
-      error(m) = abs(yo - sqrt(ro2 - (xc(m) - xo) * (xc(m) - xo)));
-      sgn1(m) = -1;
+  // Eliminate duplicate roots
+  Complex dx, dy;
+  for (int i = 0; i < 16; ++i) {
+    for (int j = 0; j < 16; ++j) {
+      if ((i != j) && (keep(i) && keep(j))) {
+        dx = abs(xc(i) - xc(j));
+        dy = abs(yc(i) - yc(j));
+        if (abs(dx * dx + dy * dy) < STARRY_ROOT_TOL_DUP) {
+          if (error(i) < error(j))
+            keep(j) = 0;
+          else
+            keep(i) = 0;
+        }
+      }
     }
-    s1 *= -1;
   }
 
   // Discard the roots with the highest error until we have 4.
-  typename Eigen::Matrix<int, 18, 1>::Index index;
-  while (keep.sum() < 4) {
+  typename Eigen::Matrix<int, 16, 1>::Index index;
+  while (keep.sum() > 4) {
     error.cwiseProduct(keep.template cast<Scalar>()).maxCoeff(&index);
     keep(index) = 0;
   }
 
-  // Eliminate complex roots and roots with large error
-  for (int i = 0; i < 18; ++i) {
-    if ((abs(xc(i).imag()) > STARRY_ROOT_TOL_FINAL) ||
-        (abs(yc(i).imag()) > STARRY_ROOT_TOL_FINAL) ||
-        (error(i) > STARRY_ROOT_TOL_FINAL))
-      keep(i) = 0;
-  }
-
-  // Eliminate duplicate roots. Note that we will eliminate
-  // *both* roots, since a duplicate real root corresponds to
-  // a grazing configuration, which we can ignore.
-  Complex dx, dy;
+  // Eliminate complex roots
   for (int i = 0; i < 16; ++i) {
-    for (int j = 0; j < i; ++j) {
-      if (keep(i) && keep(j)) {
-        dx = (xc(i) - xc(j));
-        dy = (yc(i) - yc(j));
-        if (abs(dx * dx + dy * dy) < STARRY_ROOT_TOL_DUP) {
-          keep(i) = 0;
-          keep(j) = 0;
-        }
-      }
-    }
+    if ((abs(xc(i).imag()) > STARRY_ROOT_TOL_FINAL) ||
+        (abs(yc(i).imag()) > STARRY_ROOT_TOL_FINAL))
+      keep(i) = 0;
   }
 
   // Collect the valid roots and return
@@ -257,9 +262,8 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
   x.resize(nroots);
   y.resize(nroots);
   int n = 0;
-  for (m = 0; m < 18; ++m) {
+  for (m = 0; m < 16; ++m) {
 
-    // DEBUG
     /*
     std::cout << std::setprecision(12) << "(" << keep(m) << ") " << xc(m).real()
               << " + " << xc(m).imag() << "j,  " << yc(m).real() << " + "
@@ -325,12 +329,6 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
   if (bo < 0) {
     bo = -bo;
     theta -= pi<Scalar>();
-  }
-
-  // Avoid f = 0 issues
-  if (f < STARRY_MIN_F) {
-    f = STARRY_MIN_F;
-    b = 1 - f;
   }
 
   A costheta = cos(theta);
@@ -406,6 +404,18 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
       phi2 = xi1 = 0.0;
       phi1 = xi2 = 2 * pi<Scalar>();
     }
+
+  } else if (nroots == 1) {
+
+    // Grazing configuration?
+    // TODO: Perturb and repeat.
+    std::stringstream args;
+    args << "bo_ = " << bo_ << ", "
+         << "ro_ = " << ro_ << ", "
+         << "f_ = " << f_ << ", "
+         << "theta_ = " << theta_;
+    throw StarryException("Unexpected branch.", "oblate/geometry.h",
+                          "get_angles", args.str());
 
   } else if (nroots == 2) {
 

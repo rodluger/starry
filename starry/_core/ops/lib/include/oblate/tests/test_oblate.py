@@ -191,28 +191,18 @@ class TestKsqLessThanHalf(Compare):
             max_error_cpp_py=1e-6,
             max_error_cpp_lin=1e-6,
         ),
+        dict(bo=0.9568856885688621, ro=0.1, f=0.25, theta=-1.5707962222892058),
+        dict(
+            bo=1.0961596159615965,
+            ro=0.1,
+            f=0.1,
+            theta=1.5707963267948966,
+            max_error_cpp_py=1e-4,  # TODO: Why the precision loss here?
+            max_error_cpp_lin=1e-4,
+        ),
     ],
 )
 class TestEdgeCases(Compare):
-    pass
-
-
-@pytest.mark.xfail
-@pytest.mark.parametrize(
-    "kwargs",
-    [
-        dict(bo=0.9568856885688621, ro=0.1, f=0.25, theta=-1.5707962222892058),
-        dict(bo=1.0961596159615965, ro=0.1, f=0.1, theta=1.5707963267948966),
-    ],
-)
-class TestFailing(Compare):
-    """
-    Root solver fails when theta is very close to +/- pi/2 since the
-    roots have the same x coordinate and get thrown out as
-    duplicate roots.
-    
-    """
-
     pass
 
 
@@ -261,27 +251,4 @@ class TestDebug(Compare):
         # View geometry
         oblate.draw(**kwargs)
         plt.show()
-
-
-@pytest.mark.parametrize(
-    "kwargs", [],
-)
-class TestCurrent(Compare):
-    pass
-
-
-"""
-TestBoEqualsRo::test_compare[cpp-py-kwargs1] - RuntimeError: Something went wrong in starry! 
-TestBoEqualsRo::test_compare[cpp-lin-kwargs1] - RuntimeError: Something went wrong in starry! 
-TestBoEqualsRo::test_compare[cpp-num-kwargs1] - RuntimeError: Something went wrong in starry! 
-TestBoEqualsRo::test_compare[cpp-brute-kwargs1] - RuntimeError: Something went wrong in starry! 
-TestEdgeCases::test_compare[cpp-py-kwargs3] - assert False
-TestEdgeCases::test_compare[cpp-py-kwargs4] - assert False
-TestEdgeCases::test_compare[cpp-lin-kwargs3] - assert False
-TestEdgeCases::test_compare[cpp-lin-kwargs4] - assert False
-TestEdgeCases::test_compare[cpp-num-kwargs3] - assert False
-TestEdgeCases::test_compare[cpp-num-kwargs4] - assert False
-TestEdgeCases::test_compare[cpp-brute-kwargs3] - assert False
-TestEdgeCases::test_compare[cpp-brute-kwargs4] - assert False
-"""
 

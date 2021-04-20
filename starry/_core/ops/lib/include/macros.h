@@ -98,6 +98,11 @@
 #endif
 
 //! Tolerance for quartic root polishing
+#ifndef STARRY_ROOT_TOL_INF_DERIV
+#define STARRY_ROOT_TOL_INF_DERIV 1e-6
+#endif
+
+//! Tolerance for quartic root polishing
 #ifndef STARRY_ROOT_TOL_MED
 #define STARRY_ROOT_TOL_MED 1e-10
 #endif
@@ -119,7 +124,7 @@
 
 //! Maximum number of root polishing iterations
 #ifndef STARRY_ROOT_MAX_ITER
-#define STARRY_ROOT_MAX_ITER 50
+#define STARRY_ROOT_MAX_ITER 30
 #endif
 
 //! If |b| is less than this value, set equal to 0
@@ -132,7 +137,7 @@
 
 //! Minimum value of the oblateness `f`
 #ifndef STARRY_MIN_F
-#define STARRY_MIN_F 1e-15
+#define STARRY_MIN_F 1e-12
 #endif
 
 //! Tolerance at singular point `bo ~ 1 - ro`
