@@ -530,12 +530,19 @@ public:
       ro = STARRY_RO_EQUALS_ZERO_TOL;
     if (abs(1 - bo - ro) < STARRY_BO_EQUALS_ONE_MINUS_RO_TOL)
       bo = 1 - ro + STARRY_BO_EQUALS_ONE_MINUS_RO_TOL;
-    if (abs(sintheta) < STARRY_T_TOL) {
+    if (abs(theta - 0.5 * pi<Scalar>()) < STARRY_ROOT_TOL_THETA_PI_TWO) {
+      theta += (theta > 0.5 * pi<Scalar>() ? 1.0 : -1.0) *
+               STARRY_ROOT_TOL_THETA_PI_TWO;
+      costheta = cos(theta);
+      sintheta = sin(theta);
+    } else if (abs(theta + 0.5 * pi<Scalar>()) < STARRY_ROOT_TOL_THETA_PI_TWO) {
+      theta += (theta > -0.5 * pi<Scalar>() ? 1.0 : -1.0) *
+               STARRY_ROOT_TOL_THETA_PI_TWO;
+      costheta = cos(theta);
+      sintheta = sin(theta);
+    } else if (abs(sintheta) < STARRY_T_TOL) {
       sintheta = sintheta > 0 ? STARRY_T_TOL : -STARRY_T_TOL;
       theta = costheta > 0 ? 0 : pi<Scalar>();
-    } else if (abs(costheta) < STARRY_T_TOL) {
-      costheta = costheta > 0 ? STARRY_T_TOL : -STARRY_T_TOL;
-      theta = sintheta > 0 ? 0.5 * pi<Scalar>() : 1.5 * pi<Scalar>();
     }
     if (f < STARRY_MIN_F)
       f = STARRY_MIN_F;

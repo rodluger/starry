@@ -97,9 +97,9 @@
 #define STARRY_ROOT_TOL_LOW 1e-2
 #endif
 
-//! Tolerance for quartic root polishing
-#ifndef STARRY_ROOT_TOL_INF_DERIV
-#define STARRY_ROOT_TOL_INF_DERIV 1e-6
+//! Tolerance for theta = +/- pi/2 in oblate case
+#ifndef STARRY_ROOT_TOL_THETA_PI_TWO
+#define STARRY_ROOT_TOL_THETA_PI_TWO 1e-5
 #endif
 
 //! Tolerance for quartic root polishing

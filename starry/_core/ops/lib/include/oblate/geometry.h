@@ -71,6 +71,10 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
           const ADScalar<Scalar, N> &ro_, Vector<ADScalar<Scalar, N>> &x,
           Vector<ADScalar<Scalar, N>> &y) {
 
+  // Initialize
+  x.resize(4);
+  y.resize(4);
+
   // Get the *values*
   using Complex = std::complex<Scalar>;
   Scalar b = b_.value();
@@ -103,7 +107,7 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
   coeffs.push_back(b4 - 2 * b2 * (ro2 - xo2 + yo2) +
                    (ro2 - xo2 - yo2) * (ro2 - xo2 - yo2));
   bool success = false;
-  std::vector<std::complex<Scalar>> roots = eigen_roots(coeffs, success);
+  std::vector<Complex> roots = eigen_roots(coeffs, success);
   if (!success) {
     std::stringstream args;
     args << "b_ = " << b_ << ", "
@@ -116,193 +120,138 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
                           "oblate/geometry.h", "get_roots", args.str());
   }
 
-  // Polish the roots using Newton's method on the *original*
-  // function, which is more stable than the quartic expression.
-  Complex root, fA, fB, f, df, minxc, minyc;
-  Scalar absf, minerr;
-  Scalar p, q, v, w, t;
-  Vector<Scalar> error(16);
-  Vector<Complex> xc(16), yc(16);
-  Vector<Scalar> sgn0(16), sgn1(16);
-  Vector<int> keep(16);
-  error.setZero();
-  xc.setZero();
-  yc.setZero();
-  sgn0.setZero();
-  sgn1.setZero();
-  keep.setZero();
-  int m = 0;
+  // Apply Newton's method to polish the roots
+  int nroots = 0;
   for (int n = 0; n < 4; ++n) {
 
-    /*
-    We're looking for the intersection of the function
+    Complex root = roots[n];
+    Complex minxc = root;
+    Complex root2, root3, root4;
+    Complex f, df;
+    Scalar absf, minerr = INFINITY;
 
-         y1 = +/- b * sqrt(1 - x^2)
-
-    and the function
-
-         y2 = yo +/- sqrt(ro^2 - (x - xo^2))
-
-    Let's figure out which of the four cases (+/-, +/-) this
-    root could be a solution to. We're then going to polish
-    the root(s) by minimizing the function
-
-         f = y1 - y2
-    */
-    Complex fA0 = sqrt(1.0 - roots[n] * roots[n]);
-    Complex fB0 = sqrt(ro2 - (roots[n] - xo) * (roots[n] - xo));
-    for (Scalar s0 = -1; s0 < 2; s0 += 2) {
-      for (Scalar s1 = -1; s1 < 2; s1 += 2) {
-
-        // If the error is moderately small, keep & polish this root
-        minerr = abs(s0 * b * fA0 - (yo + s1 * fB0));
-
-        if (minerr < STARRY_ROOT_TOL_LOW) {
-
-          // Apply Newton's method to polish the root
-          root = roots[n];
-          int k = 0;
-          for (k = 0; k < STARRY_ROOT_MAX_ITER; ++k) {
-            fA = sqrt(1.0 - root * root);
-            fB = sqrt(ro2 - (root - xo) * (root - xo));
-            f = s0 * b * fA - (yo + s1 * fB);
-            absf = abs(f);
-            if (absf <= minerr) {
-              minerr = absf;
-              minxc = root;
-              minyc = s0 * b * fA;
-              // Break if the error is close to mach eps
-              if (minerr <= STARRY_ROOT_TOL_HIGH)
-                break;
-            }
-            if ((fA == 0.0) || (fB == 0.0))
-              break;
-            df = -s0 * b * root / fA + s1 * (root - xo) / fB;
-            if (df == 0.0)
-              break;
-            root -= f / df;
-          }
-
-          // The Newton solver will not converge if the root is
-          // at x = +/- 1 or x = xo +/- ro since the derivative
-          // at those points is infinite. Typically the solver
-          // oscillates around the root and never converges.
-          // Let's nudge it if needed.
-          if (k == STARRY_ROOT_MAX_ITER) {
-            Scalar singular_points[] = {-1.0, 1.0, xo - ro, xo + ro};
-            for (auto const &point : singular_points) {
-              if (abs(root - point) < STARRY_ROOT_TOL_INF_DERIV) {
-                minxc = point;
-                fA = sqrt(1.0 - point * point);
-                fB = sqrt(ro2 - (point - xo) * (point - xo));
-                f = s0 * b * fA - (yo + s1 * fB);
-                absf = abs(f);
-                if (absf <= minerr) {
-                  minerr = absf;
-                  minxc = root;
-                  minyc = s0 * b * fA;
-                }
-              }
-            }
-          }
-
-          // Store this root (regardless of convergence)
-          // We'll prune the results below.
-          keep(m) = 1;
-          xc(m) = minxc;
-          yc(m) = minyc;
-          error(m) = minerr;
-          sgn0(m) = s0;
-          sgn1(m) = s1;
-
-        } else {
-
-          // Discard this root now.
-          keep(m) = 0;
-        }
-
-        ++m;
-      }
-    }
-  }
-
-  // Eliminate duplicate roots
-  Complex dx, dy;
-  for (int i = 0; i < 16; ++i) {
-    for (int j = 0; j < 16; ++j) {
-      if ((i != j) && (keep(i) && keep(j))) {
-        dx = abs(xc(i) - xc(j));
-        dy = abs(yc(i) - yc(j));
-        if (abs(dx * dx + dy * dy) < STARRY_ROOT_TOL_DUP) {
-          if (error(i) < error(j))
-            keep(j) = 0;
-          else
-            keep(i) = 0;
-        }
-      }
-    }
-  }
-
-  // Discard the roots with the highest error until we have 4.
-  typename Eigen::Matrix<int, 16, 1>::Index index;
-  while (keep.sum() > 4) {
-    error.cwiseProduct(keep.template cast<Scalar>()).maxCoeff(&index);
-    keep(index) = 0;
-  }
-
-  // Eliminate complex roots
-  for (int i = 0; i < 16; ++i) {
-    if ((abs(xc(i).imag()) > STARRY_ROOT_TOL_FINAL) ||
-        (abs(yc(i).imag()) > STARRY_ROOT_TOL_FINAL))
-      keep(i) = 0;
-  }
-
-  // Collect the valid roots and return
-  int nroots = keep.sum();
-  x.resize(nroots);
-  y.resize(nroots);
-  int n = 0;
-  for (m = 0; m < 16; ++m) {
-
-    /*
-    std::cout << std::setprecision(12) << "(" << keep(m) << ") " << xc(m).real()
-              << " + " << xc(m).imag() << "j,  " << yc(m).real() << " + "
-              << yc(m).imag() << "j" << std::endl;
-    std::cout << error(m) << std::endl << std::endl;
+    /* -- DEBUG INFO --
+    root2 = root * root;
+    root3 = root2 * root;
+    root4 = root3 * root;
+    f = coeffs[0] * root4 + coeffs[1] * root3 + coeffs[2] * root2 +
+        coeffs[3] * root + coeffs[4];
+    std::cout << std::setprecision(12) << "x0:    " << root << std::endl;
+    std::cout << std::setprecision(12) << "error: " << abs(f) << std::endl;
     */
 
-    if (keep(m)) {
+    // Polish
+    for (int k = 0; k < STARRY_ROOT_MAX_ITER; ++k) {
 
-      // Get the x value of the root
-      x(n).value() = xc(m).real();
+      // Compute the error
+      root2 = root * root;
+      root3 = root2 * root;
+      root4 = root3 * root;
+      f = coeffs[0] * root4 + coeffs[1] * root3 + coeffs[2] * root2 +
+          coeffs[3] * root + coeffs[4];
+      absf = abs(f);
+      if (absf <= minerr) {
+        minerr = absf;
+        minxc = root;
+        if (minerr <= STARRY_ROOT_TOL_HIGH)
+          break;
+      }
+
+      // Take a step
+      df = 4.0 * coeffs[0] * root3 + 3.0 * coeffs[1] * root2 +
+           2.0 * coeffs[2] * root + coeffs[3];
+      if (df == 0.0)
+        break;
+      root -= f / df;
+    }
+    root = minxc;
+
+    /* -- DEBUG INFO --
+    root2 = root * root;
+    root3 = root2 * root;
+    root4 = root3 * root;
+    f = coeffs[0] * root4 + coeffs[1] * root3 + coeffs[2] * root2 +
+        coeffs[3] * root + coeffs[4];
+    std::cout << std::setprecision(12) << "xp:    " << root << std::endl;
+    std::cout << std::setprecision(12) << "error: " << abs(f) << std::endl;
+    */
+
+    // Keep the root if it's real
+    if (abs(root.imag()) < STARRY_ROOT_TOL_HIGH) {
+
+      // Nudge the root away from the endpoints
+      if (root.real() > 1)
+        root = 1.0 - STARRY_ROOT_TOL_HIGH;
+      else if (root.real() < -1)
+        root = -1.0 + STARRY_ROOT_TOL_HIGH;
+      else if (root.real() < xo - ro)
+        root = xo - ro + STARRY_ROOT_TOL_HIGH;
+      else if (root.real() > xo + ro)
+        root = xo + ro - STARRY_ROOT_TOL_HIGH;
+
+      // Determine the y value of the point on the ellipse
+      // corresponding to each root and the signs of the
+      // functions describing the intersecting circle &
+      // ellipse segments.
+      Scalar s0, s1;
+      Complex fA, fB;
+      fA = b * sqrt(Scalar(1.0) - root * root);
+      fB = sqrt(ro2 - (root - xo) * (root - xo));
+      Vector<Scalar> diff(4);
+      diff <<                   //
+          abs(fA - (yo + fB)),  //
+          abs(fA - (yo - fB)),  //
+          abs(-fA - (yo + fB)), //
+          abs(-fA - (yo - fB)); //
+      typename Vector<Scalar>::Index idx(4);
+      diff.minCoeff(&idx);
+      if (idx < 2) {
+        s0 = 1.0;
+      } else {
+        s0 = -1.0;
+      }
+      if (is_even(idx)) {
+        s1 = 1.0;
+      } else {
+        s1 = -1.0;
+      }
+
+      // Save the root
+      x(nroots).value() = root.real();
+      y(nroots).value() = s0 * fA.real();
+
+      /* -- DEBUG INFO --
+      std::cout << std::setprecision(12) << "y:   " << y(nroots).value()
+                << std::endl;
+      std::cout << std::endl;
+      */
 
       // Compute its derivatives
       if (N > 0) {
-
         Scalar dxdb, dxdtheta, dxdbo, dxdro;
-        q = sqrt(ro2 - (xc(m).real() - xo) * (xc(m).real() - xo));
-        p = sqrt(1 - xc(m).real() * xc(m).real());
-        v = (xc(m).real() - xo) / q;
+        Scalar p, q, v, w, t;
+        q = sqrt(ro2 - (root.real() - xo) * (root.real() - xo));
+        p = sqrt(1 - root.real() * root.real());
+        v = (root.real() - xo) / q;
         w = b / p;
-        t = 1.0 / (w * xc(m).real() - (sgn1(m) * sgn0(m)) * v);
+        t = 1.0 / (w * root.real() - (s1 * s0) * v);
         dxdb = t * p;
-        dxdtheta = (sgn1(m) * sintheta * v - costheta) * (bo * t * sgn0(m));
-        dxdbo = -(sintheta + sgn1(m) * costheta * v) * (t * sgn0(m));
-        dxdro = -ro * t / q * sgn1(m) * sgn0(m);
-        x(n).derivatives() =
+        dxdtheta = (s1 * sintheta * v - costheta) * (bo * t * s0);
+        dxdbo = -(sintheta + s1 * costheta * v) * (t * s0);
+        dxdro = -ro * t / q * s1 * s0;
+        x(nroots).derivatives() =
             dxdb * b_.derivatives() + dxdtheta * theta_.derivatives() +
             dxdbo * bo_.derivatives() + dxdro * ro_.derivatives();
-        y(n) = sgn0(m) * b_ * sqrt(1.0 - x(n) * x(n));
-
-      } else {
-
-        // The y value of the root
-        y(n).value() = yc(m).real();
+        y(nroots) = s0 * b_ * sqrt(1.0 - x(nroots) * x(nroots));
       }
 
-      ++n;
+      ++nroots;
     }
   }
+
+  // We're done!
+  x.conservativeResize(nroots);
+  y.conservativeResize(nroots);
 }
 
 /**
@@ -420,15 +369,17 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
   } else if (nroots == 2) {
 
     // Regular occultation
-    A xm, ym, mid;
+    A xm, ym, mid, term;
 
     // Get the angles
     phi1 = theta + atan2(y(0) - yo, x(0) - xo);
     phi2 = theta + atan2(y(1) - yo, x(1) - xo);
-    xi1 = atan2(sqrt(1 - x(0) * x(0)), x(0));
+    term = 1 - x(0) * x(0);
+    xi1 = atan2(sqrt(term < 0 ? 0 : term), x(0));
     if (y(0) < 0)
       xi1 *= -1;
-    xi2 = atan2(sqrt(1 - x(1) * x(1)), x(1));
+    term = 1 - x(1) * x(1);
+    xi2 = atan2(sqrt(term < 0 ? 0 : term), x(1));
     if (y(1) < 0)
       xi2 *= -1;
 

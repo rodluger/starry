@@ -106,7 +106,14 @@ class TestSmallRadius(Compare):
     "kwargs",
     [
         dict(bo=0.85, ro=0.1, f=0.1, theta=0.0),
-        dict(bo=0.85, ro=0.1, f=0.1, theta=0.5 * np.pi),
+        dict(
+            bo=0.85,
+            ro=0.1,
+            f=0.1,
+            theta=0.5 * np.pi,
+            max_error_cpp_py=1e-6,
+            max_error_cpp_lin=1e-6,
+        ),
     ],
 )
 class TestSinOrCosThetaIsZero(Compare):
@@ -191,14 +198,21 @@ class TestKsqLessThanHalf(Compare):
             max_error_cpp_py=1e-6,
             max_error_cpp_lin=1e-6,
         ),
-        dict(bo=0.9568856885688621, ro=0.1, f=0.25, theta=-1.5707962222892058),
+        dict(
+            bo=0.9568856885688621,
+            ro=0.1,
+            f=0.25,
+            theta=-1.5707962222892058,
+            max_error_cpp_py=1e-5,
+            max_error_cpp_lin=1e-5,
+        ),
         dict(
             bo=1.0961596159615965,
             ro=0.1,
             f=0.1,
-            theta=1.5707963267948966,
-            max_error_cpp_py=1e-4,  # TODO: Why the precision loss here?
-            max_error_cpp_lin=1e-4,
+            theta=0.5 * np.pi,
+            max_error_cpp_py=1e-3,  # TODO: Can we improve on this?
+            max_error_cpp_lin=1e-3,
         ),
     ],
 )

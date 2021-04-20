@@ -90,8 +90,9 @@ inline ADScalar<Scalar, N> hypspecial1(const int &n,
            c2 * hyp2f1(-0.5, n + 1.0, -0.5, A(1.0 - z));
   } else if (z < 0) {
     return sqrt(1.0 - z) * hyp2f1(-0.5, 1.0, n + 2.0, A(z / (z - 1.0)));
-  } else if (z == 1) {
-    return A(INFINITY);
+  } else if (z >= 1) {
+    // Assume z = 1 (result for z > 1 is complex!)
+    return hypspecial1(n, A(1.0 - STARRY_2F1_MINTOL));
   } else {
     std::stringstream args;
     args << "n_ = " << n << ", "
