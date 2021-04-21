@@ -452,7 +452,6 @@ class PythonSolver:
                 f0 = -np.sqrt(kc2) * (F - E / kc2 + k2 / kc2 * C)
             """
 
-        # TODO: Is there a faster way to evaluate this?
         fN = quad(
             lambda u: np.sin(u) ** (2 * N)
             * abs(1 - np.sin(u) ** 2 / kc2) ** 0.5,
@@ -529,29 +528,6 @@ class PythonSolver:
 
             # Solve the linear system
             V[:, i] = self.solve(f0, fN, A, B, C, N)
-
-        # DEBUG
-        """
-        func = (
-            lambda z: np.cos(z)
-            * np.sin(z) ** N
-            * np.sqrt(np.abs(1 - np.sin(z) / invw2))
-        )
-        print(integrate(func, phi1, phi2))
-
-        sinphi = np.sin(phi1)
-        x = sinphi / invw2
-        term = (2.0 / 3.0) * (x - 1) ** 1.5
-        fN1 = term * sinphi ** (N + 1) * hyp2f1(1.0, N + 2.5, 2.5, 1 - x)
-        sinphi = np.sin(phi2)
-        x = sinphi / invw2
-        term = (2.0 / 3.0) * (x - 1) ** 1.5
-        fN2 = term * sinphi ** (N + 1) * hyp2f1(1.0, N + 2.5, 2.5, 1 - x)
-        print(fN2 - fN1)
-
-        print(integrate(func, 0, phi1) - fN1)
-        print(integrate(func, 0, phi2) - fN2)
-        """
 
         return np.diff(V, axis=1)
 
@@ -856,9 +832,33 @@ class CppSolver:
 
 
 class BruteSolver:
-    def __init__(self, lmax=5, res=999):
+    def __init__(self, lmax=5, res=999, grid_star=False):
         self.lmax = lmax
         self.res = res
+        self.grid_star = grid_star
+
+        # Compute the solution vector for no
+        # occultation.
+        L = np.zeros((self.lmax + 3, self.lmax + 3))
+        L[0, 0] = 2 * np.pi
+        for u in range(0, self.lmax + 3, 2):
+            for v in range(2, self.lmax + 3, 2):
+                fac = (v - 1.0) / (u + v)
+                L[u, v] = fac * L[u, v - 2]
+                L[v, u] = fac * L[v - 2, u]
+        self.sT0 = np.zeros((self.lmax + 1) ** 2)
+        n = 0
+        for l in range(self.lmax + 1):
+            for m in range(-l, l + 1):
+                mu = l - m
+                nu = l + m
+                if nu % 2 == 0:
+                    # Case 1
+                    self.sT0[n] = L[mu // 2 + 2, nu // 2]
+                elif (l == 1) and (m == 0):
+                    # Case 2
+                    self.sT0[n] = 2 * np.pi / 3
+                n += 1
 
     def g(self, n, x, y, z=None):
         """
@@ -909,17 +909,91 @@ class BruteSolver:
     def get_sT(
         self, bo=0.58, ro=0.4, f=0.2, theta=0.5, nruns=1,
     ):
-        for n in range(nruns):
+        if self.grid_star:
 
-            # Semi-minor axis of the ellipse
-            b = 1 - f
+            # Grid up the star (accurate for large `ro`)
 
-            # There are two equivalent ways of doing this:
-            if False:
+            for n in range(nruns):
 
-                # Grid up the ellipse
-                x = np.linspace(-1 - ro, 1 + ro, self.res)
-                y = np.linspace(-b - ro, b + ro, self.res)
+                # Semi-minor axis of the ellipse
+                b = 1 - f
+
+                # There are two equivalent ways of doing this:
+                if False:
+
+                    # Grid up the ellipse
+                    x = np.linspace(-1 - ro, 1 + ro, self.res)
+                    y = np.linspace(-b - ro, b + ro, self.res)
+                    x, y = np.meshgrid(x, y)
+                    on_star = 1 - x ** 2 - (y / b) ** 2 > 0
+
+                    # Compute the Green's basis in (x, y') where
+                    #
+                    #     y' = y / b
+                    #
+                    # is the transformed y coordinate
+                    g = np.array(
+                        [
+                            self.g(n, x, y / b)
+                            for n in range((self.lmax + 1) ** 2)
+                        ]
+                    )
+                    g /= np.count_nonzero(on_star)
+
+                    # Compute the visible pixels
+                    xo = bo * np.sin(theta)
+                    yo = bo * np.cos(theta)
+                    under_occultor = (x - xo) ** 2 + (y - yo) ** 2 <= ro ** 2
+                    inds = on_star & ~under_occultor
+
+                else:
+
+                    # Grid up the unit disk
+                    x = np.linspace(-1 - ro, 1 + ro, self.res)
+                    y = np.linspace(-1 - ro, 1 + ro, self.res)
+                    x, y = np.meshgrid(x, y)
+                    on_star = 1 - x ** 2 - y ** 2 > 0
+
+                    # Compute the Green's basis as usual
+                    g = np.array(
+                        [self.g(n, x, y) for n in range((self.lmax + 1) ** 2)]
+                    )
+                    g /= np.count_nonzero(on_star)
+
+                    # Compute the visible pixels in a stretched frame where
+                    #
+                    #     y' = y * b
+                    #
+                    # is the transformed y coordinate
+                    xo = bo * np.sin(theta)
+                    yo = bo * np.cos(theta)
+                    under_occultor = (x - xo) ** 2 + (
+                        y * b - yo
+                    ) ** 2 <= ro ** 2
+                    inds = on_star & ~under_occultor
+
+            # Integrate
+            sT = b * np.pi * np.sum(g[:, inds], axis=1)
+
+            return sT
+
+        else:
+
+            # Grid up the planet and subtract the integral from
+            # the solution over the entire disk (accurate for small `ro`)
+
+            for n in range(nruns):
+
+                # Semi-minor axis of the ellipse
+                b = 1 - f
+
+                # Location of the occultor
+                xo = bo * np.sin(theta)
+                yo = bo * np.cos(theta)
+
+                # Grid up the occultor
+                x = np.linspace(xo - ro, xo + ro, self.res)
+                y = np.linspace(yo - ro, yo + ro, self.res)
                 x, y = np.meshgrid(x, y)
                 on_star = 1 - x ** 2 - (y / b) ** 2 > 0
 
@@ -931,42 +1005,16 @@ class BruteSolver:
                 g = np.array(
                     [self.g(n, x, y / b) for n in range((self.lmax + 1) ** 2)]
                 )
-                g /= np.count_nonzero(on_star)
 
-                # Compute the visible pixels
-                xo = bo * np.sin(theta)
-                yo = bo * np.cos(theta)
+                # Compute the masked pixels
                 under_occultor = (x - xo) ** 2 + (y - yo) ** 2 <= ro ** 2
-                inds = on_star & ~under_occultor
+                inds = on_star & under_occultor
+                g /= np.count_nonzero(under_occultor)
 
-            else:
+            # The solution vector for the complement of the visible region
+            sTX = np.pi * ro ** 2 * np.sum(g[:, inds], axis=1)
 
-                # Grid up the unit disk
-                x = np.linspace(-1 - ro, 1 + ro, self.res)
-                y = np.linspace(-1 - ro, 1 + ro, self.res)
-                x, y = np.meshgrid(x, y)
-                on_star = 1 - x ** 2 - y ** 2 > 0
-
-                # Compute the Green's basis as usual
-                g = np.array(
-                    [self.g(n, x, y) for n in range((self.lmax + 1) ** 2)]
-                )
-                g /= np.count_nonzero(on_star)
-
-                # Compute the visible pixels in a stretched frame where
-                #
-                #     y' = y * b
-                #
-                # is the transformed y coordinate
-                xo = bo * np.sin(theta)
-                yo = bo * np.cos(theta)
-                under_occultor = (x - xo) ** 2 + (y * b - yo) ** 2 <= ro ** 2
-                inds = on_star & ~under_occultor
-
-        # Integrate
-        sT = b * np.pi * np.sum(g[:, inds], axis=1)
-
-        return sT
+            return b * self.sT0 - sTX
 
 
 def draw(bo=0.58, ro=0.4, f=0.2, theta=0.5, file=None):
