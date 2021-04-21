@@ -2532,6 +2532,11 @@ class ReflectedBase(object):
         return super(ReflectedBase, self).show(**kwargs)
 
 
+class OblateAmplitude(Amplitude):
+    def __get__(self, instance, owner):
+        return instance._amp / (1.0 - instance._fobl)
+
+
 class OblateBase(object):
     """The oblate ``starry`` map class.
 
@@ -2546,6 +2551,7 @@ class OblateBase(object):
     """
 
     _ops_class_ = OpsOblate
+    amp = OblateAmplitude()
 
     def _render_greedy(self, **kwargs):
         get_val = evaluator(**kwargs)
