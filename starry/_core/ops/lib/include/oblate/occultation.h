@@ -255,7 +255,7 @@ protected:
 
     int nmax = 2 * deg + 4;
     A invw2 = 2 * k2 - 1;
-    A sinphi, x;
+    A sinphi, x, xbar;
     A f0, fN, term, H;
     std::function<A(int)> funcA, funcB, funcC;
     Vector<A> V2, V1;
@@ -265,19 +265,21 @@ protected:
     // Useful quantities
     sinphi = sin(phi2);
     x = sinphi / invw2;
+    xbar = abs(1 - x);
+    xbar = xbar < 0 ? 0 : xbar;
 
     // Boundary conditions
     if (k2 > 0.5) {
-      f0 = (2.0 / 3.0) * (1 - (1 - x) * sqrt(1 - x)) * invw2;
+      f0 = (2.0 / 3.0) * (1 - xbar * sqrt(xbar)) * invw2;
       H = hypspecial1(nmax, x);
       fN = pow(sinphi, (nmax + 1.0)) / (nmax + 1.0) * H;
     } else {
       // When k^2 < 1/2, sqrt(gamma) is imaginary,
       // so we need to compute the *imaginary* part
       // of the integral here!
-      term = (2.0 / 3.0) * (x - 1) * sqrt(x - 1);
+      term = (2.0 / 3.0) * xbar * sqrt(xbar);
       f0 = term * invw2;
-      H = hypspecial2(nmax, A(1 - x));
+      H = hypspecial2(nmax, A(-xbar));
       fN = term * pow(sinphi, (nmax + 1.0)) * H;
     }
 
@@ -298,19 +300,21 @@ protected:
     // Useful quantities
     sinphi = sin(phi1);
     x = sinphi / invw2;
+    xbar = abs(1 - x);
+    xbar = xbar < 0 ? 0 : xbar;
 
     // Boundary conditions
     if (k2 > 0.5) {
-      f0 = (2.0 / 3.0) * (1 - (1 - x) * sqrt(1 - x)) * invw2;
+      f0 = (2.0 / 3.0) * (1 - xbar * sqrt(xbar)) * invw2;
       H = hypspecial1(nmax, x);
       fN = pow(sinphi, (nmax + 1.0)) / (nmax + 1.0) * H;
     } else {
       // When k^2 < 1/2, sqrt(gamma) is imaginary,
       // so we need to compute the *imaginary* part
       // of the integral here!
-      term = (2.0 / 3.0) * (x - 1) * sqrt(x - 1);
+      term = (2.0 / 3.0) * xbar * sqrt(xbar);
       f0 = term * invw2;
-      H = hypspecial2(nmax, A(1 - x));
+      H = hypspecial2(nmax, A(-xbar));
       fN = term * pow(sinphi, (nmax + 1.0)) * H;
     }
 
