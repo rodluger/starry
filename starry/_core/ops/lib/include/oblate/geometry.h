@@ -287,21 +287,21 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
   if (bo <= ro - 1 + STARRY_COMPLETE_OCC_TOL) {
 
     // Complete occultation
-    phi1 = phi2 = xi1 = xi2 = 0.0;
+    phi1 = phi2 = xi1 = 0.0;
+    xi2 = 2 * pi<Scalar>();
     return;
 
   } else if (bo + ro + f <= 1 + STARRY_GRAZING_TOL) {
 
     // Regular occultation, but occultor doesn't touch the limb
-    phi2 = xi1 = 0.0;
-    phi1 = xi2 = 2 * pi<Scalar>();
+    phi1 = xi1 = xi2 = 0.0;
+    phi2 = 2 * pi<Scalar>();
     return;
 
   } else if (bo >= 1 + ro - STARRY_NO_OCC_TOL) {
 
     // No occultation
-    phi1 = phi2 = xi1 = 0.0;
-    xi2 = 2 * pi<Scalar>();
+    phi1 = phi2 = xi1 = xi2 = 0.0;
     return;
   }
 
@@ -338,20 +338,20 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
       if (bo > ro) {
 
         // No occultation
-        phi1 = phi2 = xi1 = 0.0;
-        xi2 = 2 * pi<Scalar>();
+        phi1 = phi2 = xi1 = xi2 = 0.0;
 
       } else {
 
         // Complete occultation
-        phi1 = phi2 = xi1 = xi2 = 0.0;
+        phi1 = phi2 = xi1 = 0.0;
+        xi2 = 2 * pi<Scalar>();
       }
 
     } else {
 
       // Regular occultation, but occultor doesn't touch the limb
-      phi2 = xi1 = 0.0;
-      phi1 = xi2 = 2 * pi<Scalar>();
+      phi1 = xi1 = xi2 = 0.0;
+      phi2 = 2 * pi<Scalar>();
     }
 
   } else if (nroots == 1) {
@@ -395,11 +395,11 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
       std::swap(phi1, phi2);
     }
 
-    // Ensure the T integral does not take us through the inside of the occultor
+    // Ensure the T integral takes us through the inside of the occultor
     mid = 0.5 * (xi1 + xi2);
     xm = cos(mid);
     ym = b * sin(mid);
-    if ((xm - xo) * (xm - xo) + (ym - yo) * (ym - yo) < ro * ro) {
+    if ((xm - xo) * (xm - xo) + (ym - yo) * (ym - yo) >= ro * ro) {
       std::swap(xi1, xi2);
       xi2 += 2 * pi<Scalar>();
     }
@@ -416,8 +416,8 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
       }
     }
 
-    // phi is always clockwise
-    if (phi2 > phi1) {
+    // phi is always counter-clockwise
+    if (phi1 > phi2) {
       std::swap(phi1, phi2);
     }
 

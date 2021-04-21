@@ -122,11 +122,11 @@ def get_angles(bo, ro, f, theta):
             xi = xi[::-1]
             phi = phi[::-1]
 
-        # Ensure the T integral does not take us
+        # Ensure the T integral takes us
         # through the inside of the occultor
         xm = np.cos(xi.mean())
         ym = (1 - f) * np.sin(xi.mean())
-        if (xm - xo) ** 2 + (ym - yo) ** 2 < ro ** 2:
+        if (xm - xo) ** 2 + (ym - yo) ** 2 >= ro ** 2:
             xi = xi[::-1]
             xi[1] += 2 * np.pi
 
@@ -140,8 +140,8 @@ def get_angles(bo, ro, f, theta):
             else:
                 phi[1] += 2 * np.pi
 
-        # phi is always clockwise
-        if phi[1] > phi[0]:
+        # phi is always counter-clockwise
+        if phi[1] < phi[0]:
             phi = phi[::-1]
 
     elif len(roots) < 2:
@@ -154,25 +154,25 @@ def get_angles(bo, ro, f, theta):
 
                 # No occultation
                 phi = np.array([0.0, 0.0])
-                xi = np.array([0.0, 2 * np.pi])
+                xi = np.array([0.0, 0.0])
 
             else:
 
                 # Complete occultation
                 phi = np.array([0.0, 0.0])
-                xi = np.array([0.0, 0.0])
+                xi = np.array([0.0, 2 * np.pi])
 
         elif bo <= ro - 1:
 
             # Complete occultation
             phi = np.array([0.0, 0.0])
-            xi = np.array([0.0, 0.0])
+            xi = np.array([0.0, 2 * np.pi])
 
         else:
 
             # Regular occultation, but occultor doesn't touch the limb
-            phi = np.array([2 * np.pi, 0.0])
-            xi = np.array([0.0, 2 * np.pi])
+            phi = np.array([0.0, 2 * np.pi])
+            xi = np.array([0.0, 0.0])
 
     else:
 
@@ -258,7 +258,7 @@ def primitive(x, y, dx, dy, phi1, phi2, f, theta, n=0):
     return res
 
 
-def pT_numerical(lmax, phi, b, r, f, theta, linear=False):
+def pTbar_numerical(lmax, phi, b, r, f, theta, linear=False):
     pT = np.zeros((lmax + 1) ** 2)
     for n in range((lmax + 1) ** 2):
         for phi1, phi2 in np.reshape(phi, (-1, 2)):
@@ -310,7 +310,7 @@ def pT_numerical(lmax, phi, b, r, f, theta, linear=False):
     return pT
 
 
-def tT_numerical(lmax, xi, b, r, f, theta):
+def tTbar_numerical(lmax, xi, b, r, f, theta):
     tT = np.zeros((lmax + 1) ** 2)
     for n in range((lmax + 1) ** 2):
         for xi1, xi2 in np.reshape(xi, (-1, 2)):
@@ -330,15 +330,40 @@ def tT_numerical(lmax, xi, b, r, f, theta):
     return tT
 
 
-def sT_numerical(lmax, b, r, f, theta, linear=False):
+def sTbar_numerical(lmax, b, r, f, theta, linear=False):
     phi, xi = get_angles(b, r, f, theta)
-    return pT_numerical(
+    return pTbar_numerical(
         lmax, phi, b, r, f, theta, linear=linear
-    ) + tT_numerical(lmax, xi, b, r, f, theta)
+    ) + tTbar_numerical(lmax, xi, b, r, f, theta)
 
 
 def integrate(f, a, b, epsabs=1e-12, epsrel=1e-12, **kwargs):
     return quad(f, a, b, epsabs=epsabs, epsrel=epsrel, **kwargs)[0]
+
+
+def get_sT0(lmax):
+    # Compute the solution vector for no occultation
+    L = np.zeros((lmax + 3, lmax + 3))
+    L[0, 0] = 2 * np.pi
+    for u in range(0, lmax + 3, 2):
+        for v in range(2, lmax + 3, 2):
+            fac = (v - 1.0) / (u + v)
+            L[u, v] = fac * L[u, v - 2]
+            L[v, u] = fac * L[v - 2, u]
+    sT0 = np.zeros((lmax + 1) ** 2)
+    n = 0
+    for l in range(lmax + 1):
+        for m in range(-l, l + 1):
+            mu = l - m
+            nu = l + m
+            if nu % 2 == 0:
+                # Case 1
+                sT0[n] = L[mu // 2 + 2, nu // 2]
+            elif (l == 1) and (m == 0):
+                # Case 2
+                sT0[n] = 2 * np.pi / 3
+            n += 1
+    return sT0
 
 
 class PythonSolver:
@@ -353,6 +378,7 @@ class PythonSolver:
             self.cases[n] = self.get_case(n)
             self.l[n] = int(np.floor(np.sqrt(n)))
             self.m[n] = n - self.l[n] ** 2 - self.l[n]
+        self.sT0 = get_sT0(self.lmax)
 
     def get_case(self, n):
         l = int(np.floor(np.sqrt(n)))
@@ -639,11 +665,11 @@ class PythonSolver:
         res, _ = quad(func, phi1, phi2, epsabs=1e-12, epsrel=1e-12)
         return res
 
-    def _get_sT(
+    def _get_sTbar(
         self, bo=0.58, ro=0.4, f=0.2, theta=0.5,
     ):
         """
-        Return the `sT` solution vector.
+        Return the complement of the `sT` solution vector.
 
         """
         # Stability hacks
@@ -804,9 +830,9 @@ class PythonSolver:
                 ]
         return sT
 
-    def get_sT(self, nruns=1, **kwargs):
+    def get_sT(self, nruns=1, f=0.2, **kwargs):
         for n in range(nruns):
-            res = self._get_sT(**kwargs)
+            res = (1 - f) * self.sT0 - self._get_sTbar(f=f, **kwargs)
         return res
 
 
@@ -814,10 +840,13 @@ class NumericalSolver:
     def __init__(self, lmax=5, linear=False):
         self.lmax = lmax
         self.linear = linear
+        self.sT0 = get_sT0(self.lmax)
 
     def get_sT(self, bo=0.58, ro=0.4, f=0.2, theta=0.5, nruns=1):
         for n in range(nruns):
-            res = sT_numerical(self.lmax, bo, ro, f, theta, linear=self.linear)
+            res = (1 - f) * self.sT0 - sTbar_numerical(
+                self.lmax, bo, ro, f, theta, linear=self.linear
+            )
         return res
 
 
@@ -836,29 +865,7 @@ class BruteSolver:
         self.lmax = lmax
         self.res = res
         self.grid_star = grid_star
-
-        # Compute the solution vector for no
-        # occultation.
-        L = np.zeros((self.lmax + 3, self.lmax + 3))
-        L[0, 0] = 2 * np.pi
-        for u in range(0, self.lmax + 3, 2):
-            for v in range(2, self.lmax + 3, 2):
-                fac = (v - 1.0) / (u + v)
-                L[u, v] = fac * L[u, v - 2]
-                L[v, u] = fac * L[v - 2, u]
-        self.sT0 = np.zeros((self.lmax + 1) ** 2)
-        n = 0
-        for l in range(self.lmax + 1):
-            for m in range(-l, l + 1):
-                mu = l - m
-                nu = l + m
-                if nu % 2 == 0:
-                    # Case 1
-                    self.sT0[n] = L[mu // 2 + 2, nu // 2]
-                elif (l == 1) and (m == 0):
-                    # Case 2
-                    self.sT0[n] = 2 * np.pi / 3
-                n += 1
+        self.sT0 = get_sT0(self.lmax)
 
     def g(self, n, x, y, z=None):
         """
@@ -1012,9 +1019,9 @@ class BruteSolver:
                 g /= np.count_nonzero(under_occultor)
 
             # The solution vector for the complement of the visible region
-            sTX = np.pi * ro ** 2 * np.sum(g[:, inds], axis=1)
+            sTbar = np.pi * ro ** 2 * np.sum(g[:, inds], axis=1)
 
-            return b * self.sT0 - sTX
+            return b * self.sT0 - sTbar
 
 
 def draw(bo=0.58, ro=0.4, f=0.2, theta=0.5, file=None):

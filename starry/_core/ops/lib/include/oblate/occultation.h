@@ -471,6 +471,7 @@ protected:
 
 public:
   RowVector<A> sT;
+  RowVector<A> sTbar;
   RowVector<A> sT0;
   A phi1, phi2, xi1, xi2;
 
@@ -509,11 +510,22 @@ public:
   /**
       Compute the full solution vector s^T.
 
+
+  */
+  inline void compute(const A &bo, const A &ro, const A &f, const A &theta) {
+    compute_complement(bo, ro, f, theta);
+    sT = (1 - f) * sT0 - sTbar;
+  }
+
+  /**
+      Compute the complement of the solution vector.
+      This is the integral *under* the occultor.
+
       TODO: Unit tests for the gradients (never tested!)
 
   */
-  inline void compute(const A &bo_, const A &ro_, const A &f_,
-                      const A &theta_) {
+  inline void compute_complement(const A &bo_, const A &ro_, const A &f_,
+                                 const A &theta_) {
     // Make local copies of the inputs
     bo = bo_;
     ro = ro_;
@@ -555,7 +567,7 @@ public:
     if (ro == 0) {
 
       // No occultation
-      sT = (1 - f) * sT0;
+      sTbar.setZero(ncoeff);
       return;
 
     } else {
@@ -564,17 +576,17 @@ public:
     }
 
     // Special cases
-    if ((phi1 == 0.0) && (phi2 == 0.0) && (xi1 == 0.0) && (xi2 == 0.0)) {
+    if ((phi1 == 0.0) && (phi2 == 0.0) && (xi1 == 0.0) &&
+        (xi2 == 2 * pi<Scalar>())) {
 
       // Complete occultation
-      sT.setZero(ncoeff);
+      sTbar = (1 - f) * sT0;
       return;
 
-    } else if ((phi1 == 0.0) && (phi2 == 0.0) && (xi1 == 0.0) &&
-               (xi2 == 2 * pi<Scalar>())) {
+    } else if ((phi1 == 0.0) && (phi2 == 0.0) && (xi1 == 0.0) && (xi2 == 0.0)) {
 
       // No occultation
-      sT = (1 - f) * sT0;
+      sTbar.setZero(ncoeff);
       return;
     }
 
@@ -668,7 +680,7 @@ public:
 
     // Go through the cases
     A pT, tT;
-    sT.resize(ncoeff);
+    sTbar.resize(ncoeff);
     int mu, nu, n = 0;
     for (int l = 0; l < deg + 1; ++l) {
       for (int m = -l; m < l + 1; ++m) {
@@ -699,7 +711,7 @@ public:
         }
 
         // The surface integral is just their sum
-        sT(n) = pT + tT;
+        sTbar(n) = pT + tT;
         ++n;
       }
     }
