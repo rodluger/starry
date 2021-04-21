@@ -2534,7 +2534,12 @@ class ReflectedBase(object):
 
 class OblateAmplitude(Amplitude):
     def __get__(self, instance, owner):
-        return instance._amp / (1.0 - instance._fobl)
+        # This ensures uniform maps have unit flux
+        # regardless of their oblateness or inclination
+        if instance.__props__.get("normalized", True):
+            return instance._amp / (1.0 - instance.fproj)
+        else:
+            return instance._amp
 
 
 class OblateBase(object):
@@ -2551,6 +2556,7 @@ class OblateBase(object):
     """
 
     _ops_class_ = OpsOblate
+
     amp = OblateAmplitude()
 
     def _render_greedy(self, **kwargs):
@@ -2563,7 +2569,7 @@ class OblateBase(object):
             * self._angle_factor,
             get_val(self._inc),
             get_val(self._obl),
-            get_val(self._fproj),
+            get_val(self.fproj),
             get_val(self._y),
             get_val(self._u),
             get_val(self._f),
@@ -2572,7 +2578,7 @@ class OblateBase(object):
     def _get_ortho_borders(self, **kwargs):
         get_val = evaluator(**kwargs)
         obl = get_val(self._obl)
-        fproj = get_val(self._fproj)
+        fproj = get_val(self.fproj)
         xp = np.linspace(-1, 1, 10000)
         yp = np.sqrt(1 - xp ** 2)
         xm = xp
@@ -2587,14 +2593,14 @@ class OblateBase(object):
         get_val = evaluator(**kwargs)
         inc = get_val(self._inc)
         obl = get_val(self._obl)
-        fproj = get_val(self._fproj)
+        fproj = get_val(self.fproj)
         return get_ortho_latitude_lines(inc=inc, obl=obl, fproj=fproj)
 
     def _get_ortho_longitude_lines(self, i=0, **kwargs):
         get_val = evaluator(**kwargs)
         inc = get_val(self._inc)
         obl = get_val(self._obl)
-        fproj = get_val(self._fproj)
+        fproj = get_val(self.fproj)
         theta = (
             np.atleast_1d(get_val(kwargs.get("theta", 0.0)))
             * self._angle_factor
@@ -2622,7 +2628,7 @@ class OblateBase(object):
         self._fobl = self._math.cast(value)
 
     @property
-    def _fproj(self):
+    def fproj(self):
         """The projected oblateness at the current inclination."""
         return 1 - self._math.sqrt(
             1 - self._fobl * (2 - self._fobl) * self._math.sin(self._inc) ** 2
@@ -2659,7 +2665,7 @@ class OblateBase(object):
             ro,
             self._inc,
             self._obl,
-            self._fproj,
+            self.fproj,
             self._u,
             self._f,
         )
@@ -2693,7 +2699,7 @@ class OblateBase(object):
             ro,
             self._inc,
             self._obl,
-            self._fproj,
+            self.fproj,
             self._y,
             self._u,
             self._f,
@@ -2709,6 +2715,7 @@ def Map(
     oblate=False,
     source_npts=1,
     gdeg=4,
+    normalized=True,
     lazy=None,
     **kwargs
 ):
@@ -2743,6 +2750,12 @@ def Map(
             light. Defaults to False.
         oblate (bool, optional): If True, models the object as an oblate
             spheroid. Defaults to False.
+        normalized (bool, optional): Whether the flux from a uniform map should
+            be normalized to unity regardless of the projected oblateness of
+            the object (oblate maps only). Default is True. If False, the flux
+            from a uniform map is proportional to its projected area, which
+            scales as `1 / (1 - fproj)` where `fproj` is the projected
+            oblateness.
         source_npts (int, optional): Number of points used to approximate the
             finite illumination source size. Default is 1. Valid only if
             `reflected` is True.
@@ -2818,6 +2831,7 @@ def Map(
             oblate=OblateBase in Bases,
             spectral=nw is not None,
             source_npts=source_npts,
+            normalized=normalized,
         )
 
         def __init__(self, *args, **kwargs):
