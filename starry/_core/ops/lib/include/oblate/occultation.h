@@ -12,6 +12,7 @@
 #include "../utils.h"
 #include "ellip.h"
 #include "geometry.h"
+#include "numerical.h"
 #include "special.h"
 
 namespace starry {
@@ -21,10 +22,11 @@ namespace occultation {
 using namespace utils;
 using namespace ellip;
 using namespace special;
+using namespace numerical;
 using namespace geometry;
 using std::min, std::max;
 
-template <class Scalar, int N, bool EXACT = false> class Occultation {
+template <class Scalar, int N> class Occultation {
 
   using A = ADScalar<Scalar, N>;
 
@@ -556,8 +558,9 @@ public:
 
 
   */
-  inline void compute(const A &bo, const A &ro, const A &f, const A &theta) {
-    if (EXACT)
+  inline void compute(const A &bo, const A &ro, const A &f, const A &theta,
+                      const bool exact = true) {
+    if (exact)
       compute_complement_exact(bo, ro, f, theta);
     else
       compute_complement_linear(bo, ro, f, theta);
@@ -637,71 +640,6 @@ public:
       return;
     }
 
-    // Compute the vectorized integrals
-    Scalar _bo = bo.value();
-    Scalar _ro = ro.value();
-    Scalar _costheta = costheta.value();
-    Scalar _sintheta = sintheta.value();
-    Scalar _b = (1 - f.value());
-    int _deg = deg, _ncoeff = ncoeff;
-    std::function<Vector<Scalar>(Scalar)> func = [_deg, _ncoeff, _bo, _ro,
-                                                  _costheta, _sintheta,
-                                                  _b](Scalar phi) {
-      // Pre-compute common terms
-      Scalar cosphi = cos(phi);
-      Scalar sinphi = sin(phi);
-      Scalar cosvphi = _costheta * cosphi + _sintheta * sinphi;
-      Scalar sinvphi = -_sintheta * cosphi + _costheta * sinphi;
-      Scalar x = _ro * cosvphi + _bo * _sintheta;
-      Scalar y = (_ro * sinvphi + _bo * _costheta) / _b;
-      Scalar z2 = 1 - x * x - y * y;
-      Scalar z3 = z2 > 0 ? z2 * sqrt(z2) : 0.0;
-      Scalar z3x = -_ro * sinvphi * z3;
-      Scalar z3y = _ro * cosvphi * z3;
-
-      // Compute all the integrands
-      Vector<Scalar> integrand(_ncoeff);
-
-      // Case 2
-      integrand(2) = _ro * (_ro + _bo * sinphi) * (1.0 - z3) / (3.0 - 3.0 * z2);
-
-      // Cases 3-5
-      Scalar xi, yj;
-      int n;
-      xi = 1.0;
-      for (int i = 0; i < _deg - 1; ++i) {
-
-        if (is_even(i)) {
-
-          // Case 3
-          n = i * i + 6 * i + 7;
-          if (n < _ncoeff) {
-            integrand(n) = _b * xi * z3x;
-          }
-          // Case 4
-          n += 2 * i + 7;
-          if (n < _ncoeff) {
-            integrand(n) = _b * xi * y * z3x;
-          }
-        }
-
-        // Case 5
-        yj = 1.0;
-        for (int j = 0; j < _deg - 1 - i; ++j) {
-          n = (i + j) * (i + j) + 4 * i + 6 * j + 5;
-          integrand(n) = xi * yj * z3y;
-          yj *= y;
-        }
-
-        xi *= x;
-      }
-
-      return integrand;
-    };
-    Vector<Scalar> P = QUAD.integrate(phi1.value(), phi2.value(), func, ncoeff);
-
-    // TODO: DERIVATIVES!
-
     // Compute the binomial helper matrices
     S.setZero(deg + 3, deg + 3);
     C.setZero(deg + 3, deg + 3);
@@ -727,8 +665,13 @@ public:
     M = S.topRightCorner(deg + 2, deg + 2) * Lp.reverse().topRows(deg + 2) *
         C.leftCols(deg + 2);
 
-    // Compute L (t integral)
-    compute_L(xi1, xi2, Lt);
+    // Compute the odd `mu` integrals numerically
+    Vector<A> P =
+        pTodd(deg, bo, ro, f, theta, costheta, sintheta, phi1, phi2, QUAD);
+    s
+
+        // Compute L (t integral)
+        compute_L(xi1, xi2, Lt);
 
     // Go through the cases
     A pT, tT;

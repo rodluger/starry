@@ -58,10 +58,10 @@ PYBIND11_MODULE(_c_ops, m) {
     ro.value() = ro_;
     f.value() = f_;
     theta.value() = theta_;
-    auto occ = Occultation<double, 0, false>(deg);
+    auto occ = Occultation<double, 0>(deg);
 
     for (int n = 0; n < nruns; ++n)
-      occ.compute(bo, ro, f, theta);
+      occ.compute(bo, ro, f, theta, false);
 
     Vector<double> sT_value(occ.sT.size());
     for (int n = 0; n < occ.sT.size(); ++n)
@@ -78,10 +78,10 @@ PYBIND11_MODULE(_c_ops, m) {
           ro.value() = ro_;
           f.value() = f_;
           theta.value() = theta_;
-          auto occ = Occultation<double, 0, true>(deg);
+          auto occ = Occultation<double, 0>(deg);
 
           for (int n = 0; n < nruns; ++n)
-            occ.compute(bo, ro, f, theta);
+            occ.compute(bo, ro, f, theta, true);
 
           Vector<double> sT_value(occ.sT.size());
           for (int n = 0; n < occ.sT.size(); ++n)
