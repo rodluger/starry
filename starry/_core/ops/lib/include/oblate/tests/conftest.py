@@ -3,7 +3,7 @@ import pytest
 
 
 @pytest.fixture(scope="session", autouse=True)
-def solvers(lmax=10):
+def solvers(lmax=5):
     cppsolver = oblate.CppSolver(lmax, linear=True)
     cppexactsolver = oblate.CppSolver(lmax, linear=False)
     numsolver = oblate.NumericalSolver(lmax, linear=False)

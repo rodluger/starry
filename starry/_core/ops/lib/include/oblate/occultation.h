@@ -668,10 +668,9 @@ public:
     // Compute the odd `mu` integrals numerically
     Vector<A> P =
         pTodd(deg, bo, ro, f, theta, costheta, sintheta, phi1, phi2, QUAD);
-    s
 
-        // Compute L (t integral)
-        compute_L(xi1, xi2, Lt);
+    // Compute L (t integral)
+    compute_L(xi1, xi2, Lt);
 
     // Go through the cases
     A pT, tT;

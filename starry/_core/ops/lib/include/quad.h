@@ -36,7 +36,7 @@ public:
     const LegendrePolynomial &legpoly = s_LegendrePolynomial;
 
     T sum = 0;
-    for (int i = 1; i <= eDEGREE; ++i) {
+    for (int i = 0; i < eDEGREE; ++i) {
       sum += legpoly.weight(i) * f(p * legpoly.root(i) + q);
     }
 
@@ -52,17 +52,11 @@ public:
    */
   template <typename Function>
   inline Vector<T> integrate(T a, T b, Function f, int npts) {
-    T p = (b - a) / 2;
-    T q = (b + a) / 2;
+    T p = 0.5 * (b - a);
+    Vector<T> q((int)eDEGREE);
+    q.setConstant(0.5 * (b + a));
     const LegendrePolynomial &legpoly = s_LegendrePolynomial;
-
-    Vector<T> sum;
-    sum.setZero(npts);
-    for (int i = 1; i <= eDEGREE; ++i) {
-      sum += legpoly.weight(i) * f(p * legpoly.root(i) + q);
-    }
-
-    return p * sum;
+    return p * legpoly.wT * f(p * legpoly.r + q);
   }
 
   /*! Print out roots and weights for information
@@ -70,12 +64,12 @@ public:
   void print_roots_and_weights(std::ostream &out) const {
     const LegendrePolynomial &legpoly = s_LegendrePolynomial;
     out << "Roots:  ";
-    for (int i = 0; i <= eDEGREE; ++i) {
+    for (int i = 0; i < eDEGREE; ++i) {
       out << ' ' << legpoly.root(i);
     }
     out << '\n';
     out << "Weights:";
-    for (int i = 0; i <= eDEGREE; ++i) {
+    for (int i = 0; i < eDEGREE; ++i) {
       out << ' ' << legpoly.weight(i);
     }
     out << '\n';
@@ -87,30 +81,31 @@ private:
    */
   class LegendrePolynomial {
   public:
+    Eigen::Matrix<T, eDEGREE, 1> r;
+    Eigen::Matrix<T, 1, eDEGREE> wT;
+
     LegendrePolynomial() {
       // Solve roots and weights
-      for (int i = 0; i <= eDEGREE; ++i) {
+
+      for (int i = 0; i < eDEGREE; ++i) {
         T dr = 1;
 
         // Find zero
-        Evaluation eval(cos(M_PI * (i - 0.25) / (eDEGREE + 0.5)));
+        Evaluation eval(cos(M_PI * (i + 0.75) / (eDEGREE + 0.5)));
         do {
           dr = eval.v() / eval.d();
           eval.evaluate(eval.x() - dr);
         } while (abs(dr) > 2e-16);
 
-        this->_r[i] = eval.x();
-        this->_w[i] = 2 / ((1 - eval.x() * eval.x()) * eval.d() * eval.d());
+        this->r(i) = eval.x();
+        this->wT(i) = 2 / ((1 - eval.x() * eval.x()) * eval.d() * eval.d());
       }
     }
 
-    T root(int i) const { return this->_r[i]; }
-    T weight(int i) const { return this->_w[i]; }
+    T root(int i) const { return this->r(i); }
+    T weight(int i) const { return this->wT(i); }
 
   private:
-    T _r[eDEGREE + 1];
-    T _w[eDEGREE + 1];
-
     /*! Evaluate the value *and* derivative of the
      *   Legendre polynomial
      */
