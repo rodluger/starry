@@ -58,7 +58,7 @@ PYBIND11_MODULE(_c_ops, m) {
     ro.value() = ro_;
     f.value() = f_;
     theta.value() = theta_;
-    auto occ = Occultation<double, 0>(deg);
+    auto occ = Occultation<double, 0, false>(deg);
 
     for (int n = 0; n < nruns; ++n)
       occ.compute(bo, ro, f, theta);
@@ -68,6 +68,26 @@ PYBIND11_MODULE(_c_ops, m) {
       sT_value(n) = occ.sT(n).value();
     return sT_value;
   });
+
+  m.def("sTexact",
+        [](const int &deg, const double &bo_, const double &ro_,
+           const double &f_, const double &theta_, const int &nruns) {
+          using A = ADScalar<double, 0>;
+          A bo, ro, f, theta;
+          bo.value() = bo_;
+          ro.value() = ro_;
+          f.value() = f_;
+          theta.value() = theta_;
+          auto occ = Occultation<double, 0, true>(deg);
+
+          for (int n = 0; n < nruns; ++n)
+            occ.compute(bo, ro, f, theta);
+
+          Vector<double> sT_value(occ.sT.size());
+          for (int n = 0; n < occ.sT.size(); ++n)
+            sT_value(n) = occ.sT(n).value();
+          return sT_value;
+        });
 
   m.def("angles", [](const double &bo_, const double &ro_, const double &f_,
                      const double &theta_) {

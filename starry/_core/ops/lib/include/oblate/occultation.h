@@ -24,7 +24,7 @@ using namespace special;
 using namespace geometry;
 using std::min, std::max;
 
-template <class Scalar, int N> class Occultation {
+template <class Scalar, int N, bool EXACT = false> class Occultation {
 
   using A = ADScalar<Scalar, N>;
 
@@ -69,6 +69,7 @@ protected:
   Matrix<A> BR;
   Matrix<A> S;
   Matrix<A> C;
+  Matrix<A> BinCoeff;
   Eigen::Matrix<A, 2, 3, ColMajor> D;
 
   // Numerical integration
@@ -381,6 +382,38 @@ protected:
 
   /**
    *
+   * Compute the `I` matrix of integrals
+   * via a linear Taylor expansion in `f`.
+   *
+   */
+  inline void compute_I() {
+    compute_J();
+    J32 = gamma * sqrtgamma *
+          (J.topLeftCorner(deg + 2, deg + 2) -
+           w2 * J.topRightCorner(deg + 2, deg + 2));
+    J12 = sqrtgamma * J.topLeftCorner(deg + 2, deg + 2);
+    I.setZero(deg + 2, deg + 2);
+    A J0, J1, T;
+    for (int i = 0; i < deg + 1; ++i) {
+      int jmax = min(deg, i + 1);
+      for (int j = 0; j < jmax; ++j) {
+        J0 = J32(i - j, j);
+        J1 = (D.cwiseProduct(J12.block(i - j, j, 2, 3))).sum();
+        T = J0 + f * J1;
+        for (int k = 0; k < i + 1; ++k) {
+          int imk = i - k;
+          int lmin = max(0, j - imk);
+          int lmax = min(k, j);
+          for (int l = lmin; l < lmax + 1; ++l) {
+            I(deg + 1 - imk, deg + 1 - k) += BL(imk, j - l) * T * BR(k, l);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   *
    * Compute the matrix of `L` integrals.
    *
    * The term `L_{i,j}` is the solution to the integral of
@@ -477,6 +510,17 @@ public:
 
   explicit Occultation(int deg) : deg(deg), ncoeff((deg + 1) * (deg + 1)) {
     compute_phase();
+
+    // Binomial coefficient matrix
+    // BinCoeff[i, j] = (i choose j) * (-1)^j
+    BinCoeff.setZero(deg / 2 + 2, deg / 2 + 2);
+    BinCoeff.row(0).setOnes();
+    BinCoeff.col(0).setOnes();
+    for (int i = 1; i < deg / 2 + 2; ++i) {
+      for (int j = 1; j < deg / 2 + 2; ++j) {
+        BinCoeff(i, j) = Scalar(j - i - 1) / Scalar(j) * BinCoeff(i, j - 1);
+      }
+    }
   }
 
   /**
@@ -513,7 +557,10 @@ public:
 
   */
   inline void compute(const A &bo, const A &ro, const A &f, const A &theta) {
-    compute_complement(bo, ro, f, theta);
+    if (EXACT)
+      compute_complement_exact(bo, ro, f, theta);
+    else
+      compute_complement_linear(bo, ro, f, theta);
     sT = (1 - f) * sT0 - sTbar;
   }
 
@@ -524,8 +571,213 @@ public:
       TODO: Unit tests for the gradients (never tested!)
 
   */
-  inline void compute_complement(const A &bo_, const A &ro_, const A &f_,
-                                 const A &theta_) {
+  inline void compute_complement_exact(const A &bo_, const A &ro_, const A &f_,
+                                       const A &theta_) {
+    // Make local copies of the inputs
+    bo = bo_;
+    ro = ro_;
+    f = f_;
+    theta = theta_;
+    costheta = cos(theta);
+    sintheta = sin(theta);
+
+    // Nudge the inputs away from singular points
+    if (abs(bo - ro) < STARRY_BO_EQUALS_RO_TOL)
+      bo = ro + (bo > ro ? STARRY_BO_EQUALS_RO_TOL : -STARRY_BO_EQUALS_RO_TOL);
+    if ((abs(bo - ro) < STARRY_BO_EQUALS_RO_EQUALS_HALF_TOL) &&
+        (abs(ro - 0.5) < STARRY_BO_EQUALS_RO_EQUALS_HALF_TOL))
+      bo = ro + STARRY_BO_EQUALS_RO_EQUALS_HALF_TOL;
+    if (abs(bo) < STARRY_BO_EQUALS_ZERO_TOL)
+      bo = STARRY_BO_EQUALS_ZERO_TOL;
+    if ((ro > 0) && (ro < STARRY_RO_EQUALS_ZERO_TOL))
+      ro = STARRY_RO_EQUALS_ZERO_TOL;
+    if (abs(1 - bo - ro) < STARRY_BO_EQUALS_ONE_MINUS_RO_TOL)
+      bo = 1 - ro + STARRY_BO_EQUALS_ONE_MINUS_RO_TOL;
+    if (abs(theta - 0.5 * pi<Scalar>()) < STARRY_ROOT_TOL_THETA_PI_TWO) {
+      theta += (theta > 0.5 * pi<Scalar>() ? 1.0 : -1.0) *
+               STARRY_ROOT_TOL_THETA_PI_TWO;
+      costheta = cos(theta);
+      sintheta = sin(theta);
+    } else if (abs(theta + 0.5 * pi<Scalar>()) < STARRY_ROOT_TOL_THETA_PI_TWO) {
+      theta += (theta > -0.5 * pi<Scalar>() ? 1.0 : -1.0) *
+               STARRY_ROOT_TOL_THETA_PI_TWO;
+      costheta = cos(theta);
+      sintheta = sin(theta);
+    } else if (abs(sintheta) < STARRY_T_TOL) {
+      sintheta = sintheta > 0 ? STARRY_T_TOL : -STARRY_T_TOL;
+      theta = costheta > 0 ? 0 : pi<Scalar>();
+    }
+    if (f < STARRY_MIN_F)
+      f = STARRY_MIN_F;
+
+    // Compute the angles of intersection
+    if (ro == 0) {
+
+      // No occultation
+      sTbar.setZero(ncoeff);
+      return;
+
+    } else {
+
+      get_angles(bo, ro, f, theta, phi1, phi2, xi1, xi2);
+    }
+
+    // Special cases
+    if ((phi1 == 0.0) && (phi2 == 0.0) && (xi1 == 0.0) &&
+        (xi2 == 2 * pi<Scalar>())) {
+
+      // Complete occultation
+      sTbar = (1 - f) * sT0;
+      return;
+
+    } else if ((phi1 == 0.0) && (phi2 == 0.0) && (xi1 == 0.0) && (xi2 == 0.0)) {
+
+      // No occultation
+      sTbar.setZero(ncoeff);
+      return;
+    }
+
+    // Compute the vectorized integrals
+    Scalar _bo = bo.value();
+    Scalar _ro = ro.value();
+    Scalar _costheta = costheta.value();
+    Scalar _sintheta = sintheta.value();
+    Scalar _b = (1 - f.value());
+    int _deg = deg, _ncoeff = ncoeff;
+    std::function<Vector<Scalar>(Scalar)> func = [_deg, _ncoeff, _bo, _ro,
+                                                  _costheta, _sintheta,
+                                                  _b](Scalar phi) {
+      // Pre-compute common terms
+      Scalar cosphi = cos(phi);
+      Scalar sinphi = sin(phi);
+      Scalar cosvphi = _costheta * cosphi + _sintheta * sinphi;
+      Scalar sinvphi = -_sintheta * cosphi + _costheta * sinphi;
+      Scalar x = _ro * cosvphi + _bo * _sintheta;
+      Scalar y = (_ro * sinvphi + _bo * _costheta) / _b;
+      Scalar z2 = 1 - x * x - y * y;
+      Scalar z3 = z2 > 0 ? z2 * sqrt(z2) : 0.0;
+      Scalar z3x = -_ro * sinvphi * z3;
+      Scalar z3y = _ro * cosvphi * z3;
+
+      // Compute all the integrands
+      Vector<Scalar> integrand(_ncoeff);
+
+      // Case 2
+      integrand(2) = _ro * (_ro + _bo * sinphi) * (1.0 - z3) / (3.0 - 3.0 * z2);
+
+      // Cases 3-5
+      Scalar xi, yj;
+      int n;
+      xi = 1.0;
+      for (int i = 0; i < _deg - 1; ++i) {
+
+        if (is_even(i)) {
+
+          // Case 3
+          n = i * i + 6 * i + 7;
+          if (n < _ncoeff) {
+            integrand(n) = _b * xi * z3x;
+          }
+          // Case 4
+          n += 2 * i + 7;
+          if (n < _ncoeff) {
+            integrand(n) = _b * xi * y * z3x;
+          }
+        }
+
+        // Case 5
+        yj = 1.0;
+        for (int j = 0; j < _deg - 1 - i; ++j) {
+          n = (i + j) * (i + j) + 4 * i + 6 * j + 5;
+          integrand(n) = xi * yj * z3y;
+          yj *= y;
+        }
+
+        xi *= x;
+      }
+
+      return integrand;
+    };
+    Vector<Scalar> P = QUAD.integrate(phi1.value(), phi2.value(), func, ncoeff);
+
+    // TODO: DERIVATIVES!
+
+    // Compute the binomial helper matrices
+    S.setZero(deg + 3, deg + 3);
+    C.setZero(deg + 3, deg + 3);
+    A fac, fac0, facc, facs;
+    fac0 = 1.0;
+    for (int i = 0; i < deg + 3; ++i) {
+      facs = ro * fac0;
+      facc = fac0;
+      for (int j = 0; j < deg + 3; ++j) {
+        if (j < i + 1) {
+          S(i, deg + 2 + j - i) = facs;
+          C(deg + 2 + j - i, i) = facc;
+          fac = bo * (i - j) / (ro * (j + 1.0));
+          facs *= fac * sintheta;
+          facc *= fac * costheta;
+        }
+      }
+      fac0 *= ro;
+    }
+
+    // Compute the M integral
+    compute_L(phi1 - theta, phi2 - theta, Lp);
+    M = S.topRightCorner(deg + 2, deg + 2) * Lp.reverse().topRows(deg + 2) *
+        C.leftCols(deg + 2);
+
+    // Compute L (t integral)
+    compute_L(xi1, xi2, Lt);
+
+    // Go through the cases
+    A pT, tT;
+    sTbar.resize(ncoeff);
+    int mu, nu, n = 0;
+    for (int l = 0; l < deg + 1; ++l) {
+      for (int m = -l; m < l + 1; ++m) {
+        mu = l - m;
+        nu = l + m;
+
+        // Compute the pT and tT integrals
+        if (is_even(nu)) {
+          // Case 1
+          pT = pow(1 - f, -(nu / 2)) * M((mu + 2) / 2, nu / 2);
+          tT = (1 - f) * Lt(mu / 2 + 2, nu / 2);
+        } else if ((l == 1) && (m == 0)) {
+          // Case 2
+          pT = P(n);
+          tT = (1 - f) * (xi2 - xi1) / 3;
+        } else if (is_even(l) && (mu == 1)) {
+          // Case 3
+          pT = P(n);
+          tT = 0.0;
+        } else if (!is_even(l) && (mu == 1)) {
+          // Case 4
+          pT = P(n);
+          tT = 0.0;
+        } else {
+          // Case 5
+          pT = P(n);
+          tT = 0.0;
+        }
+
+        // The surface integral is just their sum
+        sTbar(n) = pT + tT;
+        ++n;
+      }
+    }
+  }
+
+  /**
+      Compute the complement of the solution vector.
+      This is the integral *under* the occultor.
+
+      TODO: Unit tests for the gradients (never tested!)
+
+  */
+  inline void compute_complement_linear(const A &bo_, const A &ro_, const A &f_,
+                                        const A &theta_) {
     // Make local copies of the inputs
     bo = bo_;
     ro = ro_;
@@ -597,14 +849,14 @@ public:
     kc2 = 1 - k2;
     w2 = 1.0 / (2 * k2 - 1);
     invkc2 = 1.0 / kc2;
-    tantheta = sintheta / costheta;
-    invtantheta = 1.0 / tantheta;
 
     // Compute the binomial helper matrices
     S.setZero(deg + 3, deg + 3);
     C.setZero(deg + 3, deg + 3);
     BL.setZero(deg + 3, deg + 3);
     BR.setZero(deg + 3, deg + 3);
+    tantheta = sintheta / costheta;
+    invtantheta = 1.0 / tantheta;
     A fac, fac0, facc, facs, fac0l, fac0r, facl, facr, facb;
     fac0 = 1.0;
     fac0l = 1.0;
@@ -645,29 +897,7 @@ public:
         C.leftCols(deg + 2);
 
     // Compute the I integral
-    compute_J();
-    J32 = gamma * sqrtgamma *
-          (J.topLeftCorner(deg + 2, deg + 2) -
-           w2 * J.topRightCorner(deg + 2, deg + 2));
-    J12 = sqrtgamma * J.topLeftCorner(deg + 2, deg + 2);
-    I.setZero(deg + 2, deg + 2);
-    A J0, J1, T;
-    for (int i = 0; i < deg + 1; ++i) {
-      int jmax = min(deg, i + 1);
-      for (int j = 0; j < jmax; ++j) {
-        J0 = J32(i - j, j);
-        J1 = (D.cwiseProduct(J12.block(i - j, j, 2, 3))).sum();
-        T = J0 + f * J1;
-        for (int k = 0; k < i + 1; ++k) {
-          int imk = i - k;
-          int lmin = max(0, j - imk);
-          int lmax = min(k, j);
-          for (int l = lmin; l < lmax + 1; ++l) {
-            I(deg + 1 - imk, deg + 1 - k) += BL(imk, j - l) * T * BR(k, l);
-          }
-        }
-      }
-    }
+    compute_I();
 
     // Compute the K, H integrals
     K = S.topRightCorner(deg + 2, deg + 1) * I.topRows(deg + 1) *

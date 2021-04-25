@@ -15,13 +15,19 @@ def test_speed(solvers, nruns=1000, niter=30):
     """
     # Run the timing tests a bunch of times
     cpptime = np.zeros(niter)
+    cppxtime = np.zeros(niter)
     pytime = np.zeros(niter)
     for k in range(niter):
 
-        # Time the C++ solver
+        # Time the C++ solver (linear)
         tstart = time.time()
         res = solvers["cpp"].get_sT(nruns=nruns)
         cpptime[k] = (time.time() - tstart) / nruns
+
+        # Time the C++ solver (exact)
+        tstart = time.time()
+        res = solvers["cppx"].get_sT(nruns=nruns)
+        cppxtime[k] = (time.time() - tstart) / nruns
 
         # Time the Python solver
         tstart = time.time()
@@ -29,13 +35,19 @@ def test_speed(solvers, nruns=1000, niter=30):
         pytime[k] = (time.time() - tstart) / nruns
 
     # Log
+    print("")
     print(
-        "C++:    {:.3} +/- {:.3} ms".format(
+        "C++ (linear):    {:.3} +/- {:.3} ms".format(
+            np.median(cppxtime) * 1e3, np.std(cppxtime) * 1e3
+        )
+    )
+    print(
+        "C++ (exact):     {:.3} +/- {:.3} ms".format(
             np.median(cpptime) * 1e3, np.std(cpptime) * 1e3
         )
     )
     print(
-        "Python: {:.3} +/- {:.3} ms".format(
+        "Python (linear): {:.3} +/- {:.3} ms".format(
             np.median(pytime) * 1e3, np.std(pytime) * 1e3
         )
     )

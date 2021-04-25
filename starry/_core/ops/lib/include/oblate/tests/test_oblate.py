@@ -266,3 +266,57 @@ class TestDebug(Compare):
         oblate.draw(**kwargs)
         plt.show()
 
+
+@pytest.mark.parametrize(
+    "kwargs", [dict(bo=0.95, ro=0.25, f=0.2, theta=0.5)],
+)
+class TestCppExact:
+    def test_debug(self, kwargs):
+        # All the solvers
+        lmax = 4
+        sTcpp = oblate.CppSolver(lmax, linear=False).get_sT(**kwargs)
+        sTpy = oblate.PythonSolver(lmax).get_sT(**kwargs)
+        sTlin = oblate.NumericalSolver(lmax, linear=True).get_sT(**kwargs)
+        sTnum = oblate.NumericalSolver(lmax, linear=False).get_sT(**kwargs)
+        sTbrute = oblate.BruteSolver(lmax).get_sT(**kwargs)
+
+        # NaN indices
+        icpp = np.isnan(sTcpp)
+        ipy = np.isnan(sTpy)
+        inum = np.isnan(sTnum)
+        ilin = np.isnan(sTlin)
+        sTcpp[icpp] = -1.0
+        sTpy[ipy] = -1.0
+        sTnum[inum] = -1.0
+        sTlin[ilin] = -1.0
+
+        # Cases
+        cases = oblate.PythonSolver(lmax).cases
+        ibad = np.abs(sTcpp - sTnum) > 1e-3
+
+        # Plot comparison
+        fig, ax = plt.subplots(3, figsize=(10, 8))
+
+        ax[0].plot(sTcpp, label="c++")
+        ax[0].plot(np.arange(len(sTcpp))[icpp], sTcpp[icpp], "ro")
+        ax[0].plot(sTnum, label="num")
+        ax[0].plot(np.arange(len(sTnum))[inum], sTnum[inum], "ro")
+        ax[0].legend()
+        diff = np.log10(np.abs(sTcpp - sTnum))
+        diff[diff < -15] = -15
+        ax[1].plot(diff, "k-", label="diff")
+
+        ax[2].axhline(1, lw=1, alpha=0.3, color="k")
+        ax[2].axhline(2, lw=1, alpha=0.3, color="k")
+        ax[2].axhline(3, lw=1, alpha=0.3, color="k")
+        ax[2].axhline(4, lw=1, alpha=0.3, color="k")
+        ax[2].axhline(5, lw=1, alpha=0.3, color="k")
+
+        ax[2].set_yticks([1, 2, 3, 4, 5])
+
+        ax[2].plot(cases, "ro", alpha=0.25)
+        ax[2].plot(np.arange(len(cases))[ibad], cases[ibad], "ro")
+
+        # View geometry
+        oblate.draw(**kwargs)
+        plt.show()

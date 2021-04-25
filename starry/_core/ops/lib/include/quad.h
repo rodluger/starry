@@ -16,21 +16,20 @@ namespace quad {
 using namespace utils;
 
 /*! Implementation of Gauss-Legendre quadrature
-*  http://en.wikipedia.org/wiki/Gaussian_quadrature
-*  http://rosettacode.org/wiki/Numerical_integration/Gauss-Legendre_Quadrature
-*
-*/
+ *  http://en.wikipedia.org/wiki/Gaussian_quadrature
+ *  http://rosettacode.org/wiki/Numerical_integration/Gauss-Legendre_Quadrature
+ *
+ */
 template <typename T> class Quad {
 public:
   enum { eDEGREE = STARRY_QUAD_POINTS };
 
   /*! Compute the integral of a functor
-  *
-  *   @param a    lower limit of integration
-  *   @param b    upper limit of integration
-  *   @param f    the function to integrate
-  *   @param err  callback in case of problems
-  */
+   *
+   *   @param a    lower limit of integration
+   *   @param b    upper limit of integration
+   *   @param f    the function to integrate
+   */
   template <typename Function> inline T integrate(T a, T b, Function f) {
     T p = (b - a) / 2;
     T q = (b + a) / 2;
@@ -44,8 +43,30 @@ public:
     return p * sum;
   }
 
+  /*! Compute the vectorized integral of a functor
+   *
+   *   @param a    lower limit of integration
+   *   @param b    upper limit of integration
+   *   @param f    the function to integrate
+   *   @param npts the dimension of the function output
+   */
+  template <typename Function>
+  inline Vector<T> integrate(T a, T b, Function f, int npts) {
+    T p = (b - a) / 2;
+    T q = (b + a) / 2;
+    const LegendrePolynomial &legpoly = s_LegendrePolynomial;
+
+    Vector<T> sum;
+    sum.setZero(npts);
+    for (int i = 1; i <= eDEGREE; ++i) {
+      sum += legpoly.weight(i) * f(p * legpoly.root(i) + q);
+    }
+
+    return p * sum;
+  }
+
   /*! Print out roots and weights for information
-  */
+   */
   void print_roots_and_weights(std::ostream &out) const {
     const LegendrePolynomial &legpoly = s_LegendrePolynomial;
     out << "Roots:  ";
@@ -62,8 +83,8 @@ public:
 
 private:
   /*! Implementation of the Legendre polynomials that form
-  *   the basis of this quadrature
-  */
+   *   the basis of this quadrature
+   */
   class LegendrePolynomial {
   public:
     LegendrePolynomial() {
@@ -91,8 +112,8 @@ private:
     T _w[eDEGREE + 1];
 
     /*! Evaluate the value *and* derivative of the
-    *   Legendre polynomial
-    */
+     *   Legendre polynomial
+     */
     class Evaluation {
     public:
       explicit Evaluation(T x) : _x(x), _v(1), _d(0) { this->evaluate(x); }
@@ -125,7 +146,7 @@ private:
   };
 
   /*! Pre-compute the weights and abscissae of the Legendre polynomials
-  */
+   */
   static LegendrePolynomial s_LegendrePolynomial;
 };
 

@@ -1,4 +1,4 @@
-from ._c_ops import sT, angles
+from ._c_ops import sT, sTexact, angles
 import numpy as np
 from scipy.integrate import quad
 import mpmath
@@ -851,13 +851,17 @@ class NumericalSolver:
 
 
 class CppSolver:
-    def __init__(self, lmax=5):
+    def __init__(self, lmax=5, linear=True):
         self.lmax = lmax
+        if linear:
+            self.sT = sT
+        else:
+            self.sT = sTexact
 
     def get_sT(
         self, bo=0.58, ro=0.4, f=0.2, theta=0.5, nruns=1,
     ):
-        return sT(self.lmax, bo, ro, f, theta, nruns)
+        return self.sT(self.lmax, bo, ro, f, theta, nruns)
 
 
 class BruteSolver:
