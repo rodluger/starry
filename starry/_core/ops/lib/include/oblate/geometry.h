@@ -130,16 +130,6 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
     Complex f, df;
     Scalar absf, minerr = INFINITY;
 
-    /* -- DEBUG INFO --
-    root2 = root * root;
-    root3 = root2 * root;
-    root4 = root3 * root;
-    f = coeffs[0] * root4 + coeffs[1] * root3 + coeffs[2] * root2 +
-        coeffs[3] * root + coeffs[4];
-    std::cout << std::setprecision(12) << "x0:    " << root << std::endl;
-    std::cout << std::setprecision(12) << "error: " << abs(f) << std::endl;
-    */
-
     // Polish
     for (int k = 0; k < STARRY_ROOT_MAX_ITER; ++k) {
 
@@ -165,16 +155,6 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
       root -= f / df;
     }
     root = minxc;
-
-    /* -- DEBUG INFO --
-    root2 = root * root;
-    root3 = root2 * root;
-    root4 = root3 * root;
-    f = coeffs[0] * root4 + coeffs[1] * root3 + coeffs[2] * root2 +
-        coeffs[3] * root + coeffs[4];
-    std::cout << std::setprecision(12) << "xp:    " << root << std::endl;
-    std::cout << std::setprecision(12) << "error: " << abs(f) << std::endl;
-    */
 
     // Keep the root if it's real
     if (abs(root.imag()) < STARRY_ROOT_TOL_HIGH) {
@@ -219,12 +199,6 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
       // Save the root
       x(nroots).value() = root.real();
       y(nroots).value() = s0 * fA.real();
-
-      /* -- DEBUG INFO --
-      std::cout << std::setprecision(12) << "y:   " << y(nroots).value()
-                << std::endl;
-      std::cout << std::endl;
-      */
 
       // Compute its derivatives
       if (N > 0) {
@@ -325,43 +299,6 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
   A yo = bo * costheta;
   Vector<A> x, y;
   get_roots(b, theta, costheta, sintheta, bo, ro, x, y);
-
-  // DEBUG
-  /*
-  if (N > 0) {
-    Vector<A> x2, x1;
-    A eps = 1.0e-8;
-    get_roots(b, theta, costheta, sintheta, A(bo + eps), ro, x2, y);
-    get_roots(b, theta, costheta, sintheta, A(bo - eps), ro, x1, y);
-    std::cout << ((x2 - x1) / (2 * eps)).transpose() << std::endl;
-    std::cout << x(0).derivatives()(0) << " " << x(1).derivatives()(0)
-              << std::endl
-              << std::endl;
-
-    get_roots(b, theta, costheta, sintheta, bo, A(ro + eps), x2, y);
-    get_roots(b, theta, costheta, sintheta, bo, A(ro - eps), x1, y);
-    std::cout << ((x2 - x1) / (2 * eps)).transpose() << std::endl;
-    std::cout << x(0).derivatives()(1) << " " << x(1).derivatives()(1)
-              << std::endl
-              << std::endl;
-
-    get_roots(A(b - eps), theta, costheta, sintheta, bo, ro, x2, y);
-    get_roots(A(b + eps), theta, costheta, sintheta, bo, ro, x1, y);
-    std::cout << ((x2 - x1) / (2 * eps)).transpose() << std::endl;
-    std::cout << x(0).derivatives()(2) << " " << x(1).derivatives()(2)
-              << std::endl
-              << std::endl;
-
-    get_roots(b, A(theta + eps), A(cos(theta + eps)), A(sin(theta + eps)), bo,
-              ro, x2, y);
-    get_roots(b, A(theta - eps), A(cos(theta - eps)), A(sin(theta - eps)), bo,
-              ro, x1, y);
-    std::cout << ((x2 - x1) / (2 * eps)).transpose() << std::endl;
-    std::cout << x(0).derivatives()(3) << " " << x(1).derivatives()(3)
-              << std::endl
-              << std::endl;
-  }
-  */
 
   int nroots = x.size();
 

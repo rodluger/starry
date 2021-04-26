@@ -11,7 +11,6 @@
 
 // Includes
 #include "basis.h"
-#include "oblate/ellip.h"
 #include "oblate/special.h"
 #include "ops.h"
 #include "reflected/scatter.h"
