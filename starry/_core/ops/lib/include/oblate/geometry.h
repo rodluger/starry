@@ -236,8 +236,9 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
         w = b / p;
         t = 1.0 / (w * root.real() - (s1 * s0) * v);
         dxdb = t * p;
-        dxdtheta = (s1 * sintheta * v - costheta) * (bo * t * s0);
-        dxdbo = -(sintheta + s1 * costheta * v) * (t * s0);
+        dxdtheta =
+            -(s1 * costheta * v - sintheta) * (bo * t * s0); // TODO: Check me
+        dxdbo = -(costheta + s1 * sintheta * v) * (t * s0);
         dxdro = -ro * t / q * s1 * s0;
         x(nroots).derivatives() =
             dxdb * b_.derivatives() + dxdtheta * theta_.derivatives() +
@@ -324,6 +325,44 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
   A yo = bo * costheta;
   Vector<A> x, y;
   get_roots(b, theta, costheta, sintheta, bo, ro, x, y);
+
+  // DEBUG
+  /*
+  if (N > 0) {
+    Vector<A> x2, x1;
+    A eps = 1.0e-8;
+    get_roots(b, theta, costheta, sintheta, A(bo + eps), ro, x2, y);
+    get_roots(b, theta, costheta, sintheta, A(bo - eps), ro, x1, y);
+    std::cout << ((x2 - x1) / (2 * eps)).transpose() << std::endl;
+    std::cout << x(0).derivatives()(0) << " " << x(1).derivatives()(0)
+              << std::endl
+              << std::endl;
+
+    get_roots(b, theta, costheta, sintheta, bo, A(ro + eps), x2, y);
+    get_roots(b, theta, costheta, sintheta, bo, A(ro - eps), x1, y);
+    std::cout << ((x2 - x1) / (2 * eps)).transpose() << std::endl;
+    std::cout << x(0).derivatives()(1) << " " << x(1).derivatives()(1)
+              << std::endl
+              << std::endl;
+
+    get_roots(A(b - eps), theta, costheta, sintheta, bo, ro, x2, y);
+    get_roots(A(b + eps), theta, costheta, sintheta, bo, ro, x1, y);
+    std::cout << ((x2 - x1) / (2 * eps)).transpose() << std::endl;
+    std::cout << x(0).derivatives()(2) << " " << x(1).derivatives()(2)
+              << std::endl
+              << std::endl;
+
+    get_roots(b, A(theta + eps), A(cos(theta + eps)), A(sin(theta + eps)), bo,
+              ro, x2, y);
+    get_roots(b, A(theta - eps), A(cos(theta - eps)), A(sin(theta - eps)), bo,
+              ro, x1, y);
+    std::cout << ((x2 - x1) / (2 * eps)).transpose() << std::endl;
+    std::cout << x(0).derivatives()(3) << " " << x(1).derivatives()(3)
+              << std::endl
+              << std::endl;
+  }
+  */
+
   int nroots = x.size();
 
   if (nroots == 0) {

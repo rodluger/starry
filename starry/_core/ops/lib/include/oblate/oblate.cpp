@@ -18,37 +18,8 @@ namespace py = pybind11;
 // Register the Python module
 PYBIND11_MODULE(_c_ops, m) {
   using namespace starry::utils;
-  using namespace starry::oblate::ellip;
   using namespace starry::oblate::occultation;
   using namespace starry::oblate::geometry;
-
-  m.def("E", [](const double &k2, const Pair<double> &phi) {
-    using A = ADScalar<double, 3>;
-    A k2_ad;
-    k2_ad.value() = k2;
-    k2_ad.derivatives() = Vector<double>::Unit(3, 0);
-    Pair<A> phi_ad;
-    phi_ad(0).value() = phi(0);
-    phi_ad(0).derivatives() = Vector<double>::Unit(3, 1);
-    phi_ad(1).value() = phi(1);
-    phi_ad(1).derivatives() = Vector<double>::Unit(3, 2);
-    auto integrals = IncompleteEllipticIntegrals<double, 3>(k2_ad, phi_ad);
-    return py::make_tuple(integrals.E.value(), integrals.E.derivatives());
-  });
-
-  m.def("F", [](const double &k2, const Pair<double> &phi) {
-    using A = ADScalar<double, 3>;
-    A k2_ad;
-    k2_ad.value() = k2;
-    k2_ad.derivatives() = Vector<double>::Unit(3, 0);
-    Pair<A> phi_ad;
-    phi_ad(0).value() = phi(0);
-    phi_ad(0).derivatives() = Vector<double>::Unit(3, 1);
-    phi_ad(1).value() = phi(1);
-    phi_ad(1).derivatives() = Vector<double>::Unit(3, 2);
-    auto integrals = IncompleteEllipticIntegrals<double, 3>(k2_ad, phi_ad);
-    return py::make_tuple(integrals.F.value(), integrals.F.derivatives());
-  });
 
   m.def("sT", [](const int &deg, const double &bo_, const double &ro_,
                  const double &f_, const double &theta_, const int &nruns) {
@@ -61,7 +32,7 @@ PYBIND11_MODULE(_c_ops, m) {
     auto occ = Occultation<double, 0>(deg);
 
     for (int n = 0; n < nruns; ++n)
-      occ.compute(bo, ro, f, theta, false);
+      occ.compute(bo, ro, f, theta);
 
     Vector<double> sT_value(occ.sT.size());
     for (int n = 0; n < occ.sT.size(); ++n)
@@ -69,25 +40,36 @@ PYBIND11_MODULE(_c_ops, m) {
     return sT_value;
   });
 
-  m.def("sTexact",
-        [](const int &deg, const double &bo_, const double &ro_,
-           const double &f_, const double &theta_, const int &nruns) {
-          using A = ADScalar<double, 0>;
-          A bo, ro, f, theta;
-          bo.value() = bo_;
-          ro.value() = ro_;
-          f.value() = f_;
-          theta.value() = theta_;
-          auto occ = Occultation<double, 0>(deg);
+  m.def("dsT", [](const int &deg, const double &bo_, const double &ro_,
+                  const double &f_, const double &theta_, const int &nruns) {
+    using A = ADScalar<double, 4>;
+    A bo, ro, f, theta;
+    bo.value() = bo_;
+    bo.derivatives() = Vector<double>::Unit(4, 0);
+    ro.value() = ro_;
+    ro.derivatives() = Vector<double>::Unit(4, 1);
+    f.value() = f_;
+    f.derivatives() = Vector<double>::Unit(4, 2);
+    theta.value() = theta_;
+    theta.derivatives() = Vector<double>::Unit(4, 3);
+    auto occ = Occultation<double, 4>(deg);
 
-          for (int n = 0; n < nruns; ++n)
-            occ.compute(bo, ro, f, theta, true);
+    for (int n = 0; n < nruns; ++n)
+      occ.compute(bo, ro, f, theta);
 
-          Vector<double> sT_value(occ.sT.size());
-          for (int n = 0; n < occ.sT.size(); ++n)
-            sT_value(n) = occ.sT(n).value();
-          return sT_value;
-        });
+    Vector<double> sT_value(occ.sT.size());
+    Vector<double> Dbo(occ.sT.size());
+    Vector<double> Dro(occ.sT.size());
+    Vector<double> Df(occ.sT.size());
+    Vector<double> Dtheta(occ.sT.size());
+    for (int n = 0; n < occ.sT.size(); ++n) {
+      Dbo(n) = occ.sT(n).derivatives()(0);
+      Dro(n) = occ.sT(n).derivatives()(1);
+      Df(n) = occ.sT(n).derivatives()(2);
+      Dtheta(n) = occ.sT(n).derivatives()(3);
+    }
+    return py::make_tuple(Dbo, Dro, Df, Dtheta);
+  });
 
   m.def("angles", [](const double &bo_, const double &ro_, const double &f_,
                      const double &theta_) {

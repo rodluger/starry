@@ -274,7 +274,7 @@ class TestCppExact:
     def test_debug(self, kwargs):
         # All the solvers
         lmax = 4
-        sTcpp = oblate.CppSolver(lmax, linear=False).get_sT(**kwargs)
+        sTcpp = oblate.CppSolver(lmax).get_sT(**kwargs)
         sTpy = oblate.PythonSolver(lmax).get_sT(**kwargs)
         sTlin = oblate.NumericalSolver(lmax, linear=True).get_sT(**kwargs)
         sTnum = oblate.NumericalSolver(lmax, linear=False).get_sT(**kwargs)
