@@ -16,21 +16,17 @@ namespace numerical {
 using std::abs;
 using namespace utils;
 
-template <typename Scalar>
-using IntegralVector = Eigen::Matrix<Scalar, STARRY_QUAD_POINTS, 1>;
+template <typename T>
+using IntegralVector = Eigen::Matrix<T, STARRY_QUAD_POINTS, 1>;
 
-template <typename Scalar>
-using IntegralRowVector = Eigen::Matrix<Scalar, 1, STARRY_QUAD_POINTS>;
+template <typename T>
+using IntegralRowVector = Eigen::Matrix<T, 1, STARRY_QUAD_POINTS>;
 
-template <typename Scalar>
-using IntegralArray = Eigen::Array<Scalar, STARRY_QUAD_POINTS, 1>;
+template <typename T>
+using IntegralArray = Eigen::Array<T, STARRY_QUAD_POINTS, 1>;
 
-template <typename Scalar>
-using IntegralMatrix =
-    Eigen::Matrix<Scalar, STARRY_QUAD_POINTS, Eigen::Dynamic>;
-
-template <typename Scalar, int N>
-using IntegralDerivMatrix = Eigen::Matrix<IntegralMatrix<Scalar>, N, 1>;
+template <typename T>
+using IntegralMatrix = Eigen::Matrix<T, STARRY_QUAD_POINTS, Eigen::Dynamic>;
 
 /*! Implementation of Gauss-Legendre quadrature based on
  *  http://en.wikipedia.org/wiki/Gaussian_quadrature
@@ -41,55 +37,26 @@ template <typename Scalar, int N> class Quad {
   using A = ADScalar<Scalar, N>;
 
 private:
-  Scalar p;
-  IntegralVector<Scalar> q;
-  IntegralRowVector<Scalar> vT;
-  Vector<A> res;
+  A p;
+  IntegralVector<A> q;
+  IntegralRowVector<A> vT;
 
 public:
   template <typename Function>
   inline Vector<A> integrate(const A &a, const A &b, Function f,
-                             const int &nint, const Vector<A> &args) {
+                             const int &nint) {
     const LegendrePolynomial &L = s_LegendrePolynomial;
 
     // Initialize
-    IntegralMatrix<Scalar> integrand;
-    IntegralDerivMatrix<Scalar, N> derivs;
+    IntegralMatrix<A> integrand;
     integrand.setZero(STARRY_QUAD_POINTS, nint);
-    for (int i = 0; i < N; ++i) {
-      derivs(i).setZero(STARRY_QUAD_POINTS, nint);
-    }
-    res.resize(nint);
 
-    // Compute the function & its derivs on the grid
-    p = 0.5 * (b.value() - a.value());
+    // Compute the function on the grid
+    p = 0.5 * (b - a);
     vT = p * L.wT;
-    q.setConstant(0.5 * (b.value() + a.value()));
-    f(p * L.r + q, integrand, derivs);
-
-    if (N == 0) {
-
-      // Evaluate the integral directly into the ADScalar
-      for (int n = 0; n < nint; ++n) {
-        res(n).value() = vT.dot(integrand.col(n));
-      }
-
-    } else {
-
-      // Evaluate the integral directly into the ADScalar
-      for (int n = 0; n < nint; ++n) {
-        res(n).value() = vT.dot(integrand.col(n));
-        res(n).derivatives() =
-            integrand(STARRY_QUAD_POINTS - 1, n) * b.derivatives() -
-            integrand(0, n) * a.derivatives();
-        for (int i = 0; i < N; ++i) {
-          res(n).derivatives() +=
-              vT.dot(derivs(i).col(n)) * args(i).derivatives();
-        }
-      }
-    }
-
-    return res;
+    q.setConstant(0.5 * (b + a));
+    f(p * L.r + q, integrand);
+    return vT * integrand;
   }
 
 private:
@@ -99,23 +66,16 @@ private:
     IntegralRowVector<Scalar> wT;
 
     LegendrePolynomial() {
-      // Note that we pad the endpoints so that we always
-      // evaluate the function exactly at the limits of
-      // integration (needed when propagating derivs)
-      for (int i = 0; i < STARRY_QUAD_POINTS - 2; ++i) {
+      for (int i = 0; i < STARRY_QUAD_POINTS; ++i) {
         Scalar dr = 1;
-        Evaluation eval(cos(M_PI * (i + 0.75) / (STARRY_QUAD_POINTS - 1.5)));
+        Evaluation eval(cos(M_PI * (i + 0.75) / (STARRY_QUAD_POINTS + 0.5)));
         do {
           dr = eval.v() / eval.d();
           eval.evaluate(eval.x() - dr);
         } while (abs(dr) > 2e-16);
-        this->r(i + 1) = eval.x();
-        this->wT(i + 1) = 2 / ((1 - eval.x() * eval.x()) * eval.d() * eval.d());
+        this->r(i) = eval.x();
+        this->wT(i) = 2 / ((1 - eval.x() * eval.x()) * eval.d() * eval.d());
       }
-      this->r(0) = -1.0;
-      this->r(STARRY_QUAD_POINTS - 1) = 1.0;
-      this->wT(0) = 0.0;
-      this->wT(STARRY_QUAD_POINTS - 1) = 0.0;
     }
 
     Scalar root(int i) const { return this->r(i); }
@@ -131,7 +91,7 @@ private:
         Scalar vsub1 = x;
         Scalar vsub2 = 1;
         Scalar f = 1 / (x * x - 1);
-        for (int i = 2; i <= STARRY_QUAD_POINTS - 2; ++i) {
+        for (int i = 2; i <= STARRY_QUAD_POINTS; ++i) {
           this->_v = ((2 * i - 1) * x * vsub1 - (i - 1) * vsub2) / i;
           this->_d = i * f * (x * this->_v - vsub1);
           vsub2 = vsub1;
@@ -158,49 +118,33 @@ typename Quad<Scalar, N>::LegendrePolynomial
     Quad<Scalar, N>::s_LegendrePolynomial;
 
 template <typename Scalar, int N>
-inline void pTodd_integrand(const int &deg, const Scalar &bo, const Scalar &ro,
-                            const Scalar &f, const Scalar &theta,
-                            const Scalar &costheta, const Scalar &sintheta,
-                            const IntegralVector<Scalar> &phi,
-                            IntegralMatrix<Scalar> &integrand,
-                            IntegralDerivMatrix<Scalar, N> &derivs) {
+inline void pTodd_integrand(const int &deg, const ADScalar<Scalar, N> &bo,
+                            const ADScalar<Scalar, N> &ro,
+                            const ADScalar<Scalar, N> &f,
+                            const ADScalar<Scalar, N> &theta,
+                            const ADScalar<Scalar, N> &costheta,
+                            const ADScalar<Scalar, N> &sintheta,
+                            const IntegralVector<ADScalar<Scalar, N>> &phi,
+                            IntegralMatrix<ADScalar<Scalar, N>> &integrand) {
 
-  using Array = IntegralArray<Scalar>;
+  using Array = IntegralArray<ADScalar<Scalar, N>>;
 
   // Pre-compute common terms
   int ncoeff = (deg + 1) * (deg + 1);
-  Scalar invb = 1.0 / (1.0 - f);
   Array cosphi = cos(phi.array());
   Array sinphi = sin(phi.array());
   Array cosvphi = costheta * cosphi + sintheta * sinphi;
   Array sinvphi = -sintheta * cosphi + costheta * sinphi;
   Array x = ro * cosvphi + bo * sintheta;
-  Array y = (ro * sinvphi + bo * costheta) * invb;
+  Array y = (ro * sinvphi + bo * costheta) / (1.0 - f);
   Array z2 = 1.0 - x * x - y * y;
-  Array z = (z2 < 0).select(Array::Zero(), sqrt(z2));
+  Array z = (z2 <= 0).select(Array::Zero(), sqrt(z2));
   Array z3 = z2 * z;
   Array z3x = -ro * (1.0 - f) * sinvphi * z3;
   Array z3y = ro * cosvphi * z3;
 
-  Array p, q, r, s, t, u, v;
-
   // Case 2
-  p = ro + bo * sinphi;
-  integrand.col(2) = ro * p * (1.0 - z3) / (3.0 * (1.0 - z2));
-  if (N > 0) {
-
-    q = ro * ((y * costheta) * invb + x * sintheta) * p;
-    r = ro * (x * cosvphi + (y * sinvphi) * invb) * p;
-    s = (1 + z + z2) * (1 + z);
-    t = ro * y * y * p;
-    u = ro * x * y * p * (2 - f) * f * invb;
-    v = 1.0 / (3 * (1 + z) * (1 + z));
-
-    derivs(0).col(2) = (ro * s * sinphi - q * (2 + z)) * v;
-    derivs(1).col(2) = (2 * ro * s + bo * s * sinphi - r * (2 + z)) * v;
-    derivs(2).col(2) = -t * invb * (2 + z) * v;
-    derivs(3).col(2) = u * (2 + z) * v;
-  }
+  integrand.col(2) = ro * (ro + bo * sinphi) * (1.0 - z3) / (3.0 * (1.0 - z2));
 
   // Cases 3-5
   Array xi, yj;
@@ -242,25 +186,20 @@ pTodd(const int &deg, const ADScalar<Scalar, N> &bo,
       const ADScalar<Scalar, N> &sintheta, const ADScalar<Scalar, N> &phi1,
       const ADScalar<Scalar, N> &phi2, Quad<Scalar, N> &QUAD) {
   std::function<void( //
-      const IntegralVector<Scalar> &,
-      IntegralMatrix<Scalar> &,        //
-      IntegralDerivMatrix<Scalar, N> & //
+      const IntegralVector<ADScalar<Scalar, N>> &,
+      IntegralMatrix<ADScalar<Scalar, N>> & //
       )>
-      func =                                      //
-      [deg, bo, ro, f, theta, costheta, sintheta] //
-      (                                           //
-          const IntegralVector<Scalar> &phi,      //
-          IntegralMatrix<Scalar> &integrand,      //
-          IntegralDerivMatrix<Scalar, N> &derivs  //
+      func =                                              //
+      [deg, bo, ro, f, theta, costheta, sintheta]         //
+      (                                                   //
+          const IntegralVector<ADScalar<Scalar, N>> &phi, //
+          IntegralMatrix<ADScalar<Scalar, N>> &integrand  //
       ) {
-        pTodd_integrand(deg, bo.value(), ro.value(), f.value(), theta.value(),
-                        costheta.value(), sintheta.value(), phi, integrand,
-                        derivs);
+        pTodd_integrand(deg, bo, ro, f, theta, costheta, sintheta, phi,
+                        integrand);
       };
   int ncoeff = (deg + 1) * (deg + 1);
-  Vector<ADScalar<Scalar, N>> args(4);
-  args << bo, ro, f, theta;
-  return QUAD.integrate(phi1, phi2, func, ncoeff, args);
+  return QUAD.integrate(phi1, phi2, func, ncoeff);
 }
 
 } // namespace numerical
