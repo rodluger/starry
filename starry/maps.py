@@ -76,13 +76,14 @@ class MapBase(object):
 
         # Units
         self.angle_unit = kwargs.get("angle_unit", units.degree)
+        self.wav_unit = kwargs.get("wav_unit", units.nm)
 
         # Initialize
         self.reset(**kwargs)
 
     @property
     def angle_unit(self):
-        """An ``astropy.units`` unit defining the angle metric for this map."""
+        """An ``astropy.units`` quantity defining the angle unit for this map."""
         return self._angle_unit
 
     @angle_unit.setter
@@ -90,6 +91,17 @@ class MapBase(object):
         assert value.physical_type == "angle"
         self._angle_unit = value
         self._angle_factor = value.in_units(units.radian)
+
+    @property
+    def wav_unit(self):
+        """An ``astropy.units`` quantity defining the wavelength unit for this map."""
+        return self._wav_unit
+
+    @angle_unit.setter
+    def wav_unit(self, value):
+        assert value.physical_type == "length"
+        self._wav_unit = value
+        self._wav_factor = value.in_units(units.m)
 
     @property
     def ydeg(self):
@@ -172,6 +184,24 @@ class MapBase(object):
         Slice notation may also be used.
         """
         return self._u
+
+    @property
+    def wav(self):
+        """
+        The wavelength(s) at which the flux is measured in units of ``wav_unit``.
+
+        """
+        return self._wav / self._wav_factor
+
+    @wav.setter
+    def wav(self, value):
+        value = self._math.cast(value) * self._wav_factor
+        if self._nw is None:
+            assert value.ndim == 0, "Wavelength must be a scalar."
+            self._wav = value
+        else:
+            assert value.ndim == 1, "Wavelength must be a vector."
+            self._wav = value * self._math.ones(self._nw)
 
     def __getitem__(self, idx):
         if isinstance(idx, integers) or isinstance(idx, slice):
@@ -312,10 +342,16 @@ class MapBase(object):
         if self.nw is None:
             y = np.zeros(self.Ny)
             y[0] = 1.0
+            wav = 650.0
         else:
             y = np.zeros((self.Ny, self.nw))
             y[0, :] = 1.0
+            if self.nw == 1:
+                wav = np.array([650.0])
+            else:
+                wav = np.linspace(400.0, 900.0, self.nw)
         self._y = self._math.cast(y)
+        self.wav = wav
 
         u = np.zeros(self.Nu)
         u[0] = -1.0
