@@ -977,7 +977,7 @@ class YlmBase(legacy.YlmBase):
 
     def _render_greedy(self, **kwargs):
         get_val = evaluator(**kwargs)
-        amp = get_val(self._amp).reshape(-1, 1, 1)
+        amp = get_val(self.amp).reshape(-1, 1, 1)
         return amp * self.ops.render(
             kwargs.get("res", 300),
             get_projection(kwargs.get("projection", "ortho")),
@@ -1393,7 +1393,7 @@ class YlmBase(legacy.YlmBase):
 
             # Scale the coeffs?
             if I < 0:
-                fac = self._amp / (self._amp - np.pi * I)
+                fac = self.amp / (self.amp - np.pi * I)
                 if self.lazy:
                     self._y *= fac
                     self._y = self.ops.set_map_vector(self._y, 0, 1.0)
@@ -1554,14 +1554,14 @@ class YlmBase(legacy.YlmBase):
             return (
                 lat / self._angle_factor,
                 lon / self._angle_factor,
-                self._amp * I,
+                self.amp * I,
                 self.ops._minimize.result,
             )
         else:
             return (
                 lat / self._angle_factor,
                 lon / self._angle_factor,
-                self._amp * I,
+                self.amp * I,
             )
 
     def get_pixel_transforms(self, oversample=2, lam=1e-6, eps=1e-6):
@@ -1761,7 +1761,7 @@ class LimbDarkenedBase(object):
 
     def _render_greedy(self, **kwargs):
         get_val = evaluator(**kwargs)
-        amp = get_val(self._amp).reshape(-1, 1, 1)
+        amp = get_val(self.amp).reshape(-1, 1, 1)
         return amp.reshape(-1, 1, 1) * self.ops.render_ld(
             kwargs.get("res", 300), get_val(self._u)
         )
@@ -2571,9 +2571,10 @@ class ReflectedBase(object):
 class OblateAmplitude(Amplitude):
     def __get__(self, instance, owner):
         # This ensures uniform maps have unit flux
-        # regardless of their oblateness or inclination
+        # regardless of their oblateness or gravity
+        # darkening strength
         if instance.__props__.get("normalized", True):
-            return instance._amp / (1.0 - instance.fproj)
+            return instance._amp / instance.design_matrix()[0]
         else:
             return instance._amp
 
@@ -2597,7 +2598,7 @@ class OblateBase(object):
 
     def _render_greedy(self, **kwargs):
         get_val = evaluator(**kwargs)
-        amp = get_val(self._amp).reshape(-1, 1, 1)
+        amp = get_val(self.amp).reshape(-1, 1, 1)
         return amp * self.ops.render(
             kwargs.get("res", 300),
             get_projection(kwargs.get("projection", "ortho")),
@@ -2725,25 +2726,9 @@ class OblateBase(object):
             self._wav = value * self._math.ones(self._nw)
         self._set_grav_dark_filter()
 
-    @property
-    def inc(self):
-        """The inclination of the rotation axis in units of :py:attr:`angle_unit`."""
-        return self._inc / self._angle_factor
-
-    @inc.setter
-    def inc(self, value):
-        self._inc = self._math.cast(value) * self._angle_factor
-        if hasattr(self, "_wav"):
-            self._set_grav_dark_filter()
-
     def _set_grav_dark_filter(self):
         self._f = self.ops.compute_grav_dark_filter(
-            self._wav,
-            self._omega,
-            self._fobl,
-            self._beta,
-            self._tpole,
-            self._inc,
+            self._wav, self._omega, self._fobl, self._beta, self._tpole
         )
 
     def design_matrix(self, **kwargs):

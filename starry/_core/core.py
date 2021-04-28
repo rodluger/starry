@@ -1447,6 +1447,8 @@ class OpsOblate(OpsYlm):
                 tt.dot(self.F(u0, f0), A1Ry),
             )
 
+        # TODO: Rotate the gravdark filter with the map
+
         # Dot the polynomial into the basis
         res = tt.reshape(tt.dot(pT, A1Ry), [res, res, -1])
 
@@ -1490,6 +1492,8 @@ class OpsOblate(OpsYlm):
         if self.filter:
             F = self.F(u, f)
 
+        # TODO: Rotate the gravdark filter with the map
+
         # Occultation + rotation operator
         sT = self.sT(fproj, thetao, bo, ro)
         sTA = ts.dot(sT, self.A)
@@ -1521,7 +1525,7 @@ class OpsOblate(OpsYlm):
         )
 
     @autocompile
-    def compute_grav_dark_filter(self, wav, omega, fobl, beta, tpole, inc):
+    def compute_grav_dark_filter(self, wav, omega, fobl, beta, tpole):
         y = tt.zeros((self.fdeg + 1) ** 2)
         y = tt.set_subtensor(
             y[self.idx],
@@ -1537,7 +1541,7 @@ class OpsOblate(OpsYlm):
                 math.to_tensor(1.0),
                 math.to_tensor(0.0),
                 math.to_tensor(0.0),
-                inc,
+                0.5 * np.pi,
             )
         )
         return y
