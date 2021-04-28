@@ -2646,8 +2646,12 @@ class OblateBase(object):
         )
 
     def reset(self, **kwargs):
-        self.f = kwargs.get("f", 0.0)
+        self._fobl = self._math.cast(kwargs.get("f", 0.0))
+        self._omega = self._math.cast(kwargs.get("omega", 0.0))
+        self._tpole = self._math.cast(kwargs.get("tpole", 0.0))
+        self._beta = self._math.cast(kwargs.get("beta", 0.23))
         super(OblateBase, self).reset(**kwargs)
+        self._set_grav_dark_filter()
 
     @property
     def f(self):
@@ -2662,12 +2666,84 @@ class OblateBase(object):
     @f.setter
     def f(self, value):
         self._fobl = self._math.cast(value)
+        self._set_grav_dark_filter()
+
+    @property
+    def omega(self):
+        """
+        The angular rotational velocity of the body as a fraction of the breakup velocity.
+
+        """
+        return self._omega
+
+    @omega.setter
+    def omega(self, value):
+        self._omega = self._math.cast(value)
+        self._set_grav_dark_filter()
 
     @property
     def fproj(self):
         """The projected oblateness at the current inclination."""
         return 1 - self._math.sqrt(
             1 - self._fobl * (2 - self._fobl) * self._math.sin(self._inc) ** 2
+        )
+
+    @property
+    def tpole(self):
+        return self._tpole
+
+    @tpole.setter
+    def tpole(self, value):
+        self._tpole = self._math.cast(value)
+        self._set_grav_dark_filter()
+
+    @property
+    def beta(self):
+        return self._beta
+
+    @beta.setter
+    def beta(self, value):
+        self._beta = self._math.cast(value)
+        self._set_grav_dark_filter()
+
+    @property
+    def wav(self):
+        """
+        The wavelength(s) at which the flux is measured in units of ``wav_unit``.
+
+        """
+        return self._wav / self._wav_factor
+
+    @wav.setter
+    def wav(self, value):
+        value = self._math.cast(value) * self._wav_factor
+        if self._nw is None:
+            assert value.ndim == 0, "Wavelength must be a scalar."
+            self._wav = value
+        else:
+            assert value.ndim == 1, "Wavelength must be a vector."
+            self._wav = value * self._math.ones(self._nw)
+        self._set_grav_dark_filter()
+
+    @property
+    def inc(self):
+        """The inclination of the rotation axis in units of :py:attr:`angle_unit`."""
+        return self._inc / self._angle_factor
+
+    @inc.setter
+    def inc(self, value):
+        self._inc = self._math.cast(value) * self._angle_factor
+        if hasattr(self, "_wav"):
+            self._set_grav_dark_filter()
+
+    def _set_grav_dark_filter(self):
+        self._f = self.ops.compute_grav_dark_filter(
+            self._wav,
+            self._omega,
+            self._fobl,
+            self._beta,
+            self._tpole,
+            self._inc,
         )
 
     def design_matrix(self, **kwargs):

@@ -1372,6 +1372,30 @@ class OpsOblate(OpsYlm):
         super(OpsOblate, self).__init__(*args, oblate=True, **kwargs)
         self._sT = sTOblateOp(self._c_ops.sTOblate, self._c_ops.N)
 
+        #
+        smoothing = 0.0
+        eps4 = 1e-9
+        npts = 4 * (self.fdeg + 1) ** 2
+        z = np.linspace(-1, 1, npts)
+        B = np.hstack(
+            [
+                np.sqrt(2 * l + 1) * LegendreP(l)(z).reshape(-1, 1)
+                for l in range(self.fdeg + 1)
+            ]
+        )
+        A = np.linalg.solve(B.T @ B + eps4 * np.eye(self.fdeg + 1), B.T)
+        l = np.arange(self.fdeg + 1)
+        idx = l * (l + 1)
+        S = np.exp(-0.5 * idx * smoothing ** 2)
+        self.Bp = tt.as_tensor_variable(S[:, None] * A)
+        self.z = tt.as_tensor_variable(z)
+        self.idx = idx
+
+        self.twohcsq = 1.19104295e-16
+        self.hcdivkb = 1.43877735e-2
+
+        self._fdotR = dotROp(_c_ops.Ops(self.fdeg, 0, 0).dotR)
+
     @autocompile
     def render(self, res, projection, theta, inc, obl, fproj, y, u, f):
         """Render the map on a Cartesian grid."""
@@ -1478,6 +1502,45 @@ class OpsOblate(OpsYlm):
     def flux(self, theta, xo, yo, zo, ro, inc, obl, fproj, y, u, f):
         """Compute the light curve."""
         return tt.dot(self.X(theta, xo, yo, zo, ro, inc, obl, fproj, u, f), y)
+
+    @autocompile
+    def grav_dark(self, z, wav, omega, fobl, beta, tpole):
+        b = 1.0 - fobl
+        z2 = z * z
+        term = (-(omega ** 2) * (z2 * b ** 2 - z2 + 1) ** 1.5 + 1.0) ** 2.0
+        temp = (
+            tpole
+            * b ** (2 * beta)
+            * ((-z2 * b ** 2 + (z2 - 1) * term) / (-z2 * b ** 2 + z2 - 1) ** 3)
+            ** (0.5 * beta)
+        )
+        return (
+            self.twohcsq
+            / wav ** 5
+            / (np.exp(self.hcdivkb / (wav * temp)) - 1.0)
+        )
+
+    @autocompile
+    def compute_grav_dark_filter(self, wav, omega, fobl, beta, tpole, inc):
+        y = tt.zeros((self.fdeg + 1) ** 2)
+        y = tt.set_subtensor(
+            y[self.idx],
+            tt.dot(
+                self.Bp, self.grav_dark(self.z, wav, omega, fobl, beta, tpole)
+            ),
+        )
+        y = tt.transpose(
+            self._fdotR(
+                tt.transpose(
+                    tt.reshape(y, (-1, 1 if self.nw is None else self.nw))
+                ),
+                math.to_tensor(1.0),
+                math.to_tensor(0.0),
+                math.to_tensor(0.0),
+                inc,
+            )
+        )
+        return y
 
 
 class OpsSystem(object):
