@@ -23,6 +23,8 @@ from .ops import (
 from .utils import logger, autocompile, is_tensor, clear_cache
 from .math import lazy_math as math
 from scipy.special import legendre as LegendreP
+from scipy.sparse import csc_matrix
+from scipy.sparse.linalg import inv as sparse_inv
 import numpy as np
 from astropy import units
 import os
@@ -439,7 +441,7 @@ class OpsYlm(object):
         input frame to a vector in the observer's frame.
         """
         # Trivial case
-        if self.ydeg == 0:
+        if self.ydeg + self.fdeg == 0:
             return M
 
         # Rotate to the sky frame
@@ -499,7 +501,7 @@ class OpsYlm(object):
 
         """
         # Trivial case
-        if self.ydeg == 0:
+        if self.ydeg + self.fdeg == 0:
             return M
 
         # Note that here we are using the fact that R . M = (M^T . R^T)^T
@@ -1372,7 +1374,7 @@ class OpsOblate(OpsYlm):
         super(OpsOblate, self).__init__(*args, oblate=True, **kwargs)
         self._sT = sTOblateOp(self._c_ops.sTOblate, self._c_ops.N)
 
-        #
+        # Spherical harmonic transform operator
         smoothing = 0.0
         eps4 = 1e-9
         npts = 4 * (self.fdeg + 1) ** 2
@@ -1387,14 +1389,70 @@ class OpsOblate(OpsYlm):
         l = np.arange(self.fdeg + 1)
         idx = l * (l + 1)
         S = np.exp(-0.5 * idx * smoothing ** 2)
-        self.Bp = tt.as_tensor_variable(S[:, None] * A)
+        self.SHT = tt.as_tensor_variable(S[:, None] * A)
         self.z = tt.as_tensor_variable(z)
         self.idx = idx
 
-        self.twohcsq = 1.19104295e-16
-        self.hcdivkb = 1.43877735e-2
+        # We need to instantiate custom versions of the C++ ops
+        # so we can apply and manipulate the gravity darkening filter
+        # Several steps in `render` and `X` require operators with
+        # different dimensions. Some day it would make sense to
+        # handle this logic on the C++ side so we don't have to
+        # instantiate so many Ops objects.
+        if self.fdeg == 0 and self.udeg == 0:
+            ops_y_0_f = self._c_ops
+            ops_yf_0_0 = self._c_ops
+            ops_yu_0_0 = self._c_ops
+            ops_f_0_0 = self._c_ops
+            ops_yf_u_0 = self._c_ops
+            ops_yuf_0_0 = self._c_ops
+        elif self.udeg == 0:
+            ops_y_0_f = self._c_ops
+            ops_yf_0_0 = _c_ops.Ops(self.ydeg + self.fdeg, 0, 0)
+            ops_yu_0_0 = _c_ops.Ops(self.ydeg, 0, 0)
+            ops_f_0_0 = _c_ops.Ops(self.fdeg, 0, 0)
+            ops_yf_u_0 = ops_yf_0_0
+            ops_yuf_0_0 = ops_yf_0_0
+        else:
+            ops_y_0_f = _c_ops.Ops(self.ydeg, 0, self.fdeg)
+            ops_yf_0_0 = _c_ops.Ops(self.ydeg + self.fdeg, 0, 0)
+            ops_yu_0_0 = _c_ops.Ops(self.ydeg + self.udeg, 0, 0)
+            ops_f_0_0 = _c_ops.Ops(self.fdeg, 0, 0)
+            ops_yf_u_0 = _c_ops.Ops(self.ydeg + self.fdeg, self.udeg, 0)
+            ops_yuf_0_0 = _c_ops.Ops(self.ydeg + self.udeg + self.fdeg, 0, 0)
 
-        self._fdotR = dotROp(_c_ops.Ops(self.fdeg, 0, 0).dotR)
+        # Filter operator (gravity darkening)
+        self.Fg = FOp(
+            ops_y_0_f.F, (self.ydeg + self.fdeg + 1) ** 2, (self.ydeg + 1) ** 2
+        )
+
+        # Change of basis matrices
+        if self.ydeg == 0 and self.fdeg == 0:
+            self.A1Inv_Nyf_x_Nyf = csc_matrix([[np.pi]])
+        else:
+            self.A1Inv_Nyf_x_Nyf = ts.as_sparse_variable(
+                sparse_inv(ops_y_0_f.A1Big)
+            )
+        self.A1_Nyf_x_Nyf = ts.as_sparse_variable(ops_y_0_f.A1Big)
+
+        # Rotation operator (gravity-darkened map)
+        self._dotR = dotROp(ops_yf_0_0.dotR)
+
+        # Rotation operator (limb-darkened map)
+        self._dotR_Nyu_x_Nyu = dotROp(ops_yu_0_0.dotR)
+
+        # Rotation operator (gravity darkening filter)
+        self._dotR_Nf_x_Nf = dotROp(ops_f_0_0.dotR)
+
+        # Filter operator (limb darkening)
+        self.Fu = FOp(
+            ops_yf_u_0.F,
+            (self.ydeg + self.udeg + self.fdeg + 1) ** 2,
+            (self.ydeg + self.fdeg + 1) ** 2,
+        )
+
+        # Greens-to-poly change of basis
+        self.A2_Nyuf_x_Nyuf = ts.as_sparse_variable(ops_yuf_0_0.A2)
 
     @autocompile
     def render(self, res, projection, theta, inc, obl, fproj, y, u, f):
@@ -1413,6 +1471,12 @@ class OpsOblate(OpsYlm):
         # Compute the polynomial basis
         pT = self.pT(xyz[0], xyz[1], xyz[2])
 
+        # Apply the grav dark filter to the map
+        if self.fdeg > 0:
+            F = self.Fg(tt.as_tensor_variable([-1.0]), f)
+            A1InvFA1 = ts.dot(ts.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1)
+            y = tt.dot(A1InvFA1, y)
+
         # If orthographic, rotate the map to the correct frame
         if self.nw is None:
             Ry = ifelse(
@@ -1420,7 +1484,7 @@ class OpsOblate(OpsYlm):
                 self.left_project(
                     tt.transpose(tt.tile(y, [theta.shape[0], 1])),
                     inc,
-                    0.0 * obl,
+                    obl * 0,  # We already account for the obliquity in `pT`
                     theta,
                 ),
                 tt.transpose(tt.tile(y, [theta.shape[0], 1])),
@@ -1433,21 +1497,15 @@ class OpsOblate(OpsYlm):
             )
 
         # Change basis to polynomials
-        A1Ry = ts.dot(self.A1, Ry)
+        A1Ry = ts.dot(self.A1_Nyf_x_Nyf, Ry)
 
-        # Apply the filter *only if orthographic*
-        if self.filter:
-            f0 = tt.zeros_like(f)
-            f0 = tt.set_subtensor(f0[0], np.pi)
-            u0 = tt.zeros_like(u)
-            u0 = tt.set_subtensor(u0[0], -1.0)
+        # Apply the limb darkening *only if orthographic*
+        if self.udeg > 0:
             A1Ry = ifelse(
                 tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                tt.dot(self.F(u, f), A1Ry),
-                tt.dot(self.F(u0, f0), A1Ry),
+                tt.dot(self.Fu(u, tt.as_tensor_variable([np.pi])), A1Ry),
+                A1Ry,
             )
-
-        # TODO: Rotate the gravdark filter with the map
 
         # Dot the polynomial into the basis
         res = tt.reshape(tt.dot(pT, A1Ry), [res, res, -1])
@@ -1488,19 +1546,28 @@ class OpsOblate(OpsYlm):
         bo = tt.sqrt(xo ** 2 + yo ** 2)
         thetao = tt.arctan2(xo, yo)
 
-        # Compute filter operator
-        if self.filter:
-            F = self.F(u, f)
-
-        # TODO: Rotate the gravdark filter with the map
-
-        # Occultation + rotation operator
+        # Occultation + phase curve operator
         sT = self.sT(fproj, thetao, bo, ro)
-        sTA = ts.dot(sT, self.A)
-        if self.filter:
-            A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
-            sTA = tt.dot(sTA, A1InvFA1)
-        return self.right_project(sTA, inc, obl, theta)
+
+        # Limb darkening
+        if self.udeg > 0:
+            sTA2 = ts.dot(sT, self.A2_Nyuf_x_Nyuf)
+            F = self.Fu(u, tt.as_tensor_variable([np.pi]))
+            FA1 = ts.dot(F, self.A1_Nyf_x_Nyf)
+            sTA = tt.dot(sTA2, FA1)
+        else:
+            sTA = ts.dot(sT, self.A)
+
+        # Projection onto the sky
+        sTAR = self.right_project(sTA, inc, obl, theta)
+
+        # Gravity darkening
+        if self.fdeg > 0:
+            F = self.Fg(tt.as_tensor_variable([-1.0]), f)
+            A1InvFA1 = ts.dot(ts.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1)
+            sTAR = tt.dot(sTAR, A1InvFA1)
+
+        return sTAR
 
     @autocompile
     def flux(self, theta, xo, yo, zo, ro, inc, obl, fproj, y, u, f):
@@ -1508,7 +1575,7 @@ class OpsOblate(OpsYlm):
         return tt.dot(self.X(theta, xo, yo, zo, ro, inc, obl, fproj, u, f), y)
 
     @autocompile
-    def grav_dark(self, z, wav, omega, fobl, beta, tpole):
+    def grav_dark(self, z, wavnorm, omega, fobl, beta, tpole):
         b = 1.0 - fobl
         z2 = z * z
         term = (-(omega ** 2) * (z2 * b ** 2 - z2 + 1) ** 1.5 + 1.0) ** 2.0
@@ -1518,23 +1585,28 @@ class OpsOblate(OpsYlm):
             * ((-z2 * b ** 2 + (z2 - 1) * term) / (-z2 * b ** 2 + z2 - 1) ** 3)
             ** (0.5 * beta)
         )
-        return (
-            self.twohcsq
-            / wav ** 5
-            / (np.exp(self.hcdivkb / (wav * temp)) - 1.0)
-        )
+        return 1.0 / (tt.exp(1.0 / (wavnorm * temp)) - 1.0)
 
     @autocompile
-    def compute_grav_dark_filter(self, wav, omega, fobl, beta, tpole):
+    def compute_grav_dark_filter(self, wavnorm, omega, fobl, beta, tpole):
+
+        # TODO
+        if not self.nw is None:
+            raise NotImplementedError("TODO! Multi-wavelength maps.")
+
+        # Compute the map expansion in the polar frame
         y = tt.zeros((self.fdeg + 1) ** 2)
         y = tt.set_subtensor(
             y[self.idx],
             tt.dot(
-                self.Bp, self.grav_dark(self.z, wav, omega, fobl, beta, tpole)
+                self.SHT,
+                self.grav_dark(self.z, wavnorm, omega, fobl, beta, tpole),
             ),
         )
-        y = tt.transpose(
-            self._fdotR(
+
+        # Rotate down to the standard frame
+        y = tt.reshape(
+            self._dotR_Nf_x_Nf(
                 tt.transpose(
                     tt.reshape(y, (-1, 1 if self.nw is None else self.nw))
                 ),
@@ -1542,7 +1614,8 @@ class OpsOblate(OpsYlm):
                 math.to_tensor(0.0),
                 math.to_tensor(0.0),
                 0.5 * np.pi,
-            )
+            ),
+            (-1,),
         )
         return y
 

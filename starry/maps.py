@@ -2573,10 +2573,12 @@ class OblateAmplitude(Amplitude):
         # This ensures uniform maps have unit flux
         # regardless of their oblateness or gravity
         # darkening strength
+        # TODO: I'm not happy about this! Think about
+        # how to handle multi-wavelength maps.
         if instance.__props__.get("normalized", True):
-            return instance._amp / instance.design_matrix()[0]
+            return instance._amp / instance.design_matrix()[0, 0]
         else:
-            return instance._amp
+            return instance._amp * instance._twohcsq / instance._wav ** 5
 
 
 class OblateBase(object):
@@ -2594,12 +2596,58 @@ class OblateBase(object):
 
     _ops_class_ = OpsOblate
 
+    # Special handling for the map amplitude
     amp = OblateAmplitude()
+
+    # Constants for Planck law (mks)
+    _twohcsq = 1.19104295e-16
+    _hcdivkb = 1.43877735e-2
+
+    def render(self, res=300, projection="ortho", theta=0.0):
+        # Multiple frames?
+        if self.nw is not None:
+            animated = True
+        else:
+            if is_tensor(theta):
+                animated = hasattr(theta, "ndim") and theta.ndim > 0
+            else:
+                animated = hasattr(theta, "__len__")
+
+        # Convert
+        projection = get_projection(projection)
+        theta = self._math.vectorize(
+            self._math.cast(theta) * self._angle_factor
+        )
+
+        # Compute
+        if self.nw is None or self.lazy:
+            amp = self.amp
+        else:
+            # The intensity has shape `(nw, res, res)`
+            # so we must reshape `amp` to take the product correctly
+            amp = self.amp[:, np.newaxis, np.newaxis]
+        image = amp * self.ops.render(
+            res,
+            projection,
+            theta,
+            self._inc,
+            self._obl,
+            self.fproj,
+            self._y,
+            self._u,
+            self._f,
+        )
+
+        # Squeeze?
+        if animated:
+            return image
+        else:
+            return self._math.reshape(image, [res, res])
 
     def _render_greedy(self, **kwargs):
         get_val = evaluator(**kwargs)
         amp = get_val(self.amp).reshape(-1, 1, 1)
-        return amp * self.ops.render(
+        image = self.ops.render(
             kwargs.get("res", 300),
             get_projection(kwargs.get("projection", "ortho")),
             np.atleast_1d(get_val(kwargs.get("theta", 0.0)))
@@ -2611,6 +2659,7 @@ class OblateBase(object):
             get_val(self._u),
             get_val(self._f),
         )
+        return amp * image
 
     def _get_ortho_borders(self, **kwargs):
         get_val = evaluator(**kwargs)
@@ -2691,6 +2740,7 @@ class OblateBase(object):
 
     @property
     def tpole(self):
+        """The polar temperature of the star in K."""
         return self._tpole
 
     @tpole.setter
@@ -2700,6 +2750,7 @@ class OblateBase(object):
 
     @property
     def beta(self):
+        """The von Zeipel law coefficient."""
         return self._beta
 
     @beta.setter
@@ -2727,9 +2778,14 @@ class OblateBase(object):
         self._set_grav_dark_filter()
 
     def _set_grav_dark_filter(self):
-        self._f = self.ops.compute_grav_dark_filter(
-            self._wav, self._omega, self._fobl, self._beta, self._tpole
-        )
+        if self._fdeg > 0:
+            self._f = self.ops.compute_grav_dark_filter(
+                self._wav / self._hcdivkb,
+                self._omega,
+                self._fobl,
+                self._beta,
+                self._tpole,
+            )
 
     def design_matrix(self, **kwargs):
         r"""Compute and return the light curve design matrix :math:`A`.

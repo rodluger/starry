@@ -113,6 +113,15 @@ PYBIND11_MODULE(_c_ops, m) {
 #endif
   });
 
+  // Change of basis matrix: poly to green's
+  Ops.def_property_readonly("A2", [](starry::Ops<Scalar> &ops) {
+#ifdef STARRY_MULTI
+    return (ops.B.A2.template cast<double>()).eval();
+#else
+    return ops.B.A2;
+#endif
+  });
+
   // Augmented change of basis matrix: Ylm to poly
   Ops.def_property_readonly("A1Big", [](starry::Ops<Scalar> &ops) {
 #ifdef STARRY_MULTI
