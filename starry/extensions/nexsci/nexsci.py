@@ -58,22 +58,21 @@ class FromNexsci:
     """
 
     def __init__(self):
-        self.stale = False
         fname = glob(
             "{}/extensions/nexsci/data/planets.csv".format(_PACKAGEDIR)
         )
         if len(fname) == 0:
             self.stale = True
-            fname = glob(
-                "{}/extensions/nexsci/data/planets.csv".format(_PACKAGEDIR)
-            )
-        st = os.stat(fname[0])
-        mtime = st.st_mtime
-        # If database is out of date, get it again.
-        if datetime.datetime.now() - datetime.datetime.fromtimestamp(
-            mtime
-        ) > datetime.timedelta(days=7):
-            self.stale = True
+        else:
+            st = os.stat(fname[0])
+            mtime = st.st_mtime
+            # If database is out of date, get it again.
+            if datetime.datetime.now() - datetime.datetime.fromtimestamp(
+                mtime
+            ) > datetime.timedelta(days=7):
+                self.stale = True
+            else:
+                self.stale = False
 
     def __call__(self, name, limb_darkening=[0.4, 0.2]):
 
