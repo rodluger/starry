@@ -342,14 +342,14 @@ class MapBase(object):
         if self.nw is None:
             y = np.zeros(self.Ny)
             y[0] = 1.0
-            wav = 650.0
+            wav = kwargs.get("wav", 650.0)
         else:
             y = np.zeros((self.Ny, self.nw))
             y[0, :] = 1.0
             if self.nw == 1:
-                wav = np.array([650.0])
+                wav = kwargs.get("wav", np.array([650.0]))
             else:
-                wav = np.linspace(400.0, 900.0, self.nw)
+                wav = kwargs.get("wav", np.linspace(400.0, 900.0, self.nw))
         self._y = self._math.cast(y)
         self.wav = wav
 
@@ -2576,9 +2576,7 @@ class OblateAmplitude(Amplitude):
         # This ensures uniform maps have unit flux
         # regardless of their oblateness or gravity
         # darkening strength
-        # TODO: I'm not happy about this! Think about
-        # how to handle multi-wavelength maps.
-        if instance.__props__.get("normalized", True):
+        if instance.nw is None and instance.__props__.get("normalized", True):
             return instance._amp / instance.design_matrix()[0, 0]
         else:
             return instance._amp * instance._twohcsq / instance._wav ** 5

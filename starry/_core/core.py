@@ -1473,9 +1473,31 @@ class OpsOblate(OpsYlm):
 
         # Apply the grav dark filter to the map
         if self.fdeg > 0:
-            F = self.Fg(tt.as_tensor_variable([-1.0]), f)
-            A1InvFA1 = ts.dot(ts.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1)
-            y = tt.dot(A1InvFA1, y)
+            if self.ydeg == 0:
+                # Trivial!
+                y = f
+            else:
+                if self.nw is None:
+                    F = self.Fg(tt.as_tensor_variable([-1.0]), f)
+                    A1InvFA1 = ts.dot(ts.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1)
+                    y = tt.dot(A1InvFA1, y)
+                else:
+                    # We need to compute the filter for each wavelength bin.
+                    # We could speed this up by vectorization on the C++ side
+                    A1InvFA1 = tt.zeros(
+                        (
+                            self.nw,
+                            (self.ydeg + self.fdeg + 1) ** 2,
+                            (self.ydeg + 1) ** 2,
+                        )
+                    )
+                    for i in range(self.nw):
+                        F = self.Fg(tt.as_tensor_variable([-1.0]), f[:, i])
+                        A1InvFA1 = tt.set_subtensor(
+                            A1InvFA1[i],
+                            ts.dot(ts.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1),
+                        )
+                    y = tt.transpose(tt.batched_dot(A1InvFA1, tt.transpose(y)))
 
         # If orthographic, rotate the map to the correct frame
         if self.nw is None:
@@ -1492,7 +1514,16 @@ class OpsOblate(OpsYlm):
         else:
             Ry = ifelse(
                 tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                self.left_project(y, inc, obl, tt.tile(theta[0], self.nw)),
+                tt.reshape(
+                    self.left_project(
+                        y,
+                        inc,
+                        obl
+                        * 0,  # We already account for the obliquity in `pT`
+                        tt.tile(theta[0], self.nw),
+                    ),
+                    (-1, self.nw),
+                ),
                 y,
             )
 
@@ -1590,33 +1621,38 @@ class OpsOblate(OpsYlm):
     @autocompile
     def compute_grav_dark_filter(self, wavnorm, omega, fobl, beta, tpole):
 
-        # TODO
-        if not self.nw is None:
-            raise NotImplementedError("TODO! Multi-wavelength maps.")
-
         # Compute the map expansion in the polar frame
-        y = tt.zeros((self.fdeg + 1) ** 2)
+        nw = 1 if self.nw is None else self.nw
+        y = tt.zeros(((self.fdeg + 1) ** 2, nw))
         y = tt.set_subtensor(
             y[self.idx],
             tt.dot(
                 self.SHT,
-                self.grav_dark(self.z, wavnorm, omega, fobl, beta, tpole),
+                self.grav_dark(
+                    tt.reshape(self.z, (-1, 1)),
+                    tt.reshape(wavnorm, (1, -1)),
+                    omega,
+                    fobl,
+                    beta,
+                    tpole,
+                ),
             ),
         )
 
         # Rotate down to the standard frame
         y = tt.reshape(
-            self._dotR_Nf_x_Nf(
-                tt.transpose(
-                    tt.reshape(y, (-1, 1 if self.nw is None else self.nw))
-                ),
-                math.to_tensor(1.0),
-                math.to_tensor(0.0),
-                math.to_tensor(0.0),
-                0.5 * np.pi,
+            tt.transpose(
+                self._dotR_Nf_x_Nf(
+                    tt.transpose(y),
+                    math.to_tensor(1.0),
+                    math.to_tensor(0.0),
+                    math.to_tensor(0.0),
+                    0.5 * np.pi,
+                )
             ),
-            (-1,),
+            (-1,) if self.nw is None else (-1, self.nw),
         )
+
         return y
 
 
