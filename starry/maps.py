@@ -50,7 +50,7 @@ class Amplitude(object):
 class MapBase(object):
     """The base class for all `starry` maps."""
 
-    # The map amplitude (just an attribute)
+    # The map amplitude
     amp = Amplitude()
 
     def _no_spectral(self):
@@ -1523,7 +1523,10 @@ class YlmBase(legacy.YlmBase):
             contrast = self._math.cast(contrast) * self._math.ones(self.nw)
 
         # Add the spot to the map
-        self._y += self.ops.spot(contrast, radius, lat, lon)
+        y_spot = self.ops.spot(contrast, radius, lat, lon)
+        x = self._amp * self._y + y_spot
+        self._amp = x[0]
+        self._y = x / x[0]
 
     def minimize(self, oversample=1, ntries=1, bounds=None, return_info=False):
         """Find the global (optionally local) minimum of the map intensity.
