@@ -9,7 +9,6 @@ import pytest
 import starry
 import warnings
 from starry.extensions import from_nexsci
-from starry.extensions.nexsci import nexsci
 
 starry.config.lazy = False
 
@@ -18,12 +17,11 @@ def test_lazy_nexsci_query():
     """ Tests if the nexsci query works. """
 
     # These should run without error
-    nexsci._retrieve_online_data()
-    nexsci._check_data_on_import()
+    from_nexsci._retrieve_online_data()
 
-    df = nexsci._get_nexsci_data()
+    df = from_nexsci._get_nexsci_data()
     assert isinstance(df, pd.DataFrame)
-    df = nexsci._fill_data(df)
+    df = from_nexsci._fill_data(df)
     assert isinstance(df, pd.DataFrame)
 
 
