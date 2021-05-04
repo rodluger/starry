@@ -12,8 +12,9 @@ import os
 import pytest
 
 
-# TODO: MP4s are raising segfaults on GitHub Actions. Investigate.
-TEST_MP4 = False
+# TODO: Several tests segfault on CI. Investigate.
+STARRY_TEST_MP4 = False
+STARRY_ON_CI = os.getenv("CI", "false") == "true"
 
 
 def test_show(mp4=False):
@@ -22,7 +23,7 @@ def test_show(mp4=False):
     os.remove("tmp.pdf")
     map.show(file="tmp.pdf", projection="rect")
     os.remove("tmp.pdf")
-    if TEST_MP4:
+    if STARRY_TEST_MP4:
         map.show(theta=np.linspace(0, 360, 10), file="tmp.mp4")
         os.remove("tmp.mp4")
 
@@ -52,7 +53,7 @@ def test_show_reflected():
     os.remove("tmp.pdf")
     map.show(file="tmp.pdf", projection="rect")
     os.remove("tmp.pdf")
-    if TEST_MP4:
+    if STARRY_TEST_MP4:
         map.show(theta=np.linspace(0, 360, 10), file="tmp.mp4")
         os.remove("tmp.mp4")
 
@@ -63,7 +64,7 @@ def test_show_rv():
     os.remove("tmp.pdf")
     map.show(rv=True, file="tmp.pdf", projection="rect")
     os.remove("tmp.pdf")
-    if TEST_MP4:
+    if STARRY_TEST_MP4:
         map.show(rv=True, theta=np.linspace(0, 360, 10), file="tmp.mp4")
         os.remove("tmp.mp4")
 
@@ -80,19 +81,20 @@ def test_system_show():
     sys = starry.System(pri, sec)
     sys.show(0.1, file="tmp.pdf")
     os.remove("tmp.pdf")
-    if TEST_MP4:
+    if STARRY_TEST_MP4:
         sys.show([0.1, 0.2], file="tmp.mp4")
         os.remove("tmp.mp4")
     sys.show([0.1, 0.2], file="tmp.gif")
     os.remove("tmp.gif")
 
 
+@pytest.mark.skipif(STARRY_ON_CI, reason="Segfaults on CI")
 def test_system_rv_show():
     pri = starry.Primary(starry.Map(rv=True))
     sec = starry.Secondary(starry.Map(rv=True), porb=1.0)
     sys = starry.System(pri, sec)
     sys.show(0.1, file="tmp.pdf")
     os.remove("tmp.pdf")
-    if TEST_MP4:
+    if STARRY_TEST_MP4:
         sys.show([0.1, 0.2], file="tmp.mp4")
         os.remove("tmp.mp4")
