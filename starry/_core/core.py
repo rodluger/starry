@@ -1605,7 +1605,7 @@ class OpsOblate(OpsYlm):
         sTAR = self.right_project(sTA, inc, obl, theta)
 
         # Gravity darkening
-        if self.fdeg > 0:
+        if self.nw is None and self.fdeg > 0:
             F = self.Fg(tt.as_tensor_variable([-1.0]), f)
             A1InvFA1 = ts.dot(ts.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1)
             sTAR = tt.dot(sTAR, A1InvFA1)
@@ -1615,7 +1615,38 @@ class OpsOblate(OpsYlm):
     @autocompile
     def flux(self, theta, xo, yo, zo, ro, inc, obl, fproj, y, u, f):
         """Compute the light curve."""
-        return tt.dot(self.X(theta, xo, yo, zo, ro, inc, obl, fproj, u, f), y)
+        if self.nw is None or self.fdeg == 0:
+            return tt.dot(
+                self.X(theta, xo, yo, zo, ro, inc, obl, fproj, u, f), y
+            )
+        else:
+
+            if self.ydeg == 0:
+                # Trivial!
+                return tt.dot(
+                    self.X(theta, xo, yo, zo, ro, inc, obl, fproj, u, f), f
+                )
+            else:
+
+                # We need to compute the filter for each wavelength bin.
+                # We could speed this up by vectorization on the C++ side
+                A1InvFA1 = tt.zeros(
+                    (
+                        self.nw,
+                        (self.ydeg + self.fdeg + 1) ** 2,
+                        (self.ydeg + 1) ** 2,
+                    )
+                )
+                for i in range(self.nw):
+                    F = self.Fg(tt.as_tensor_variable([-1.0]), f[:, i])
+                    A1InvFA1 = tt.set_subtensor(
+                        A1InvFA1[i],
+                        ts.dot(ts.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1),
+                    )
+                y = tt.transpose(tt.batched_dot(A1InvFA1, tt.transpose(y)))
+                return tt.dot(
+                    self.X(theta, xo, yo, zo, ro, inc, obl, fproj, u, f), y
+                )
 
     @autocompile
     def grav_dark(self, z, wavnorm, omega, fobl, beta, tpole):

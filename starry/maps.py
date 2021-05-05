@@ -2573,13 +2573,7 @@ class ReflectedBase(object):
 
 class OblateAmplitude(Amplitude):
     def __get__(self, instance, owner):
-        # This ensures uniform maps have unit flux
-        # regardless of their oblateness or gravity
-        # darkening strength
-        if instance.nw is None and instance.__props__.get("normalized", True):
-            return instance._amp / instance.design_matrix()[0, 0]
-        else:
-            return instance._amp * instance._twohcsq / instance._wav ** 5
+        return instance._amp * instance._norm
 
 
 class OblateBase(object):
@@ -2603,6 +2597,37 @@ class OblateBase(object):
     # Constants for Planck law (mks)
     _twohcsq = 1.19104295e-16
     _hcdivkb = 1.43877735e-2
+
+    @property
+    def _norm(self):
+        # Planck's law normalization
+        pnorm = self._twohcsq / self._wav ** 5
+
+        if self.__props__.get("normalized", True):
+
+            # Normalize by the flux from a uniform map
+            uniform_y = np.zeros(self.Ny)
+            uniform_y[0] = 1.0
+            uniform_y = self._math.cast(uniform_y)
+            flux0 = self.ops.flux(
+                self._math.cast([0.0]),
+                self._math.cast([0.0]),
+                self._math.cast([0.0]),
+                self._math.cast([0.0]),
+                self._math.cast(0.0),
+                self._inc,
+                self._obl,
+                self.fproj,
+                uniform_y,
+                self._u,
+                self._f,
+            )[0]
+            return pnorm / self._math.dot(pnorm * flux0, self._amp)
+
+        else:
+
+            # Trivial
+            return pnorm
 
     def render(self, res=300, projection="ortho", theta=0.0):
         # Multiple frames?
@@ -2807,6 +2832,9 @@ class OblateBase(object):
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
         """
+        # The problem isn't quite linear for spectral maps
+        self._no_spectral()
+
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
@@ -2839,13 +2867,15 @@ class OblateBase(object):
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
-
+            integrated (bool, optional): If True, dots the flux with the
+                amplitude. Default False, in which case this returns a
+                2d array (wavelength-dependent maps only).
         """
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
         # Compute & return
-        return self.amp * self.ops.flux(
+        flux = self.ops.flux(
             theta,
             xo,
             yo,
@@ -2858,6 +2888,11 @@ class OblateBase(object):
             self._u,
             self._f,
         )
+
+        if kwargs.get("integrated", False):
+            return self._math.dot(flux, self.amp)
+        else:
+            return self.amp * flux
 
 
 def Map(
