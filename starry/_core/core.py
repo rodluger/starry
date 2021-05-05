@@ -441,7 +441,7 @@ class OpsYlm(object):
         input frame to a vector in the observer's frame.
         """
         # Trivial case
-        if self.ydeg + self.fdeg == 0:
+        if self.ydeg == 0:
             return M
 
         # Rotate to the sky frame
@@ -501,7 +501,7 @@ class OpsYlm(object):
 
         """
         # Trivial case
-        if self.ydeg + self.fdeg == 0:
+        if self.ydeg == 0:
             return M
 
         # Note that here we are using the fact that R . M = (M^T . R^T)^T
@@ -1453,6 +1453,18 @@ class OpsOblate(OpsYlm):
 
         # Greens-to-poly change of basis
         self.A2_Nyuf_x_Nyuf = ts.as_sparse_variable(ops_yuf_0_0.A2)
+
+    def left_project(self, *args):
+        if self.ydeg + self.fdeg == 0:
+            return args[0]
+        else:
+            return super().left_project(*args)
+
+    def right_project(self, *args):
+        if self.ydeg + self.fdeg == 0:
+            return args[0]
+        else:
+            return super().right_project(*args)
 
     @autocompile
     def render(self, res, projection, theta, inc, obl, fproj, y, u, f):

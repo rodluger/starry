@@ -12,17 +12,23 @@ def test_compare_to_map_rv():
     """Ensure we get the same result by calling `map.rv()` and `sys.rv()`.
     """
     # Define the map
-    map = starry.Map(ydeg=1, udeg=2, rv=True, amp=1, veq=1, alpha=0)
+    map = starry.Map(ydeg=1, udeg=2, rv=True, amp=1, veq=1, alpha=0, lazy=True)
     map[1, 0] = 0.5
 
     # Define the star
     A = starry.Primary(
-        map, r=1.0, m=1.0, prot=0, length_unit=u.Rsun, mass_unit=u.Msun
+        map,
+        r=1.0,
+        m=1.0,
+        prot=0,
+        length_unit=u.Rsun,
+        mass_unit=u.Msun,
+        lazy=True,
     )
 
     # Define the planet
     b = starry.Secondary(
-        starry.Map(rv=True, amp=1, veq=0),
+        starry.Map(rv=True, amp=1, veq=0, lazy=True),
         r=0.1,
         porb=1.0,
         m=0.01,
@@ -52,8 +58,8 @@ def test_compare_to_map_rv():
     ro = b.r / A.r
 
     # Compare
-    rv1 = map.rv(xo=xo, yo=yo, ro=ro)
-    rv2 = sys.rv(time, keplerian=False)
+    rv1 = map.rv(xo=xo, yo=yo, ro=ro).eval()
+    rv2 = sys.rv(time, keplerian=False).eval()
     assert np.allclose(rv1, rv2)
 
 
