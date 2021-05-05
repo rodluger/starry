@@ -1,5 +1,20 @@
 .. :changelog:
 
+1.1.2 (2021-05-05)
+++++++++++++++++++
+
+- Fixes issue with the nexsci extension, which crashed starry on
+  import because of a change to the nexsci database format online
+- No longer checks for nexsci planet data on import
+- Minor bugfixes
+
+1.1.1 (2021-03-30)
+++++++++++++++++++
+
+- Implements compatibility with aesara, the reincarnation of theano 
+  in the upcoming pymc3 release
+- Miscellaneous bugfixes
+
 1.1.0 (2021-02-25)
 ++++++++++++++++++
 
