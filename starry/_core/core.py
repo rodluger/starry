@@ -139,11 +139,17 @@ class OpsYlm(object):
 
     @autocompile
     def tensordotRz(self, matrix, theta):
-        return self._tensordotRz(matrix, theta)
+        if self.ydeg == 0:
+            return matrix
+        else:
+            return self._tensordotRz(matrix, theta)
 
     @autocompile
     def dotR(self, matrix, ux, uy, uz, theta):
-        return self._dotR(matrix, ux, uy, uz, theta)
+        if self.ydeg == 0:
+            return matrix
+        else:
+            return self._dotR(matrix, ux, uy, uz, theta)
 
     @autocompile
     def F(self, u, f):
@@ -440,10 +446,6 @@ class OpsYlm(object):
         that transforms a spherical harmonic coefficient vector in the
         input frame to a vector in the observer's frame.
         """
-        # Trivial case
-        if self.ydeg == 0:
-            return M
-
         # Rotate to the sky frame
         # TODO: Do this in a single compound rotation
         M = self.dotR(
@@ -500,10 +502,6 @@ class OpsYlm(object):
         input frame to a vector in the observer's frame.
 
         """
-        # Trivial case
-        if self.ydeg == 0:
-            return M
-
         # Note that here we are using the fact that R . M = (M^T . R^T)^T
         MT = tt.transpose(M)
 
@@ -1454,17 +1452,19 @@ class OpsOblate(OpsYlm):
         # Greens-to-poly change of basis
         self.A2_Nyuf_x_Nyuf = ts.as_sparse_variable(ops_yuf_0_0.A2)
 
-    def left_project(self, *args):
+    @autocompile
+    def tensordotRz(self, matrix, theta):
         if self.ydeg + self.fdeg == 0:
-            return args[0]
+            return matrix
         else:
-            return super().left_project(*args)
+            return self._tensordotRz(matrix, theta)
 
-    def right_project(self, *args):
+    @autocompile
+    def dotR(self, matrix, ux, uy, uz, theta):
         if self.ydeg + self.fdeg == 0:
-            return args[0]
+            return matrix
         else:
-            return super().right_project(*args)
+            return self._dotR(matrix, ux, uy, uz, theta)
 
     @autocompile
     def render(self, res, projection, theta, inc, obl, fproj, y, u, f):
