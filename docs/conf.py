@@ -109,3 +109,4 @@ rtds_action_github_repo = "rodluger/starry"
 rtds_action_path = "notebooks"
 rtds_action_artifact_prefix = "notebooks-for-"
 rtds_action_github_token = os.environ.get("GITHUB_TOKEN", "")
+rtds_action_error_if_missing = True
