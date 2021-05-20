@@ -35,7 +35,14 @@ else:
     from .. import _c_ops
 
 
-__all__ = ["OpsYlm", "OpsLD", "OpsReflected", "OpsRV", "OpsSystem"]
+__all__ = [
+    "OpsYlm",
+    "OpsLD",
+    "OpsReflected",
+    "OpsRV",
+    "OpsDoppler",
+    "OpsSystem",
+]
 
 
 class OpsYlm(object):
@@ -1355,6 +1362,10 @@ class OpsReflected(OpsYlm):
 
             # Average over each profile
             return tt.sum(I, axis=2) / self.source_npts
+
+
+class OpsDoppler(OpsYlm):
+    pass
 
 
 class OpsSystem(object):
