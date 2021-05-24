@@ -1365,7 +1365,175 @@ class OpsReflected(OpsYlm):
 
 
 class OpsDoppler(OpsYlm):
-    pass
+
+    _clight = 3.0e5
+
+    def __init__(self, *args, nc=1, nt=10, **kwargs):
+        super(OpsDoppler, self).__init__(*args, **kwargs)
+        self.nc = nc
+        self.nt = nt
+
+    @autocompile
+    def enforce_shape(self, tensor, shape):
+        return tensor + RaiseValueErrorIfOp(
+            "Incorrect shape for one of the inputs."
+        )(tt.sum(tt.neq(tt.shape(tensor), shape)))
+
+    @autocompile
+    def get_nk(self, vsini, dlam):
+        """The width of the convolution kernel in bins."""
+        betasini = vsini / self._clight
+        hw = tt.abs_(0.5 * tt.log((1 + betasini) / (1 - betasini)))
+        return 2 * tt.cast(tt.floor(hw / dlam), "int32") + 1
+
+    @autocompile
+    def get_log_lambda_padded(self, log_lambda, dlam, nk):
+        """The padded log-wavelength array."""
+        hw = (nk - 1) // 2
+        x = tt.mgrid[0 : hw + 1,][0] * dlam
+        pad_l = log_lambda[0] - hw * dlam + x[:-1]
+        pad_r = log_lambda[-1] + x[1:]
+        return tt.concatenate([pad_l, log_lambda, pad_r])
+
+    @autocompile
+    def get_x(self, log_lambda_padded, vsini, nk):
+        """The `x` coordinate of lines of constant Doppler shift."""
+        betasini = vsini / self._clight
+        hw = (nk - 1) // 2
+        nwp = self.nw + nk - 1
+        lam_kernel = log_lambda_padded[nwp // 2 - hw : nwp // 2 + hw + 1]
+        return (
+            (1.0 / betasini)
+            * (tt.exp(-2 * lam_kernel) - 1)
+            / (tt.exp(-2 * lam_kernel) + 1)
+        )
+
+    @autocompile
+    def get_rT(self, x):
+        """The `rho^T` solution vector."""
+        deg = self.ydeg + self.udeg
+        sijk = tt.zeros((deg + 1, deg + 1, 2, tt.shape(x)[0]))
+
+        # Initial conditions
+        r2 = 1 - x ** 2
+        sijk = tt.set_subtensor(sijk[0, 0, 0], 2 * r2 ** 0.5)
+        sijk = tt.set_subtensor(sijk[0, 0, 1], 0.5 * np.pi * r2)
+
+        # Upward recursion in j
+        for j in range(2, deg + 1, 2):
+            sijk = tt.set_subtensor(
+                sijk[0, j, 0], ((j - 1.0) / (j + 1.0)) * r2 * sijk[0, j - 2, 0]
+            )
+            sijk = tt.set_subtensor(
+                sijk[0, j, 1], ((j - 1.0) / (j + 2.0)) * r2 * sijk[0, j - 2, 1]
+            )
+
+        # Upward recursion in i
+        for i in range(1, deg + 1):
+            sijk = tt.set_subtensor(sijk[i], sijk[i - 1] * x)
+
+        # Full vector
+        N = (deg + 1) ** 2
+        s = tt.zeros((N, tt.shape(x)[0]))
+        n = np.arange(N)
+        LAM = np.floor(np.sqrt(n))
+        DEL = 0.5 * (n - LAM ** 2)
+        i = np.array(np.floor(LAM - DEL), dtype=int)
+        j = np.array(np.floor(DEL), dtype=int)
+        k = np.array(np.ceil(DEL) - np.floor(DEL), dtype=int)
+        s = tt.set_subtensor(s[n], sijk[i, j, k])
+        return s
+
+    @autocompile
+    def get_kT0(self, rT):
+        """
+        Return the vectorized convolution kernels `kappa^T`.
+
+        This is a matrix whose rows are equal to the convolution kernels
+        for each term in the  spherical harmonic decomposition of the
+        surface.
+        """
+        kT0 = ts.dot(ts.transpose(self._A1), rT)
+        norm = tt.sum(kT0[0, 1:-1]) + 0.5 * (kT0[0, 0] + kT0[0, -1])  # trapz
+        return kT0 / norm
+
+    @autocompile
+    def get_D(self, log_lambda, inc, theta, veq):
+        """
+        Return the full Doppler matrix.
+
+        This is a horizontal stack of Toeplitz convolution matrices, one per
+        spherical harmonic. These matrices are then stacked vertically for
+        each rotational phase.
+        """
+        # Compute the convolution kernels
+        dlam = log_lambda[1] - log_lambda[0]
+        vsini = veq * tt.sin(inc)
+        nk = self.get_nk(vsini, dlam)
+        log_lambda_padded = self.get_log_lambda_padded(log_lambda, dlam, nk)
+        x = self.get_x(log_lambda_padded, vsini, nk)
+        rT = self.get_rT(x)
+        kT0 = self.get_kT0(rT)
+
+        # Indices for the CSR matrix we're going to construct
+        nwp = self.nw + nk - 1
+        indptr = (self.Ny * nk) * np.arange(self.nw + 1, dtype="int32")
+        i0 = tt.reshape(tt.arange(nk), (-1, 1))
+        i1 = nwp * np.arange(self.Ny).reshape(1, -1)
+        i2 = np.arange(self.nw).reshape(1, -1)
+        indices = tt.reshape(
+            tt.transpose(tt.reshape(tt.transpose(i0 + i1), (-1, 1)) + i2),
+            (-1,),
+        )
+        shape = tt.as_tensor_variable([self.nw, self.Ny * nwp])
+        D = [None for m in range(self.nt)]
+
+        # Loop through each epoch
+        for m in range(self.nt):
+
+            if self.udeg > 0:
+
+                # Compute the limb darkening operator
+                F = self.F(
+                    tt.as_tensor_variable(np.append([-1.0], u)),
+                    tt.as_tensor_variable([np.pi]),
+                )
+                L = ts.dot(ts.dot(self.A1Inv, F), self.A1)
+
+                # Rotate the kernels
+                kT = tt.transpose(
+                    self.right_project(
+                        tt.transpose(tt.dot(tt.transpose(L), kT0)),
+                        inc,
+                        tt.as_tensor_variable(0.0),
+                        theta[m],
+                    )
+                )
+
+            else:
+
+                # Rotate the kernels
+                kT = tt.transpose(
+                    self.right_project(
+                        tt.transpose(kT0),
+                        inc,
+                        tt.as_tensor_variable(0.0),
+                        theta[m],
+                    )
+                )
+
+            # Populate the Doppler matrix
+            data = tt.tile(tt.reshape(kT, (-1,)), self.nw)
+            D[m] = ts.basic.CSR(data, indices, indptr, shape)
+
+        # Stack the rows and we are done!
+        return ts.vstack(D)
+
+    @autocompile
+    def get_flux(self, log_lambda, inc, theta, veq, a):
+        D = self.get_D(log_lambda, inc, theta, veq)
+        flux = ts.dot(D, tt.reshape(a, (-1,)))
+        return tt.reshape(flux, (self.nt, self.nw))
 
 
 class OpsSystem(object):

@@ -57,7 +57,7 @@ class RaiseValueErrorIfOp(Op):
         condition = inputs
         inputs = [tt.as_tensor_variable(condition)]
         outputs = [tt.TensorType(floatX, ())()]
-        return gof.Apply(self, inputs, outputs)
+        return Apply(self, inputs, outputs)
 
     def infer_shape(self, *args):
         return [()]
