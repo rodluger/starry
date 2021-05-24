@@ -2571,23 +2571,11 @@ class ReflectedBase(object):
         return super(ReflectedBase, self).show(**kwargs)
 
 
-class DopplerBase(object):
-    """The Doppler ``starry`` map class.
-
-    .. note::
-        Instantiate this class by calling
-        :py:func:`starry.Map` with ``doppler`` set to True.
-    """
-
-    _ops_class_ = OpsDoppler
-
-
 def Map(
     ydeg=0,
     udeg=0,
     nw=None,
     rv=False,
-    doppler=False,
     reflected=False,
     source_npts=1,
     lazy=None,
@@ -2598,15 +2586,13 @@ def Map(
     This function is a class factory that returns either
     a :doc:`spherical harmonic map <SphericalHarmonicMap>`,
     a :doc:`limb darkened map <LimbDarkenedMap>`,
-    a :doc:`radial velocity map <RadialVelocityMap>`,
-    a :doc:`radial velocity map <DopplerMap>`, or
+    a :doc:`radial velocity map <RadialVelocityMap>`, or
     a :doc:`reflected light map <ReflectedLightMap>`,
     depending on the arguments provided by the user. The default is
     a :doc:`spherical harmonic map <SphericalHarmonicMap>`. If ``rv`` is True,
-    instantiates a :doc:`radial velocity map <RadialVelocityMap>` map,
+    instantiates a :doc:`radial velocity map <RadialVelocityMap>` map, and
     if ``reflected`` is True, instantiates a :doc:`reflected light map
-    <ReflectedLightMap>`, and if ``doppler`` is True, instantiates a
-    :doc:`Doppler map <DopplerMap>` map. Otherwise, if ``ydeg`` is zero,
+    <ReflectedLightMap>`. Otherwise, if ``ydeg`` is zero,
     instantiates a :doc:`limb darkened map <LimbDarkenedMap>`.
 
     Args:
@@ -2618,8 +2604,6 @@ def Map(
             (for monochromatic light curves).
         rv (bool, optional): If True, enable computation of radial velocities
             for modeling the Rossiter-McLaughlin effect. Defaults to False.
-        doppler (bool, optional): If True, enable Doppler mode. Defaults to
-            False.
         reflected (bool, optional): If True, models light curves in reflected
             light. Defaults to False.
         source_npts (int, optional): Number of points used to approximate the
@@ -2648,12 +2632,7 @@ def Map(
         )
 
     # Limb-darkened?
-    if (
-        (ydeg == 0)
-        and (rv is False)
-        and (reflected is False)
-        and (doppler is False)
-    ):
+    if (ydeg == 0) and (rv is False) and (reflected is False):
 
         # TODO: Add support for wavelength-dependent limb darkening
         if nw is not None:
@@ -2672,16 +2651,13 @@ def Map(
     elif reflected:
         Bases = (ReflectedBase,) + Bases
         fdeg = 0
-    elif doppler:
-        Bases = (DopplerBase,) + Bases
-        fdeg = 0
     else:
         fdeg = 0
 
     # Ensure we're not doing a combo
-    if np.count_nonzero([rv, reflected, doppler]) > 1:
+    if np.count_nonzero([rv, reflected]) > 1:
         raise NotImplementedError(
-            "Combinations of `rv`, `reflected`, and `doppler` not yet implemented."
+            "Combinations of `rv` and `reflected` not yet implemented."
         )
 
     # Construct the class
@@ -2692,7 +2668,6 @@ def Map(
             limbdarkened=LimbDarkenedBase in Bases,
             reflected=ReflectedBase in Bases,
             rv=RVBase in Bases,
-            doppler=Doppler in Bases,
             spectral=nw is not None,
             source_npts=source_npts,
         )

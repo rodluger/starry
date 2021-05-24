@@ -1454,8 +1454,8 @@ class OpsDoppler(OpsYlm):
         surface.
         """
         kT0 = ts.dot(ts.transpose(self._A1), rT)
-        norm = tt.sum(kT0[0, 1:-1]) + 0.5 * (kT0[0, 0] + kT0[0, -1])  # trapz
-        return kT0 / norm
+        # Normalize to preserve the unit baseline
+        return kT0 / tt.sum(kT0[0])
 
     @autocompile
     def get_D(self, log_lambda, inc, theta, veq):
