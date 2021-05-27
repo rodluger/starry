@@ -1391,9 +1391,16 @@ class OpsDoppler(OpsYlm):
         # The wavelength grid spanning the kernel
         self.nk = 2 * hw + 1
         self.nwp = len(log_lambda_padded)
-        self.lam_kernel = log_lambda_padded[
+        lam_kernel = log_lambda_padded[
             self.nwp // 2 - hw : self.nwp // 2 + hw + 1
         ]
+
+        # The factor used to compute `x`
+        self.xamp = (
+            self.clight
+            * (tt.exp(-2 * lam_kernel) - 1)
+            / (tt.exp(-2 * lam_kernel) + 1)
+        )
 
     @autocompile
     def enforce_shape(self, tensor, shape):
@@ -1408,12 +1415,7 @@ class OpsDoppler(OpsYlm):
     @autocompile
     def get_x(self, vsini):
         """The `x` coordinate of lines of constant Doppler shift."""
-        betasini = vsini / self.clight
-        return (
-            (1.0 / betasini)
-            * (tt.exp(-2 * self.lam_kernel) - 1)
-            / (tt.exp(-2 * self.lam_kernel) + 1)
-        )
+        return self.xamp / vsini
 
     @autocompile
     def get_rT(self, x):

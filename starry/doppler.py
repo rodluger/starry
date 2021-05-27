@@ -24,8 +24,8 @@ class DopplerMap:
         udeg=0,
         nc=1,
         nt=10,
-        wav1=500,
-        wav2=520,
+        wav1=643.5,  # Fe 6430
+        wav2=642.5,
         nw=199,
         vsini_max=None,
         lazy=None,
@@ -99,6 +99,7 @@ class DopplerMap:
         pad_l = log_lambda[0] - hw * dlam + x[:-1]
         pad_r = log_lambda[-1] + x[1:]
         log_lambda_padded = np.concatenate([pad_l, log_lambda, pad_r])
+        nwp = len(log_lambda_padded)
 
         # Store
         self.vsini_max = self._math.cast(vsini_max)
@@ -106,7 +107,14 @@ class DopplerMap:
         self._lambda = wavr * self._math.cast(np.exp(log_lambda))
         self._log_lambda_padded = self._math.cast(log_lambda_padded)
         self._lambda_padded = wavr * self._math.cast(np.exp(log_lambda_padded))
-        self._nwp = len(log_lambda_padded)
+        self._nwp = nwp
+
+        # Default spectrum (one centered absorption line, sigma = 1/2 Angstrom)
+        spectrum = np.ones((nc, nwp))
+        spectrum[0] = 1 - 0.5 * np.exp(
+            -0.5 * (wavr * np.exp(log_lambda_padded) - wavr) ** 2 / 0.05 ** 2
+        )
+        self._default_spectrum = spectrum
 
         # Instantiate the Theano ops classs
         self.ops = OpsDoppler(
@@ -147,7 +155,7 @@ class DopplerMap:
         self.inc = kwargs.pop("inc", 0.5 * np.pi / self._angle_factor)
         self.obl = kwargs.pop("obl", 0.0)
         self.veq = kwargs.pop("veq", 0.0)
-        self.spectrum = np.ones((self._nc, self._nwp))
+        self.spectrum = kwargs.pop("spectrum", self._default_spectrum)
 
     @property
     def lazy(self):
