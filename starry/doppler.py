@@ -24,8 +24,8 @@ class DopplerMap:
         udeg=0,
         nc=1,
         nt=10,
-        wav1=643.5,  # Fe 6430
-        wav2=642.5,
+        wav1=642.5,  # Fe 6430
+        wav2=643.5,
         nw=199,
         vsini_max=None,
         lazy=None,

@@ -1402,6 +1402,19 @@ class OpsDoppler(OpsYlm):
             / (tt.exp(-2 * lam_kernel) + 1)
         )
 
+        # Pre-compute the CSR matrix indices
+        self.indptr = (self.Ny * self.nk) * np.arange(
+            self.nw + 1, dtype="int32"
+        )
+        i0 = tt.reshape(tt.arange(self.nk), (-1, 1))
+        i1 = self.nwp * np.arange(self.Ny).reshape(1, -1)
+        i2 = np.arange(self.nw).reshape(1, -1)
+        self.indices = tt.reshape(
+            tt.transpose(tt.reshape(tt.transpose(i0 + i1), (-1, 1)) + i2),
+            (-1,),
+        )
+        self.shape = tt.as_tensor_variable([self.nw, self.Ny * self.nwp])
+
     @autocompile
     def enforce_shape(self, tensor, shape):
         return tensor + RaiseValueErrorIfOp(
@@ -1415,7 +1428,8 @@ class OpsDoppler(OpsYlm):
     @autocompile
     def get_x(self, vsini):
         """The `x` coordinate of lines of constant Doppler shift."""
-        return self.xamp / vsini
+        # Prevent division by zero
+        return self.xamp / tt.maximum(tt.as_tensor_variable(1.0), vsini)
 
     @autocompile
     def get_rT(self, x):
@@ -1467,13 +1481,10 @@ class OpsDoppler(OpsYlm):
         return kT0 / tt.sum(kT0[0])
 
     @autocompile
-    def get_D(self, inc, theta, veq):
+    def get_D_data(self, inc, theta, veq):
         """
-        Return the full Doppler matrix.
+        Return the Doppler matrix as a stack of data arrays.
 
-        This is a horizontal stack of Toeplitz convolution matrices, one per
-        spherical harmonic. These matrices are then stacked vertically for
-        each rotational phase.
         """
         # Compute the convolution kernels
         vsini = veq * tt.sin(inc)
@@ -1481,19 +1492,8 @@ class OpsDoppler(OpsYlm):
         rT = self.get_rT(x)
         kT0 = self.get_kT0(rT)
 
-        # Indices for the CSR matrix we're going to construct
-        indptr = (self.Ny * self.nk) * np.arange(self.nw + 1, dtype="int32")
-        i0 = tt.reshape(tt.arange(self.nk), (-1, 1))
-        i1 = self.nwp * np.arange(self.Ny).reshape(1, -1)
-        i2 = np.arange(self.nw).reshape(1, -1)
-        indices = tt.reshape(
-            tt.transpose(tt.reshape(tt.transpose(i0 + i1), (-1, 1)) + i2),
-            (-1,),
-        )
-        shape = tt.as_tensor_variable([self.nw, self.Ny * self.nwp])
-        D = [None for m in range(self.nt)]
-
         # Loop through each epoch
+        data = [None for m in range(self.nt)]
         for m in range(self.nt):
 
             if self.udeg > 0:
@@ -1528,11 +1528,26 @@ class OpsDoppler(OpsYlm):
                 )
 
             # Populate the Doppler matrix
-            data = tt.tile(tt.reshape(kT, (-1,)), self.nw)
-            D[m] = ts.basic.CSR(data, indices, indptr, shape)
+            data[m] = tt.tile(tt.reshape(kT, (-1,)), self.nw)
 
-        # Stack the rows and we are done!
-        return ts.vstack(D)
+        return data
+
+    @autocompile
+    def get_D(self, inc, theta, veq):
+        """
+        Return the full Doppler matrix.
+
+        This is a horizontal stack of Toeplitz convolution matrices, one per
+        spherical harmonic. These matrices are then stacked vertically for
+        each rotational phase.
+        """
+        data = self.get_D_data(inc, theta, veq)
+        return ts.vstack(
+            [
+                ts.basic.CSR(data[m], self.indices, self.indptr, self.shape)
+                for m in range(self.nt)
+            ]
+        )
 
     @autocompile
     def get_flux(self, inc, theta, veq, a):
