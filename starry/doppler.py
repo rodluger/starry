@@ -11,14 +11,25 @@ from scipy.interpolate import interp1d
 
 
 class DopplerMap:
-    """The Doppler ``starry`` map class.
+    """
+    The Doppler ``starry`` map class.
+
     """
 
-    # TODO: Make more user-friendly
-    _max_vsini = 100
+    _clight = 299792458.0  # m/s
 
     def __init__(
-        self, ydeg=0, udeg=0, nc=1, nw=199, nt=10, lazy=None, **kwargs
+        self,
+        ydeg=0,
+        udeg=0,
+        nc=1,
+        nt=10,
+        wav1=500,
+        wav2=520,
+        nw=199,
+        vsini_max=None,
+        lazy=None,
+        **kwargs
     ):
         # Check args
         ydeg = int(ydeg)
@@ -49,18 +60,67 @@ class DopplerMap:
             self._math = math.greedy_math
             self._linalg = math.greedy_linalg
 
-        # Instantiate the Theano ops class
-        self.ops = OpsDoppler(ydeg, udeg, 0, nw, nc=nc, nt=nt, **kwargs)
-
         # Dimensions
         self._ydeg = ydeg
         self._Ny = (ydeg + 1) ** 2
         self._udeg = udeg
         self._Nu = udeg + 1
         self._N = (ydeg + udeg + 1) ** 2
-        self._nw = nw
         self._nc = nc
         self._nt = nt
+        self._nw = nw
+
+        # Wavelength grid (uniform in log)
+        assert not is_tensor(
+            wav1, wav2
+        ), "Wavelength bounds must be numerical quantities."
+        wavr = np.exp(0.5 * (np.log(wav1) + np.log(wav2)))
+        log_lambda = np.linspace(np.log(wav1 / wavr), np.log(wav2 / wavr), nw)
+
+        # This parameter determines the convolution kernel width
+        self.velocity_unit = kwargs.pop("velocity_unit", units.m / units.s)
+        if vsini_max is None:
+            vsini_max = 1e5  # m/s = 100 km/s
+        else:
+            vsini_max *= self._velocity_factor
+
+        # Compute the padded wavelength grid. We add bins corresponding to
+        # the maximum kernel width to each end to prevent edge effects
+        dlam = log_lambda[1] - log_lambda[0]
+        betasini_max = vsini_max / self._clight
+        hw = np.array(
+            np.floor(
+                np.abs(0.5 * np.log((1 + betasini_max) / (1 - betasini_max)))
+                / dlam
+            ),
+            dtype="int32",
+        )
+        x = np.arange(0, hw + 1) * dlam
+        pad_l = log_lambda[0] - hw * dlam + x[:-1]
+        pad_r = log_lambda[-1] + x[1:]
+        log_lambda_padded = np.concatenate([pad_l, log_lambda, pad_r])
+
+        # Store
+        self.vsini_max = self._math.cast(vsini_max)
+        self.log_lambda = self._math.cast(log_lambda)
+        self._lambda = wavr * self._math.cast(np.exp(log_lambda))
+        self._log_lambda_padded = self._math.cast(log_lambda_padded)
+        self._lambda_padded = wavr * self._math.cast(np.exp(log_lambda_padded))
+        self._nwp = len(log_lambda_padded)
+
+        # Instantiate the Theano ops classs
+        self.ops = OpsDoppler(
+            ydeg,
+            udeg,
+            nw,
+            nc,
+            nt,
+            hw,
+            vsini_max,
+            self._clight,
+            log_lambda_padded,
+            **kwargs
+        )
 
         # Initialize
         self.reset(**kwargs)
@@ -87,18 +147,12 @@ class DopplerMap:
         self.inc = kwargs.pop("inc", 0.5 * np.pi / self._angle_factor)
         self.obl = kwargs.pop("obl", 0.0)
         self.veq = kwargs.pop("veq", 0.0)
-        self.R = kwargs.pop("R", 3e5)
-        self.load(wav=np.array([1.0, 2.0]), spectrum=np.ones((self._nc, 2)))
+        self.spectrum = np.ones((self._nc, self._nwp))
 
     @property
     def lazy(self):
         """Map evaluation mode: lazy or greedy?"""
         return self._lazy
-
-    @property
-    def nw(self):
-        """Number of wavelength bins. *Read-only*"""
-        return self._nw
 
     @property
     def nc(self):
@@ -109,6 +163,16 @@ class DopplerMap:
     def nt(self):
         """Number of spectral epochs. *Read-only*"""
         return self._nt
+
+    @property
+    def nwf(self):
+        """Number of wavelength bins in the output (``flux``). *Read-only*"""
+        return self._nw
+
+    @property
+    def nws(self):
+        """Number of wavelength bins in the input (``spectrum``). *Read-only*"""
+        return self._nwp
 
     @property
     def ydeg(self):
@@ -204,111 +268,81 @@ class DopplerMap:
 
     @property
     def vsini(self):
-        """The projected equatorial radial velocity in km/s. *Read-only*"""
-        return self._veq * self._math.sin(self._inc) / self._velocity_factor
-
-    @property
-    def R(self):
-        """The spectral resolution."""
-        return self._R
-
-    @R.setter
-    def R(self, value):
-        self._R = value
-
-        # Compute the wavelength grid
-        self._dlam = np.log(1.0 + 1.0 / self._R)
-        self._log_lambda = (
-            np.arange(-(self._nw // 2), self._nw // 2 + 1) * self._dlam
-        )
-
-        # Compute the *maximum* padded wavelength grid
-        nk = self.ops.get_nk(self._max_vsini, self._dlam)
-        self._log_lambda_padded_max = self.ops.get_log_lambda_padded(
-            self._log_lambda, self._dlam, nk
-        )
-        self._nw_max = len(self._log_lambda_padded_max)
-
-    def load(
-        self,
-        map=None,
-        wav=None,
-        spectrum=None,
-        interpolation_kind="linear",
-        **kwargs
-    ):
         """
-        Load a spatial map and/or a spectrum.
+        The projected equatorial radial velocity in units of ``velocity_unit``.
+        *Read-only*
 
         """
-        # Load the map
-        if map is not None:
-
-            # Borrow the `load` functionality from `starry.Map`
-            tmp_map = Map(self.ydeg)
-
-            # Args checks
-            assert self._ydeg > 0, "Can only load maps if ``ydeg`` > 0."
-            msg = (
-                "The map must be provided as a list of ``nc``"
-                "file names or as a numerical array of length ``nc``."
+        return (
+            self.ops.enforce_bounds(
+                self._veq * self._math.sin(self._inc),
+                self._math.cast(0.0),
+                self._vsini_max,
             )
-            assert not is_tensor(map), msg
-            if self._nc > 1:
-                assert hasattr(map, "__len__"), msg
-                assert len(map) == self._nc, msg
+            / self._velocity_factor,
+        )
+
+    def load(self, map, **kwargs):
+        """
+        Load the spatial map(s).
+
+        """
+        # Borrow the `load` functionality from `starry.Map`
+        tmp_map = Map(self.ydeg)
+
+        # Args checks
+        assert self._ydeg > 0, "Can only load maps if ``ydeg`` > 0."
+        msg = (
+            "The map must be provided as a list of ``nc``"
+            "file names or as a numerical array of length ``nc``."
+        )
+        assert not is_tensor(map), msg
+        if self._nc > 1:
+            assert hasattr(map, "__len__"), msg
+            assert len(map) == self._nc, msg
+        else:
+            if type(map) is str or not hasattr(map, "__len__"):
+                map = [map]
+            elif type(map) is np.ndarray and map.ndim == 1:
+                map = [map]
+
+        # Load
+        for n, map_n in enumerate(map):
+            tmp_map.load(map_n, **kwargs)
+            if self._nc == 1:
+                self[1:, :] = tmp_map[1:, :]
             else:
-                if type(map) is str or not hasattr(map, "__len__"):
-                    map = [map]
-                elif type(map) is np.ndarray and map.ndim == 1:
-                    map = [map]
-
-            # Load
-            for n, map_n in enumerate(map):
-                tmp_map.load(map_n, **kwargs)
-                if self._nc == 1:
-                    self[1:, :] = tmp_map[1:, :]
-                else:
-                    self[1:, :, n] = tmp_map[1:, :]
-
-        # Load the spectrum
-        if wav is not None and spectrum is not None:
-            assert not is_tensor(
-                wav, spectrum
-            ), "The spectrum must be provided as a numerical array."
-            self._lam_r = np.median(wav)
-            log_lambda = np.log(wav / self._lam_r)
-            spectrum = np.atleast_2d(spectrum)
-            self._spectrum = np.empty((self._nc, self._nw_max))
-            for n in range(self._nc):
-                f = interp1d(
-                    log_lambda,
-                    spectrum[n],
-                    kind=interpolation_kind,
-                    fill_value="extrapolate",
-                    bounds_error=False,
-                )
-                self._spectrum[n] = f(self._log_lambda_padded_max)
-            self._spectrum = self._math.cast(self._spectrum)
-        elif (wav is not None) or (spectrum is not None):
-            raise ValueError("Must provide both `wav` and `spectrum`.")
+                self[1:, :, n] = tmp_map[1:, :]
 
     @property
-    def wav(self):
+    def wavf(self):
         """
-        The wavelength grid.
+        The output wavelength grid. *Read-only*
 
         """
-        return self._lam_r * self._math.exp(self._log_lambda)
+        return self._lambda
+
+    @property
+    def wavs(self):
+        """
+        The input wavelength grid. *Read-only*
+
+        """
+        return self._lambda_padded
 
     @property
     def spectrum(self):
         """
-        The rest frame spectrum.
+        The rest frame spectrum at wavelengths ``wav`` for each component.
 
         """
-        pad = (self._nw_max - self._nw) // 2
-        return self._spectrum[:, pad:-pad]
+        return self._spectrum
+
+    @spectrum.setter
+    def spectrum(self, value):
+        self._spectrum = self.ops.enforce_shape(
+            self._math.cast(value), np.array([self._nc, self._nwp])
+        )
 
     @property
     def y(self):
@@ -415,18 +449,9 @@ class DopplerMap:
         the design matrix into this quantity to obtain the observed
         spectral timeseries (the ``flux``).
         """
-        # Determine the size of the padded wavelength grid, `nwp`
-        nk = self.ops.get_nk(self.vsini, self._dlam)
-        hw = (nk - 1) // 2
-        nwp = self.nw + nk - 1
-
-        # Get the central `nwp` elements of the full spectrum
-        pad = (self._nw_max - nwp) // 2
-        spectrum = self._spectrum[:, pad:-pad]
-
         # Outer product with the map
         return self._math.dot(
-            self._math.reshape(self._y, [self._Ny, self._nc]), spectrum
+            self._math.reshape(self._y, [self._Ny, self._nc]), self._spectrum
         )
 
     def design_matrix(self, theta):
@@ -437,7 +462,7 @@ class DopplerMap:
             )
             * self._angle_factor
         )
-        D = self.ops.get_D(self._log_lambda, self._inc, theta, self._veq)
+        D = self.ops.get_D(self._inc, theta, self._veq)
         return D
 
     def flux(self, theta):
@@ -449,6 +474,6 @@ class DopplerMap:
             * self._angle_factor
         )
         flux = self.ops.get_flux(
-            self._log_lambda, self._inc, theta, self._veq, self.spectral_map
+            self._inc, theta, self._veq, self.spectral_map
         )
         return flux

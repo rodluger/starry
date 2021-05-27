@@ -44,6 +44,9 @@ class CheckBoundsOp(Op):
                 "%s out of bounds: %f %s %f" % (self.name, value, sign, bound)
             )
 
+    def grad(self, inputs, gradients):
+        return [inputs[0] * 0.0]
+
 
 class RaiseValueErrorIfOp(Op):
     """

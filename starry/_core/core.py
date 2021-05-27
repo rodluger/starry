@@ -1365,13 +1365,35 @@ class OpsReflected(OpsYlm):
 
 
 class OpsDoppler(OpsYlm):
+    def __init__(
+        self,
+        ydeg,
+        udeg,
+        nw,
+        nc,
+        nt,
+        hw,
+        vsini_max,
+        clight,
+        log_lambda_padded,
+        **kwargs
+    ):
+        # Init the regular ops (with nw = nc, since that's
+        # the number of columns in the map matrix)
+        super(OpsDoppler, self).__init__(ydeg, udeg, 0, nc, **kwargs)
+        self.clight = clight
 
-    _clight = 3.0e5
-
-    def __init__(self, *args, nc=1, nt=10, **kwargs):
-        super(OpsDoppler, self).__init__(*args, **kwargs)
+        # Dimensions
+        self.nw = nw
         self.nc = nc
         self.nt = nt
+
+        # The wavelength grid spanning the kernel
+        self.nk = 2 * hw + 1
+        self.nwp = len(log_lambda_padded)
+        self.lam_kernel = log_lambda_padded[
+            self.nwp // 2 - hw : self.nwp // 2 + hw + 1
+        ]
 
     @autocompile
     def enforce_shape(self, tensor, shape):
@@ -1380,32 +1402,17 @@ class OpsDoppler(OpsYlm):
         )(tt.sum(tt.neq(tt.shape(tensor), shape)))
 
     @autocompile
-    def get_nk(self, vsini, dlam):
-        """The width of the convolution kernel in bins."""
-        betasini = vsini / self._clight
-        hw = tt.abs_(0.5 * tt.log((1 + betasini) / (1 - betasini)))
-        return 2 * tt.cast(tt.floor(hw / dlam), "int32") + 1
+    def enforce_bounds(self, tensor, lower, upper):
+        return tensor + CheckBoundsOp("vsini", lower, upper)(tensor)
 
     @autocompile
-    def get_log_lambda_padded(self, log_lambda, dlam, nk):
-        """The padded log-wavelength array."""
-        hw = (nk - 1) // 2
-        x = tt.mgrid[0 : hw + 1,][0] * dlam
-        pad_l = log_lambda[0] - hw * dlam + x[:-1]
-        pad_r = log_lambda[-1] + x[1:]
-        return tt.concatenate([pad_l, log_lambda, pad_r])
-
-    @autocompile
-    def get_x(self, log_lambda_padded, vsini, nk):
+    def get_x(self, vsini):
         """The `x` coordinate of lines of constant Doppler shift."""
-        betasini = vsini / self._clight
-        hw = (nk - 1) // 2
-        nwp = self.nw + nk - 1
-        lam_kernel = log_lambda_padded[nwp // 2 - hw : nwp // 2 + hw + 1]
+        betasini = vsini / self.clight
         return (
             (1.0 / betasini)
-            * (tt.exp(-2 * lam_kernel) - 1)
-            / (tt.exp(-2 * lam_kernel) + 1)
+            * (tt.exp(-2 * self.lam_kernel) - 1)
+            / (tt.exp(-2 * self.lam_kernel) + 1)
         )
 
     @autocompile
@@ -1415,7 +1422,7 @@ class OpsDoppler(OpsYlm):
         sijk = tt.zeros((deg + 1, deg + 1, 2, tt.shape(x)[0]))
 
         # Initial conditions
-        r2 = 1 - x ** 2
+        r2 = tt.maximum(1 - x ** 2, tt.zeros_like(x))
         sijk = tt.set_subtensor(sijk[0, 0, 0], 2 * r2 ** 0.5)
         sijk = tt.set_subtensor(sijk[0, 0, 1], 0.5 * np.pi * r2)
 
@@ -1458,7 +1465,7 @@ class OpsDoppler(OpsYlm):
         return kT0 / tt.sum(kT0[0])
 
     @autocompile
-    def get_D(self, log_lambda, inc, theta, veq):
+    def get_D(self, inc, theta, veq):
         """
         Return the full Doppler matrix.
 
@@ -1467,25 +1474,21 @@ class OpsDoppler(OpsYlm):
         each rotational phase.
         """
         # Compute the convolution kernels
-        dlam = log_lambda[1] - log_lambda[0]
         vsini = veq * tt.sin(inc)
-        nk = self.get_nk(vsini, dlam)
-        log_lambda_padded = self.get_log_lambda_padded(log_lambda, dlam, nk)
-        x = self.get_x(log_lambda_padded, vsini, nk)
+        x = self.get_x(vsini)
         rT = self.get_rT(x)
         kT0 = self.get_kT0(rT)
 
         # Indices for the CSR matrix we're going to construct
-        nwp = self.nw + nk - 1
-        indptr = (self.Ny * nk) * np.arange(self.nw + 1, dtype="int32")
-        i0 = tt.reshape(tt.arange(nk), (-1, 1))
-        i1 = nwp * np.arange(self.Ny).reshape(1, -1)
+        indptr = (self.Ny * self.nk) * np.arange(self.nw + 1, dtype="int32")
+        i0 = tt.reshape(tt.arange(self.nk), (-1, 1))
+        i1 = self.nwp * np.arange(self.Ny).reshape(1, -1)
         i2 = np.arange(self.nw).reshape(1, -1)
         indices = tt.reshape(
             tt.transpose(tt.reshape(tt.transpose(i0 + i1), (-1, 1)) + i2),
             (-1,),
         )
-        shape = tt.as_tensor_variable([self.nw, self.Ny * nwp])
+        shape = tt.as_tensor_variable([self.nw, self.Ny * self.nwp])
         D = [None for m in range(self.nt)]
 
         # Loop through each epoch
@@ -1530,8 +1533,8 @@ class OpsDoppler(OpsYlm):
         return ts.vstack(D)
 
     @autocompile
-    def get_flux(self, log_lambda, inc, theta, veq, a):
-        D = self.get_D(log_lambda, inc, theta, veq)
+    def get_flux(self, inc, theta, veq, a):
+        D = self.get_D(inc, theta, veq)
         flux = ts.dot(D, tt.reshape(a, (-1,)))
         return tt.reshape(flux, (self.nt, self.nw))
 
