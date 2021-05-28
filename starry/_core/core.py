@@ -17,6 +17,7 @@ from .ops import (
     GetClOp,
     RaiseValueErrorOp,
     RaiseValueErrorIfOp,
+    CheckBoundsOp,
     OrenNayarOp,
 )
 from .utils import logger, autocompile, is_tensor, clear_cache
@@ -1389,6 +1390,7 @@ class OpsDoppler(OpsYlm):
         self.nt = nt
 
         # The wavelength grid spanning the kernel
+        self.vsini_max = vsini_max
         self.nk = 2 * hw + 1
         self.nwp = len(log_lambda_padded)
         lam_kernel = log_lambda_padded[
@@ -1423,7 +1425,7 @@ class OpsDoppler(OpsYlm):
 
     @autocompile
     def enforce_bounds(self, tensor, lower, upper):
-        return tensor + CheckBoundsOp("vsini", lower, upper)(tensor)
+        return tensor + CheckBoundsOp(lower, upper, "vsini")([tensor])[0]
 
     @autocompile
     def get_x(self, vsini):
@@ -1481,56 +1483,50 @@ class OpsDoppler(OpsYlm):
         return kT0 / tt.sum(kT0[0])
 
     @autocompile
-    def get_D_data(self, inc, theta, veq):
+    def get_D_data(self, inc, theta_scalar, veq):
         """
         Return the Doppler matrix as a stack of data arrays.
 
         """
         # Compute the convolution kernels
-        vsini = veq * tt.sin(inc)
+        vsini = self.enforce_bounds(veq * tt.sin(inc), 0.0, self.vsini_max)
         x = self.get_x(vsini)
         rT = self.get_rT(x)
         kT0 = self.get_kT0(rT)
 
         # Loop through each epoch
-        data = [None for m in range(self.nt)]
-        for m in range(self.nt):
+        if self.udeg > 0:
 
-            if self.udeg > 0:
+            # Compute the limb darkening operator
+            F = self.F(
+                tt.as_tensor_variable(np.append([-1.0], u)),
+                tt.as_tensor_variable([np.pi]),
+            )
+            L = ts.dot(ts.dot(self.A1Inv, F), self.A1)
 
-                # Compute the limb darkening operator
-                F = self.F(
-                    tt.as_tensor_variable(np.append([-1.0], u)),
-                    tt.as_tensor_variable([np.pi]),
+            # Rotate the kernels
+            kT = tt.transpose(
+                self.right_project(
+                    tt.transpose(tt.dot(tt.transpose(L), kT0)),
+                    inc,
+                    tt.as_tensor_variable(0.0),
+                    theta_scalar,
                 )
-                L = ts.dot(ts.dot(self.A1Inv, F), self.A1)
+            )
 
-                # Rotate the kernels
-                kT = tt.transpose(
-                    self.right_project(
-                        tt.transpose(tt.dot(tt.transpose(L), kT0)),
-                        inc,
-                        tt.as_tensor_variable(0.0),
-                        theta[m],
-                    )
+        else:
+
+            # Rotate the kernels
+            kT = tt.transpose(
+                self.right_project(
+                    tt.transpose(kT0),
+                    inc,
+                    tt.as_tensor_variable(0.0),
+                    theta_scalar,
                 )
+            )
 
-            else:
-
-                # Rotate the kernels
-                kT = tt.transpose(
-                    self.right_project(
-                        tt.transpose(kT0),
-                        inc,
-                        tt.as_tensor_variable(0.0),
-                        theta[m],
-                    )
-                )
-
-            # Populate the Doppler matrix
-            data[m] = tt.tile(tt.reshape(kT, (-1,)), self.nw)
-
-        return data
+        return tt.tile(tt.reshape(kT, (-1,)), self.nw)
 
     @autocompile
     def get_D(self, inc, theta, veq):
@@ -1541,10 +1537,14 @@ class OpsDoppler(OpsYlm):
         spherical harmonic. These matrices are then stacked vertically for
         each rotational phase.
         """
-        data = self.get_D_data(inc, theta, veq)
         return ts.vstack(
             [
-                ts.basic.CSR(data[m], self.indices, self.indptr, self.shape)
+                ts.basic.CSR(
+                    self.get_D_data(inc, theta[m], veq),
+                    self.indices,
+                    self.indptr,
+                    self.shape,
+                )
                 for m in range(self.nt)
             ]
         )

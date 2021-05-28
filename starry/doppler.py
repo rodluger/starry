@@ -7,7 +7,6 @@ from ._indices import integers, get_ylm_inds, get_ylmw_inds
 from .compat import evaluator
 from .maps import YlmBase, MapBase, Map
 import numpy as np
-from scipy.interpolate import interp1d
 
 
 class DopplerMap:
@@ -110,8 +109,8 @@ class DopplerMap:
         self._nwp = nwp
 
         # Default spectrum (one centered absorption line, sigma = 1/2 Angstrom)
-        spectrum = np.ones((nc, nwp))
-        spectrum[0] = 1 - 0.5 * np.exp(
+        spectrum = np.ones((nwp, nc))
+        spectrum[:, 0] = 1 - 0.5 * np.exp(
             -0.5 * (wavr * np.exp(log_lambda_padded) - wavr) ** 2 / 0.05 ** 2
         )
         self._default_spectrum = spectrum
@@ -132,6 +131,9 @@ class DopplerMap:
 
         # Initialize
         self.reset(**kwargs)
+
+        # Support map (for certain operations like `load`, `show`, etc.)
+        self._map = Map(ydeg=self.ydeg, udeg=self.udeg, lazy=self.lazy)
 
     def reset(self, **kwargs):
 
@@ -281,23 +283,13 @@ class DopplerMap:
         *Read-only*
 
         """
-        return (
-            self.ops.enforce_bounds(
-                self._veq * self._math.sin(self._inc),
-                self._math.cast(0.0),
-                self._vsini_max,
-            )
-            / self._velocity_factor,
-        )
+        return self._veq * self._math.sin(self._inc) / self._velocity_factor
 
     def load(self, map, **kwargs):
         """
         Load the spatial map(s).
 
         """
-        # Borrow the `load` functionality from `starry.Map`
-        tmp_map = Map(self.ydeg)
-
         # Args checks
         assert self._ydeg > 0, "Can only load maps if ``ydeg`` > 0."
         msg = (
@@ -316,11 +308,16 @@ class DopplerMap:
 
         # Load
         for n, map_n in enumerate(map):
-            tmp_map.load(map_n, **kwargs)
-            if self._nc == 1:
-                self[1:, :] = tmp_map[1:, :]
+            if (map_n is None) or (
+                type(map_n) is str and map_n.lower() == "none"
+            ):
+                self._map[1:, :] = 0.0
             else:
-                self[1:, :, n] = tmp_map[1:, :]
+                self._map.load(map_n, **kwargs)
+            if self._nc == 1:
+                self[1:, :] = self._map[1:, :]
+            else:
+                self[1:, :, n] = self._math.reshape(self._map[1:, :], [-1, 1])
 
     @property
     def wavf(self):
@@ -344,12 +341,13 @@ class DopplerMap:
         The rest frame spectrum at wavelengths ``wav`` for each component.
 
         """
-        return self._spectrum
+        return self._math.transpose(self._spectrum)
 
     @spectrum.setter
     def spectrum(self, value):
         self._spectrum = self.ops.enforce_shape(
-            self._math.cast(value), np.array([self._nc, self._nwp])
+            self._math.transpose(self._math.cast(value)),
+            np.array([self._nc, self._nwp]),
         )
 
     @property
@@ -485,3 +483,6 @@ class DopplerMap:
             self._inc, theta, self._veq, self.spectral_map
         )
         return flux
+
+    def show(self, **kwargs):
+        pass
