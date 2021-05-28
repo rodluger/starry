@@ -2,10 +2,11 @@
 from . import config
 from ._constants import *
 from ._core import OpsDoppler, math
-from ._core.utils import is_tensor
+from ._core.utils import is_tensor, CompileLogMessage
 from ._indices import integers, get_ylm_inds, get_ylmw_inds
 from .compat import evaluator
 from .maps import YlmBase, MapBase, Map
+from .doppler_visualize import Visualize
 import numpy as np
 
 
@@ -129,11 +130,14 @@ class DopplerMap:
             **kwargs
         )
 
+        # Support map (for certain operations like `load`, `show`, etc.)
+        # This map reflects all the properties of the DopplerMap except
+        # the spherical harmonic coefficients `y`; these are set on an
+        # as-needed basis.
+        self._map = Map(ydeg=self.ydeg, udeg=self.udeg, lazy=self.lazy)
+
         # Initialize
         self.reset(**kwargs)
-
-        # Support map (for certain operations like `load`, `show`, etc.)
-        self._map = Map(ydeg=self.ydeg, udeg=self.udeg, lazy=self.lazy)
 
     def reset(self, **kwargs):
 
@@ -152,6 +156,7 @@ class DopplerMap:
         u = np.zeros(self._Nu)
         u[0] = -1.0
         self._u = self._math.cast(u)
+        self._map._u = self._u
 
         # Basic properties
         self.inc = kwargs.pop("inc", 0.5 * np.pi / self._angle_factor)
@@ -256,6 +261,7 @@ class DopplerMap:
     @inc.setter
     def inc(self, value):
         self._inc = self._math.cast(value) * self._angle_factor
+        self._map._inc = self._inc
 
     @property
     def obl(self):
@@ -403,6 +409,7 @@ class DopplerMap:
                 self._u = self.ops.set_map_vector(self._u, inds, val)
             else:
                 self._u[inds] = val
+            self._map._u = self._u
         elif isinstance(idx, tuple) and len(idx) == 2 and self.nc == 1:
             # User is accessing a Ylm index
             inds = get_ylm_inds(self.ydeg, idx[0], idx[1])
@@ -484,5 +491,40 @@ class DopplerMap:
         )
         return flux
 
-    def show(self, **kwargs):
-        pass
+    def show(self, theta=None, res=500, file=None, **kwargs):
+        """
+
+        """
+        get_val = evaluator(**kwargs)
+        if theta is None:
+            theta = np.linspace(0, 360, self.nt, endpoint=False)
+
+        # Render the map
+        moll = np.zeros((self.nc, res, res))
+        res_o = int(0.3 * res)
+        ortho = np.zeros((self.nt, res_o, res_o))
+        for k in range(self.nc):
+            self._map._y = self._math.reshape(self[:, :, k], (-1,))
+            img = get_val(self._map.render(projection="moll", res=res))
+            moll[k] = img / np.nanmax(img)
+            ortho += get_val(
+                self._map.render(projection="ortho", theta=theta, res=res_o)
+            )
+
+        # Get the observed spectrum at each phase
+        flux = get_val(self.flux(theta))
+
+        # Launch the web app
+        viz = Visualize(
+            get_val(self.wavs),
+            get_val(self.wavf),
+            moll,
+            ortho,
+            get_val(self.spectrum).T,
+            flux,
+            get_val(self._inc),
+        )
+        if file is None:
+            viz.launch()
+        else:
+            viz.save(file=file)

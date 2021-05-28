@@ -1,4 +1,5 @@
-from bokeh.io import curdoc
+from ._plotting import *
+from bokeh.io import save, output_file
 from bokeh.server.server import Server
 from bokeh.layouts import column, row
 from bokeh.plotting import figure
@@ -8,49 +9,55 @@ from bokeh.events import Pan, Tap, MouseMove, MouseWheel
 from bokeh.palettes import Category20
 import numpy as np
 
-# TODO: Make relative
-import starry
-from starry._plotting import *
-
 
 class Visualize:
-    def __init__(self, *args, **kwargs):
-        self.update(*args, **kwargs)
-
-    def update(self, wavs, moll, ortho, spec, inc, **kwargs):
-        # Store
-        self.wavs = wavs
-        self.moll = moll
-        self.ortho = ortho
-        self.spec = spec
+    def __init__(self, wavs, wavf, moll, ortho, spec, flux, inc, **kwargs):
+        # Store as single precision
+        self.wavs = np.array(wavs, dtype="float32")
+        self.wavf = np.array(wavf, dtype="float32")
+        self.moll = np.array(moll, dtype="float32")
+        self.ortho = np.array(ortho, dtype="float32")
+        self.spec = np.array(spec, dtype="float32")
+        self.flux = np.array(flux, dtype="float32")
         self.inc = inc
 
         # Dimensions
-        self.nc = moll.shape[0]
-        self.npix_m = moll.shape[1]
-        self.npix_o = ortho.shape[1]
-        self.nw = spec.shape[1]
-        self.nt = ortho.shape[0]
+        self.nc = self.moll.shape[0]
+        self.npix_m = self.moll.shape[1]
+        self.npix_o = self.ortho.shape[1]
+        self.nws = self.spec.shape[1]
+        self.nwf = self.flux.shape[1]
+        self.nt = self.ortho.shape[0]
 
         # Get plot ranges
-        values = (spec.T @ moll[:, ::10, ::10].reshape(self.nc, -1)).flatten()
+        values = (
+            self.spec.T @ self.moll[:, ::10, ::10].reshape(self.nc, -1)
+        ).flatten()
         self.vmax_m = 1.1 * np.nanmax(values)
-        self.vmax_o = 1.1 * np.nanmax(ortho)
+        self.vmax_o = 1.1 * np.nanmax(self.ortho)
+        self.vmax_f = 1.1 * np.nanmax(self.flux)
 
         # Get the image at the central wavelength bin
-        moll0 = (spec[:, self.nw // 2] @ moll.reshape(self.nc, -1)).reshape(
-            self.npix_m, self.npix_m
-        )
+        moll0 = (
+            self.spec[:, self.nws // 2] @ self.moll.reshape(self.nc, -1)
+        ).reshape(self.npix_m, self.npix_m)
 
         # Get the spectrum at the center of the image
-        spec0 = spec.T @ moll[:, self.npix_m // 2, self.npix_m // 2]
+        spec0 = self.spec.T @ self.moll[:, self.npix_m // 2, self.npix_m // 2]
 
         # Data sources
         self.source_moll = ColumnDataSource(data=dict(moll=[moll0]))
-        self.source_ortho = ColumnDataSource(data=dict(ortho=[ortho[0]]))
-        self.source_spec = ColumnDataSource(data=dict(spec=spec0, wavs=wavs))
+        self.source_ortho = ColumnDataSource(data=dict(ortho=[self.ortho[0]]))
+        self.source_spec = ColumnDataSource(
+            data=dict(spec=spec0, wavs=self.wavs)
+        )
+        self.source_flux = ColumnDataSource(
+            data=dict(flux=self.flux[0], wavf=self.wavf)
+        )
         self.source_index = ColumnDataSource(
-            data=dict(l=[self.nw // 2], x=[wavs[self.nw // 2]], y=[0.0], t=[0])
+            data=dict(
+                l=[self.nws // 2], x=[self.wavs[self.nws // 2]], y=[0.0], t=[0]
+            )
         )
 
     def plot_moll(self):
@@ -115,7 +122,7 @@ class Visualize:
                 "spec": self.spec,
                 "npix_m": self.npix_m,
                 "nc": self.nc,
-                "nw": self.nw,
+                "nws": self.nws,
             },
             code="""
                 var x = cb_obj["x"];
@@ -129,10 +136,10 @@ class Visualize:
 
                     // Compute weighted spectrum
                     if (!isNaN(moll[0][j][i])) {
-                        var local_spec = new Array(nw).fill(0);
+                        var local_spec = new Array(nws).fill(0);
                         for (var k = 0; k < nc; k++) {
                             var weight = moll[k][j][i];
-                            for (var l = 0; l < nw; l++) {
+                            for (var l = 0; l < nws; l++) {
                                 local_spec[l] += weight * spec[k][l]
                             }
                         }
@@ -156,7 +163,7 @@ class Visualize:
                 "wavs": self.wavs,
                 "npix_m": self.npix_m,
                 "nc": self.nc,
-                "nw": self.nw,
+                "nws": self.nws,
             },
             code="""
                 // Update the current wavelength index
@@ -164,7 +171,7 @@ class Visualize:
                 var l = source_index.data["l"][0];
                 l += delta;
                 if (l < 0) l = 0;
-                if (l > nw - 1) l = nw - 1;
+                if (l > nws - 1) l = nws - 1;
                 source_index.data["l"][0] = l;
                 source_index.data["x"][0] = wavs[l];
                 source_index.change.emit();
@@ -270,8 +277,8 @@ class Visualize:
         plot_ortho.toolbar.active_tap = None
 
         # Plot the lat/lon grid
-        lat_lines = get_ortho_latitude_lines(inc=self.inc * np.pi / 180)
-        lon_lines = get_ortho_longitude_lines(inc=self.inc * np.pi / 180)
+        lat_lines = get_ortho_latitude_lines(inc=self.inc)
+        lon_lines = get_ortho_longitude_lines(inc=self.inc)
         for x, y in lat_lines:
             plot_ortho.line(x, y, line_width=1, color="black", alpha=0.25)
         for x, y in lon_lines:
@@ -286,7 +293,9 @@ class Visualize:
             args={
                 "source_ortho": self.source_ortho,
                 "source_index": self.source_index,
+                "source_flux": self.source_flux,
                 "ortho": self.ortho,
+                "flux": self.flux,
                 "npix_o": self.npix_o,
                 "nt": self.nt,
                 "speed": self.nt / 200,
@@ -304,6 +313,10 @@ class Visualize:
                 // Update the map
                 source_ortho.data["ortho"][0] = ortho[Math.floor(t)];
                 source_ortho.change.emit();
+
+                // Update the flux
+                source_flux.data["flux"] = flux[Math.floor(t)];
+                source_flux.change.emit();
                 """,
         )
         plot_ortho.js_on_event(MouseWheel, mouse_wheel_callback)
@@ -316,11 +329,16 @@ class Visualize:
             plot_width=2 * 280,
             plot_height=2 * 130,
             toolbar_location=None,
-            x_range=(self.wavs[0], self.wavs[-1]),
-            y_range=(0, self.vmax_m),
+            x_range=(self.wavf[0], self.wavf[-1]),
+            y_range=(0, self.vmax_f),
         )
-
-        # TODO
+        plot_flux.line(
+            "wavf",
+            "flux",
+            source=self.source_flux,
+            line_width=1,
+            color="black",
+        )
 
         plot_flux.toolbar.active_drag = None
         plot_flux.toolbar.active_scroll = None
@@ -344,7 +362,29 @@ class Visualize:
 
         return plot_flux
 
-    def run(self, doc):
+    def save(self, file="starry.html"):
+        template = """
+        {% block postamble %}
+        <style>
+        .bk-root .bk {
+            margin: 0 auto !important;
+        }
+        </style>
+        <script>
+            // Disable mouse wheel on page
+            window.addEventListener("wheel", e => e.preventDefault(), { passive:false });
+        </script>
+        {% endblock %}
+        """
+        layout = row(
+            column(self.plot_moll(), self.plot_spec()),
+            Div(),
+            column(self.plot_ortho(), self.plot_flux()),
+        )
+        output_file(file, title="starry")
+        save(layout, filename=file, title="starry", template=template)
+
+    def _launch(self, doc):
         doc.title = "starry"
         doc.template = """
         {% block postamble %}
@@ -366,31 +406,9 @@ class Visualize:
         )
         doc.add_root(layout)
 
-
-# Sample map
-wavs = np.linspace(642.5, 643.5, 199)
-moll = np.zeros((4, 500, 500))
-ortho = np.zeros((8, 150, 150))
-theta = np.linspace(0, 360, 8, endpoint=False)
-inc = 60
-map = starry.Map(20, inc=inc, lazy=False)
-for k, letter in enumerate(["s", "p", "o", "t"]):
-    map.load(letter, force_psd=True)
-    img = map.render(projection="moll", res=500)
-    moll[k] = img / np.nanmax(img)
-    ortho += map.render(projection="ortho", theta=theta, res=150)
-spec = 1.0 - np.array(
-    [
-        np.exp(-0.5 * (wavs - wavs[len(wavs) // 5]) ** 2 / 0.05 ** 2),
-        np.exp(-0.5 * (wavs - wavs[(2 * len(wavs)) // 5]) ** 2 / 0.05 ** 2),
-        np.exp(-0.5 * (wavs - wavs[(3 * len(wavs)) // 5]) ** 2 / 0.05 ** 2),
-        np.exp(-0.5 * (wavs - wavs[(4 * len(wavs)) // 5]) ** 2 / 0.05 ** 2),
-    ]
-)
-viz = Visualize(wavs, moll, ortho, spec, inc)
-
-# Launch
-server = Server({"/": viz.run})
-server.start()
-server.io_loop.add_callback(server.show, "/")
-server.io_loop.start()
+    def launch(self):
+        server = Server({"/": self._launch})
+        server.start()
+        print("Press Ctrl+C to exit.")
+        server.io_loop.add_callback(server.show, "/")
+        server.io_loop.start()

@@ -31,12 +31,16 @@ class CompileLogMessage:
 
     """
 
-    def __init__(self, name):
+    def __init__(self, name, custom_message=None):
         self.name = name
+        self.custom_message = custom_message
 
     def __enter__(self):
         config.rootHandler.terminator = ""
-        logger.info("Compiling `{0}`... ".format(self.name))
+        if self.custom_message is None:
+            logger.info("Compiling `{0}`... ".format(self.name))
+        else:
+            logger.info(self.custom_message)
 
     def __exit__(self, type, value, traceback):
         config.rootHandler.terminator = "\n"

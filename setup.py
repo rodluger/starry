@@ -223,6 +223,7 @@ setup(
         "matplotlib>=3.2.2",
         "ipython",
         "exoplanet>=0.4.5",
+        "bokeh",
         "packaging",
     ],
     extras_require={
