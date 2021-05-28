@@ -3,8 +3,9 @@ from bokeh.server.server import Server
 from bokeh.layouts import column, row
 from bokeh.plotting import figure
 from bokeh.models.mappers import LinearColorMapper
-from bokeh.models import ColumnDataSource, CustomJS
+from bokeh.models import ColumnDataSource, CustomJS, Span
 from bokeh.events import Pan, Tap, MouseMove, MouseWheel
+from bokeh.palettes import Category20
 import numpy as np
 import starry
 
@@ -46,96 +47,103 @@ def get_longitude_lines(dlon=np.pi / 6, npts=1000, niter=100):
 class Visualize:
     def __init__(self, wavs, image, spec):
 
-        # Ingest
-        self.wavs = wavs
-        self.image = image
-        self.spec = spec
-        self.nc = self.image.shape[0]
-        self.npix = self.image.shape[1]
-        self.nw = self.spec.shape[1]
+        # Dimensions
+        nc = image.shape[0]
+        npix = image.shape[1]
+        nw = spec.shape[1]
 
         # Get plot ranges
-        values = (spec.T @ image[:, ::10, ::10].reshape(self.nc, -1)).flatten()
+        values = (spec.T @ image[:, ::10, ::10].reshape(nc, -1)).flatten()
         vmax = 1.1 * np.nanmax(values)
 
         # Get the image at the central wavelength bin
-        image0 = (
-            self.spec[:, self.nw // 2] @ self.image.reshape(self.nc, -1)
-        ).reshape(self.npix, self.npix)
+        image0 = (spec[:, nw // 2] @ image.reshape(nc, -1)).reshape(npix, npix)
 
         # Get the spectrum at the center of the image
-        spec0 = self.spec.T @ self.image[:, self.npix // 2, self.npix // 2]
+        spec0 = spec.T @ image[:, npix // 2, npix // 2]
 
         # Data sources
-        self.source_image = ColumnDataSource(data=dict(image=[image0]))
-        self.source_spec = ColumnDataSource(
-            data=dict(spec=spec0, wavs=self.wavs)
+        source_image = ColumnDataSource(data=dict(image=[image0]))
+        source_spec = ColumnDataSource(data=dict(spec=spec0, wavs=wavs))
+        source_index = ColumnDataSource(
+            data=dict(l=[nw // 2], x=[wavs[nw // 2]], y=[0.0])
         )
-        self.source_index = ColumnDataSource(data=dict(l=[self.nw // 2]))
 
         # Plot the map
         eps = 0.1
         epsp = 0.01
-        self.plot_image = figure(
-            plot_width=3 * 280,
-            plot_height=3 * 130,
+        plot_image = figure(
+            plot_width=2 * 280,
+            plot_height=2 * 130,
             toolbar_location=None,
             x_range=(-2 - eps, 2 + eps),
             y_range=(-1 - eps / 2, 1 + eps / 2),
         )
-        self.plot_image.axis.visible = False
-        self.plot_image.grid.visible = False
-        self.plot_image.outline_line_color = None
-        self.color_mapper = LinearColorMapper(
+        plot_image.axis.visible = False
+        plot_image.grid.visible = False
+        plot_image.outline_line_color = None
+        color_mapper = LinearColorMapper(
             palette="Plasma256", nan_color="white", low=0.0, high=vmax
         )
-        self.plot_image.image(
+        plot_image.image(
             image="image",
             x=-2,
             y=-1,
             dw=4,
             dh=2 + epsp / 2,
-            color_mapper=self.color_mapper,
-            source=self.source_image,
+            color_mapper=color_mapper,
+            source=source_image,
         )
-        self.plot_image.toolbar.active_drag = None
-        self.plot_image.toolbar.active_scroll = None
-        self.plot_image.toolbar.active_tap = None
+        plot_image.toolbar.active_drag = None
+        plot_image.toolbar.active_scroll = None
+        plot_image.toolbar.active_tap = None
 
         # Plot the lat/lon grid
         lat_lines = get_latitude_lines()
         lon_lines = get_longitude_lines()
         for x, y in lat_lines:
-            self.plot_image.line(x, y, line_width=1, color="black", alpha=0.25)
+            plot_image.line(x, y, line_width=1, color="black", alpha=0.25)
         for x, y in lon_lines:
-            self.plot_image.line(x, y, line_width=1, color="black", alpha=0.25)
+            plot_image.line(x, y, line_width=1, color="black", alpha=0.25)
         xe = np.linspace(-2, 2, 1000)
         ye = 0.5 * np.sqrt(4 - xe ** 2)
-        self.plot_image.line(xe, ye, line_width=3, color="black", alpha=1)
-        self.plot_image.line(xe, -ye, line_width=3, color="black", alpha=1)
+        plot_image.line(xe, ye, line_width=3, color="black", alpha=1)
+        plot_image.line(xe, -ye, line_width=3, color="black", alpha=1)
 
         # Plot the spectrum
-        self.plot_spec = figure(
-            plot_width=3 * 280,
-            plot_height=3 * 130,
+        plot_spec = figure(
+            plot_width=2 * 280,
+            plot_height=2 * 130,
             toolbar_location=None,
-            x_range=(self.wavs[0], self.wavs[-1]),
+            x_range=(wavs[0], wavs[-1]),
             y_range=(0, vmax),
         )
-        self.plot_spec.line("wavs", "spec", source=self.source_spec)
-        self.plot_spec.toolbar.active_drag = None
-        self.plot_spec.toolbar.active_scroll = None
-        self.plot_spec.toolbar.active_tap = None
+        plot_spec.line(
+            "wavs", "spec", source=source_spec, line_width=1, color="black"
+        )
+        plot_spec.ray(
+            x="x",
+            y="y",
+            length=300,
+            angle=0.5 * np.pi,
+            source=source_index,
+            line_width=3,
+            color=Category20[3][2],
+            alpha=0.5,
+        )
+        plot_spec.toolbar.active_drag = None
+        plot_spec.toolbar.active_scroll = None
+        plot_spec.toolbar.active_tap = None
 
         # Interaction
         mouse_move_callback = CustomJS(
             args={
-                "source_spec": self.source_spec,
-                "image": self.image,
-                "spec": self.spec,
-                "npix": self.npix,
-                "nc": self.nc,
-                "nw": self.nw,
+                "source_spec": source_spec,
+                "image": image,
+                "spec": spec,
+                "npix": npix,
+                "nc": nc,
+                "nw": nw,
             },
             code="""
                 var x = cb_obj["x"];
@@ -164,17 +172,18 @@ class Visualize:
                 }
                 """,
         )
-        self.plot_image.js_on_event(MouseMove, mouse_move_callback)
+        plot_image.js_on_event(MouseMove, mouse_move_callback)
 
         mouse_wheel_callback = CustomJS(
             args={
-                "source_image": self.source_image,
-                "source_index": self.source_index,
-                "image": self.image,
-                "spec": self.spec,
-                "npix": self.npix,
-                "nc": self.nc,
-                "nw": self.nw,
+                "source_image": source_image,
+                "source_index": source_index,
+                "image": image,
+                "spec": spec,
+                "wavs": wavs,
+                "npix": npix,
+                "nc": nc,
+                "nw": nw,
             },
             code="""
                 // Update the current wavelength index
@@ -184,6 +193,7 @@ class Visualize:
                 if (l < 0) l = 0;
                 if (l > nw - 1) l = nw - 1;
                 source_index.data["l"][0] = l;
+                source_index.data["x"][0] = wavs[l];
                 source_index.change.emit();
 
                 // Update the map
@@ -200,10 +210,10 @@ class Visualize:
                 source_image.change.emit();
                 """,
         )
-        self.plot_image.js_on_event(MouseWheel, mouse_wheel_callback)
+        plot_image.js_on_event(MouseWheel, mouse_wheel_callback)
 
         # Full layout
-        self.layout = column(self.plot_image, self.plot_spec)
+        self.layout = column(plot_image, plot_spec)
 
     def run(self, doc):
         doc.title = "starry"
