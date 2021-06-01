@@ -1,4 +1,18 @@
 # -*- coding: utf-8 -*-
+
+# Hack to allow importing `pymc3` without an internet connection
+try:
+    import distributed
+except:
+    import socket
+
+    getaddrinfo = socket.getaddrinfo
+    socket.getaddrinfo = lambda *args: [[None, None, None, None, ["0.0.0.0"]]]
+
+    import distributed
+
+    socket.getaddrinfo = getaddrinfo
+
 import warnings
 import aesara_theano_fallback
 from aesara_theano_fallback import aesara as theano

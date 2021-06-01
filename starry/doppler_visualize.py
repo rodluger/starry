@@ -11,7 +11,9 @@ import numpy as np
 
 
 class Visualize:
-    def __init__(self, wavs, wavf, moll, ortho, spec, flux, inc, **kwargs):
+    def __init__(
+        self, wavs, wavf, moll, ortho, spec, theta, flux, inc, **kwargs
+    ):
         # Store as single precision
         self.wavs = np.array(wavs, dtype="float32")
         self.wavf = np.array(wavf, dtype="float32")
@@ -19,6 +21,7 @@ class Visualize:
         self.ortho = np.array(ortho, dtype="float32")
         self.spec = np.array(spec, dtype="float32")
         self.flux = np.array(flux, dtype="float32")
+        self.theta = np.array(theta, dtype="float32")
         self.inc = inc
 
         # Dimensions
@@ -59,6 +62,22 @@ class Visualize:
                 l=[self.nws // 2], x=[self.wavs[self.nws // 2]], y=[0.0], t=[0]
             )
         )
+        lon_lines = []
+        for m in range(self.nt):
+            lon_lines.append(
+                get_ortho_longitude_lines(inc=self.inc, theta=self.theta[m])
+            )
+        lon_lines = np.array(lon_lines, dtype="float32")
+        self.lon_x, self.lon_y = np.swapaxes(
+            np.swapaxes(lon_lines, 0, 2), 1, 2
+        )
+        data_dict = {}
+        for i, x, y in zip(
+            range(len(self.lon_x[0])), self.lon_x[0], self.lon_y[0]
+        ):
+            data_dict["x{:d}".format(i)] = x
+            data_dict["y{:d}".format(i)] = y
+        self.source_ortho_lon = ColumnDataSource(data=data_dict)
 
     def plot_moll(self):
         # Plot the map
@@ -79,10 +98,10 @@ class Visualize:
         )
         plot_moll.image(
             image="moll",
-            x=-2,
-            y=-1,
-            dw=4,
-            dh=2 + epsp / 2,
+            x=-2 - epsp,
+            y=-1 - 0.5 * epsp,
+            dw=4 + 2 * epsp,
+            dh=2 + epsp,
             color_mapper=color_mapper,
             source=self.source_moll,
         )
@@ -109,6 +128,16 @@ class Visualize:
                 color="black",
                 alpha=0.25,
             )
+
+        # Hack to hide pixel edges
+        xe = np.linspace(-2, 2, 1000)
+        ye = 0.5 * np.sqrt(4 - xe ** 2)
+        xe *= 1.015
+        ye *= 1.06
+        plot_moll.line(xe, ye, line_width=10, color="white", alpha=1)
+        plot_moll.line(xe, -ye, line_width=10, color="white", alpha=1)
+
+        # Actual map border
         xe = np.linspace(-2, 2, 1000)
         ye = 0.5 * np.sqrt(4 - xe ** 2)
         plot_moll.line(xe, ye, line_width=3, color="black", alpha=1)
@@ -167,7 +196,7 @@ class Visualize:
             },
             code="""
                 // Update the current wavelength index
-                var delta = cb_obj["delta"];
+                var delta = Math.floor(cb_obj["delta"]);
                 var l = source_index.data["l"][0];
                 l += delta;
                 if (l < 0) l = 0;
@@ -265,10 +294,10 @@ class Visualize:
         )
         plot_ortho.image(
             image="ortho",
-            x=-1,
-            y=-1,
-            dw=2,
-            dh=2 + epsp,
+            x=-1 - epsp,
+            y=-1 - epsp,
+            dw=2 + 2 * epsp,
+            dh=2 + 2 * epsp,
             color_mapper=color_mapper,
             source=self.source_ortho,
         )
@@ -278,11 +307,27 @@ class Visualize:
 
         # Plot the lat/lon grid
         lat_lines = get_ortho_latitude_lines(inc=self.inc)
-        lon_lines = get_ortho_longitude_lines(inc=self.inc)
         for x, y in lat_lines:
             plot_ortho.line(x, y, line_width=1, color="black", alpha=0.25)
-        for x, y in lon_lines:
-            plot_ortho.line(x, y, line_width=1, color="black", alpha=0.25)
+        for i in range(len(self.lon_x[0])):
+            plot_ortho.line(
+                "x{:d}".format(i),
+                "y{:d}".format(i),
+                line_width=1,
+                color="black",
+                alpha=0.25,
+                source=self.source_ortho_lon,
+            )
+
+        # Hack to hide pixel edges
+        xe = np.linspace(-1, 1, 1000)
+        ye = np.sqrt(1 - xe ** 2)
+        xe *= 1.03
+        ye *= 1.03
+        plot_ortho.line(xe, ye, line_width=10, color="white", alpha=1)
+        plot_ortho.line(xe, -ye, line_width=10, color="white", alpha=1)
+
+        # Actual map border
         xe = np.linspace(-1, 1, 1000)
         ye = np.sqrt(1 - xe ** 2)
         plot_ortho.line(xe, ye, line_width=3, color="black", alpha=1)
@@ -294,6 +339,10 @@ class Visualize:
                 "source_ortho": self.source_ortho,
                 "source_index": self.source_index,
                 "source_flux": self.source_flux,
+                "source_ortho_lon": self.source_ortho_lon,
+                "lon_x": self.lon_x,
+                "lon_y": self.lon_y,
+                "nlon": len(self.lon_x[0]),
                 "ortho": self.ortho,
                 "flux": self.flux,
                 "npix_o": self.npix_o,
@@ -309,13 +358,21 @@ class Visualize:
                 while (t > nt - 1) t -= nt;
                 source_index.data["t"][0] = t;
                 source_index.change.emit();
+                var tidx = Math.floor(t);
 
                 // Update the map
-                source_ortho.data["ortho"][0] = ortho[Math.floor(t)];
+                source_ortho.data["ortho"][0] = ortho[tidx];
                 source_ortho.change.emit();
 
+                // Update the longitude lines
+                for (var n = 0; n < nlon; n++) {
+                    source_ortho_lon.data["x" + n] = lon_x[tidx][n];
+                    source_ortho_lon.data["y" + n] = lon_y[tidx][n];
+                }
+                source_ortho_lon.change.emit();
+
                 // Update the flux
-                source_flux.data["flux"] = flux[Math.floor(t)];
+                source_flux.data["flux"] = flux[tidx];
                 source_flux.change.emit();
                 """,
         )

@@ -491,28 +491,35 @@ class DopplerMap:
         )
         return flux
 
-    def show(self, theta=None, res=500, file=None, **kwargs):
+    def show(self, theta=None, res=150, file=None, **kwargs):
         """
 
         """
         get_val = evaluator(**kwargs)
         if theta is None:
-            theta = np.linspace(0, 360, self.nt, endpoint=False)
+            theta = np.linspace(0, 2 * np.pi, self.nt, endpoint=False)
+        else:
+            if is_tensor(theta):
+                theta = get_val(theta)
+            theta *= self._angle_factor
 
         # Render the map
         moll = np.zeros((self.nc, res, res))
-        res_o = int(0.3 * res)
-        ortho = np.zeros((self.nt, res_o, res_o))
+        ortho = np.zeros((self.nt, res, res))
         for k in range(self.nc):
             self._map._y = self._math.reshape(self[:, :, k], (-1,))
             img = get_val(self._map.render(projection="moll", res=res))
             moll[k] = img / np.nanmax(img)
             ortho += get_val(
-                self._map.render(projection="ortho", theta=theta, res=res_o)
+                self._map.render(
+                    projection="ortho",
+                    theta=theta / self._angle_factor,
+                    res=res,
+                )
             )
 
         # Get the observed spectrum at each phase
-        flux = get_val(self.flux(theta))
+        flux = get_val(self.flux(theta / self._angle_factor))
 
         # Launch the web app
         viz = Visualize(
@@ -521,6 +528,7 @@ class DopplerMap:
             moll,
             ortho,
             get_val(self.spectrum).T,
+            theta,
             flux,
             get_val(self._inc),
         )
