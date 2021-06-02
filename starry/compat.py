@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+"""
 # Hack to allow importing `pymc3` without an internet connection
 # This was fixed in https://github.com/dask/distributed/pull/3991
 try:
@@ -18,6 +19,7 @@ except Exception as e:
         socket.getaddrinfo = getaddrinfo
     except:
         raise e
+"""
 
 import warnings
 import aesara_theano_fallback
