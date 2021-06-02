@@ -1,17 +1,23 @@
 # -*- coding: utf-8 -*-
 
 # Hack to allow importing `pymc3` without an internet connection
+# This was fixed in https://github.com/dask/distributed/pull/3991
 try:
     import distributed
-except:
-    import socket
+except Exception as e:
+    try:
+        import socket
 
-    getaddrinfo = socket.getaddrinfo
-    socket.getaddrinfo = lambda *args: [[None, None, None, None, ["0.0.0.0"]]]
+        getaddrinfo = socket.getaddrinfo
+        socket.getaddrinfo = lambda *args: [
+            [None, None, None, None, ["0.0.0.0"]]
+        ]
 
-    import distributed
+        import distributed
 
-    socket.getaddrinfo = getaddrinfo
+        socket.getaddrinfo = getaddrinfo
+    except:
+        raise e
 
 import warnings
 import aesara_theano_fallback
@@ -21,6 +27,7 @@ from aesara_theano_fallback import sparse as ts
 from aesara_theano_fallback import change_flags, ifelse, USE_AESARA
 from aesara_theano_fallback.tensor import slinalg
 from aesara_theano_fallback.graph import basic, op, params_type, fg
+from inspect import getmro
 
 __all__ = [
     "theano",
@@ -59,6 +66,15 @@ MissingInputError = fg.MissingInputError
 theano.config.floatX = floatX
 
 
+def is_tensor(*objs):
+    """Return ``True`` if any of ``objs`` is a ``Theano`` object."""
+    for obj in objs:
+        for c in getmro(type(obj)):
+            if c is Node:
+                return True
+    return False
+
+
 def evaluator(**kwargs):
     """
     Return a function to evaluate theano tensors.
@@ -82,7 +98,12 @@ def evaluator(**kwargs):
         model = kwargs_model
         if model is None:
             model = pm.Model.get_context()
-        get_val = lambda x: pmx.eval_in_model(x, model=model, point=point)
+
+        def get_val(x):
+            if is_tensor(x):
+                return pmx.eval_in_model(x, model=model, point=point)
+            else:
+                return x
 
     else:
 
@@ -90,38 +111,45 @@ def evaluator(**kwargs):
 
         def get_val(x):
 
-            try:
-
-                # Try to directly evaluate it
-
-                return x.eval()
-
-            except MissingInputError as e:
-
-                # That didn't work. Perhaps we are in a pymc3 model
-                # context, but the user didn't provide a point?
-
-                import pymc3 as pm
-                import pymc3_ext as pmx
+            if is_tensor(x):
 
                 try:
-                    model = kwargs_model
-                    if model is None:
-                        model = pm.Model.get_context()
-                except TypeError:
-                    raise ValueError(
-                        "Missing input for variable {}, and no pymc3 model found.".format(
-                            x
+
+                    # Try to directly evaluate it
+
+                    return x.eval()
+
+                except MissingInputError as e:
+
+                    # That didn't work. Perhaps we are in a pymc3 model
+                    # context, but the user didn't provide a point?
+
+                    import pymc3 as pm
+                    import pymc3_ext as pmx
+
+                    try:
+                        model = kwargs_model
+                        if model is None:
+                            model = pm.Model.get_context()
+                    except TypeError:
+                        raise ValueError(
+                            "Missing input for variable {}, and no pymc3 model found.".format(
+                                x
+                            )
                         )
+
+                    # Warn the user that we're using the test point
+                    warnings.warn(
+                        "Detected pymc3 model context, but no point provided. "
+                        "Evaluating at test_point."
                     )
 
-                # Warn the user that we're using the test point
-                warnings.warn(
-                    "Detected pymc3 model context, but no point provided. Evaluating at test_point."
-                )
+                    return pmx.eval_in_model(
+                        x, model=model, point=model.test_point
+                    )
 
-                return pmx.eval_in_model(
-                    x, model=model, point=model.test_point
-                )
+            else:
+
+                return x
 
     return get_val

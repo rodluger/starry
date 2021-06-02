@@ -10,10 +10,19 @@ from bokeh.models import (
     Span,
     Div,
     CheckboxButtonGroup,
+    Band,
 )
-from bokeh.events import Pan, Tap, MouseMove, MouseWheel
+from bokeh.events import (
+    Pan,
+    Tap,
+    MouseMove,
+    MouseWheel,
+    MouseEnter,
+    MouseLeave,
+)
 from bokeh.palettes import Category20
 import numpy as np
+from IPython.display import HTML, display
 
 
 TEMPLATE = """
@@ -24,8 +33,9 @@ TEMPLATE = """
 }
 </style>
 <script>
-    // Disable mouse wheel on page
-    window.addEventListener("wheel", e => e.preventDefault(), { passive:false });
+    var disable_wheel = function (e) {
+        e.preventDefault();
+    };
 </script>
 {% endblock %}
 """
@@ -78,6 +88,7 @@ class Visualize:
         rg = mx - mn
         self.vmax_f0 = mx + 0.1 * rg
         self.vmin_f0 = mn - 0.1 * rg
+        self.aspect = 2.0
 
         # Get the image at the central wavelength bin
         moll0 = (
@@ -118,16 +129,120 @@ class Visualize:
             data_dict["y{:d}".format(i)] = y
         self.source_ortho_lon = ColumnDataSource(data=data_dict)
 
+    def add_border(self, plot, projection="ortho", pts=1000):
+        if projection == "ortho":
+            xe = np.linspace(-1, 1, pts)
+            ye = np.sqrt(1 - xe ** 2)
+            res = self.npix_o
+        else:
+            xe = np.linspace(-2, 2, pts)
+            ye = 0.5 * np.sqrt(4 - xe ** 2)
+            res = self.npix_m
+        d = 1 - 2 * np.sqrt(2) / res
+
+        # Fill above
+        source = ColumnDataSource(
+            data=dict(x=d * xe, lower=d * ye, upper=np.ones_like(xe))
+        )
+        band = Band(
+            base="x",
+            lower="lower",
+            upper="upper",
+            level="overlay",
+            fill_alpha=1,
+            fill_color="white",
+            line_width=0,
+            source=source,
+        )
+        plot.add_layout(band)
+
+        # Fill below
+        source = ColumnDataSource(
+            data=dict(x=d * xe, lower=-np.ones_like(xe), upper=-d * ye)
+        )
+        band = Band(
+            base="x",
+            lower="lower",
+            upper="upper",
+            level="overlay",
+            fill_alpha=1,
+            fill_color="white",
+            line_width=0,
+            source=source,
+        )
+        plot.add_layout(band)
+
+        # Fill right
+        if projection == "ortho":
+            source = ColumnDataSource(
+                data=dict(
+                    x=[1 + 1.1 * (d - 1), 1.1],
+                    lower=[-1.0, -1.0],
+                    upper=[1.0, 1.0],
+                )
+            )
+        else:
+            source = ColumnDataSource(
+                data=dict(
+                    x=[2 * (1 + 1.1 * (d - 1)), 2.1],
+                    lower=[-1.0, -1.0],
+                    upper=[1.0, 1.0],
+                )
+            )
+        band = Band(
+            base="x",
+            lower="lower",
+            upper="upper",
+            level="overlay",
+            fill_alpha=1.0,
+            fill_color="white",
+            line_width=0,
+            source=source,
+        )
+        plot.add_layout(band)
+
+        # Fill left
+        if projection == "ortho":
+            source = ColumnDataSource(
+                data=dict(
+                    x=[-1.1, -(1 + 1.1 * (d - 1))],
+                    lower=[-1.0, -1.0],
+                    upper=[1.0, 1.0],
+                )
+            )
+        else:
+            source = ColumnDataSource(
+                data=dict(
+                    x=[-2.1, -2 * (1 + 1.1 * (d - 1))],
+                    lower=[-1.0, -1.0],
+                    upper=[1.0, 1.0],
+                )
+            )
+        band = Band(
+            base="x",
+            lower="lower",
+            upper="upper",
+            level="overlay",
+            fill_alpha=1.0,
+            fill_color="white",
+            line_width=0,
+            source=source,
+        )
+        plot.add_layout(band)
+
+        # Plot contour
+        plot.line(d * xe, d * ye, line_width=2, color="black", alpha=1)
+        plot.line(d * xe, -d * ye, line_width=2, color="black", alpha=1)
+
     def plot_moll(self):
         # Plot the map
-        eps = 0.1
-        epsp = 0.01
         plot_moll = figure(
-            plot_width=2 * 280,
-            plot_height=2 * 130,
+            aspect_ratio=self.aspect,
             toolbar_location=None,
-            x_range=(-2 - eps, 2 + eps),
-            y_range=(-1 - eps / 2, 1 + eps / 2),
+            x_range=(-2, 2),
+            y_range=(-1, 1),
+            id="plot_moll",
+            name="plot_moll",
         )
         plot_moll.axis.visible = False
         plot_moll.grid.visible = False
@@ -140,10 +255,10 @@ class Visualize:
         )
         plot_moll.image(
             image="moll",
-            x=-2 - epsp,
-            y=-1 - 0.5 * epsp,
-            dw=4 + 2 * epsp,
-            dh=2 + epsp,
+            x=-2,
+            y=-1,
+            dw=4,
+            dh=2,
             color_mapper=color_mapper,
             source=self.source_moll,
         )
@@ -170,20 +285,7 @@ class Visualize:
                 color="black",
                 alpha=0.25,
             )
-
-        # Hack to hide pixel edges
-        xe = np.linspace(-2, 2, 1000)
-        ye = 0.5 * np.sqrt(4 - xe ** 2)
-        xe *= 1.015
-        ye *= 1.06
-        plot_moll.line(xe, ye, line_width=10, color="white", alpha=1)
-        plot_moll.line(xe, -ye, line_width=10, color="white", alpha=1)
-
-        # Actual map border
-        xe = np.linspace(-2, 2, 1000)
-        ye = 0.5 * np.sqrt(4 - xe ** 2)
-        plot_moll.line(xe, ye, line_width=3, color="black", alpha=1)
-        plot_moll.line(xe, -ye, line_width=3, color="black", alpha=1)
+        self.add_border(plot_moll, "moll")
 
         # Interaction: show spectra at different points as mouse moves
         mouse_move_callback = CustomJS(
@@ -263,6 +365,20 @@ class Visualize:
         )
         plot_moll.js_on_event(MouseWheel, mouse_wheel_callback)
 
+        mouse_enter_callback = CustomJS(
+            code="""
+            window.addEventListener("wheel", disable_wheel, { passive:false });
+            """
+        )
+        plot_moll.js_on_event(MouseEnter, mouse_enter_callback)
+
+        mouse_leave_callback = CustomJS(
+            code="""
+            window.removeEventListener("wheel", disable_wheel, { passive:false });
+            """
+        )
+        plot_moll.js_on_event(MouseLeave, mouse_leave_callback)
+
         return plot_moll
 
     def plot_spec(self):
@@ -319,14 +435,13 @@ class Visualize:
 
     def plot_ortho(self):
         # Plot the map
-        eps = 0.05
-        epsp = 0.005
         plot_ortho = figure(
-            plot_width=2 * 280,
-            plot_height=2 * 130,
+            aspect_ratio=self.aspect,
             toolbar_location=None,
-            x_range=(-270 / 130 - eps, 270 / 130 + eps),
-            y_range=(-1 - eps, 1 + eps),
+            x_range=(-2, 2),
+            y_range=(-1, 1),
+            id="plot_ortho",
+            name="plot_ortho",
         )
         plot_ortho.axis.visible = False
         plot_ortho.grid.visible = False
@@ -339,10 +454,10 @@ class Visualize:
         )
         plot_ortho.image(
             image="ortho",
-            x=-1 - epsp,
-            y=-1 - epsp,
-            dw=2 + 2 * epsp,
-            dh=2 + 2 * epsp,
+            x=-1,
+            y=-1,
+            dw=2,
+            dh=2,
             color_mapper=color_mapper,
             source=self.source_ortho,
         )
@@ -363,20 +478,7 @@ class Visualize:
                 alpha=0.25,
                 source=self.source_ortho_lon,
             )
-
-        # Hack to hide pixel edges
-        xe = np.linspace(-1, 1, 1000)
-        ye = np.sqrt(1 - xe ** 2)
-        xe *= 1.03
-        ye *= 1.03
-        plot_ortho.line(xe, ye, line_width=10, color="white", alpha=1)
-        plot_ortho.line(xe, -ye, line_width=10, color="white", alpha=1)
-
-        # Actual map border
-        xe = np.linspace(-1, 1, 1000)
-        ye = np.sqrt(1 - xe ** 2)
-        plot_ortho.line(xe, ye, line_width=3, color="black", alpha=1)
-        plot_ortho.line(xe, -ye, line_width=3, color="black", alpha=1)
+        self.add_border(plot_ortho, "ortho")
 
         # Interaction: Rotate the star as the mouse wheel moves
         mouse_wheel_callback = CustomJS(
@@ -411,9 +513,10 @@ class Visualize:
                 source_ortho.change.emit();
 
                 // Update the longitude lines
-                for (var n = 0; n < nlon; n++) {
-                    source_ortho_lon.data["x" + n] = lon_x[tidx][n];
-                    source_ortho_lon.data["y" + n] = lon_y[tidx][n];
+                var k;
+                for (var k = 0; k < nlon; k++) {
+                    source_ortho_lon.data["x" + k] = lon_x[tidx][k];
+                    source_ortho_lon.data["y" + k] = lon_y[tidx][k];
                 }
                 source_ortho_lon.change.emit();
 
@@ -424,6 +527,20 @@ class Visualize:
                 """,
         )
         plot_ortho.js_on_event(MouseWheel, mouse_wheel_callback)
+
+        mouse_enter_callback = CustomJS(
+            code="""
+            window.addEventListener("wheel", disable_wheel, { passive:false });
+            """
+        )
+        plot_ortho.js_on_event(MouseEnter, mouse_enter_callback)
+
+        mouse_leave_callback = CustomJS(
+            code="""
+            window.removeEventListener("wheel", disable_wheel, { passive:false });
+            """
+        )
+        plot_ortho.js_on_event(MouseLeave, mouse_leave_callback)
 
         return plot_ortho
 
@@ -476,20 +593,49 @@ class Visualize:
 
     def layout(self):
         return row(
-            column(self.plot_moll(), self.plot_spec()),
+            column(
+                self.plot_moll(), self.plot_spec(), sizing_mode="scale_width"
+            ),
             Div(),
-            column(self.plot_ortho(), self.plot_flux()),
+            column(
+                self.plot_ortho(), self.plot_flux(), sizing_mode="scale_width"
+            ),
+            min_width=600,
+            max_width=1200,
         )
 
-    def show(self):
-        output_notebook()
+    def show_notebook(self):
+        # Define the function we'll use to disable mouse wheel
+        # scrolling when hovering over a plot
+        display(
+            HTML(
+                """
+            <script>
+                var disable_wheel = function (e) {
+                    e.preventDefault();
+                };
+            </script>
+        """
+            )
+        )
+
+        # TODO: Bokeh still has trouble honoring aspect ratios,
+        # so we need to fudge it.
+        self.aspect = 2.25
+        output_notebook(hide_banner=True)
         show(self.layout())
 
     def save(self, file="starry.html"):
+        # TODO: Bokeh still has trouble honoring aspect ratios,
+        # so we need to fudge it.
+        self.aspect = 2.1
         output_file(file, title="starry")
         save(self.layout(), filename=file, title="starry", template=TEMPLATE)
 
     def _launch(self, doc):
+        # TODO: Bokeh still has trouble honoring aspect ratios,
+        # so we need to fudge it.
+        self.aspect = 2.1
         doc.title = "starry"
         doc.template = TEMPLATE
         doc.add_root(self.layout())

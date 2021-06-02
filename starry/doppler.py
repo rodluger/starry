@@ -572,7 +572,7 @@ class DopplerMap:
             try:
                 if "zmqshell" in str(type(get_ipython())):
                     # YES: display inline
-                    viz.show()
+                    viz.show_notebook()
                 else:
                     raise NameError("")
             except NameError:

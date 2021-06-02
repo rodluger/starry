@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 from .. import config
-from ..compat import Node, change_flags, theano, tt
+from ..compat import Node, change_flags, theano, tt, is_tensor
 import numpy as np
-from inspect import getmro
 from functools import wraps
 import logging
 import sys
@@ -13,15 +12,6 @@ __all__ = ["logger", "autocompile", "is_tensor", "clear_cache"]
 
 
 integers = (int, np.int16, np.int32, np.int64)
-
-
-def is_tensor(*objs):
-    """Return ``True`` if any of ``objs`` is a ``Theano`` object."""
-    for obj in objs:
-        for c in getmro(type(obj)):
-            if c is Node:
-                return True
-    return False
 
 
 class CompileLogMessage:
