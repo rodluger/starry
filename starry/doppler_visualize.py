@@ -1,18 +1,39 @@
 from ._plotting import *
-from bokeh.io import save, output_file
+from bokeh.io import save, output_file, output_notebook, show
 from bokeh.server.server import Server
 from bokeh.layouts import column, row
 from bokeh.plotting import figure
 from bokeh.models.mappers import LinearColorMapper
-from bokeh.models import ColumnDataSource, CustomJS, Span, Div
+from bokeh.models import (
+    ColumnDataSource,
+    CustomJS,
+    Span,
+    Div,
+    CheckboxButtonGroup,
+)
 from bokeh.events import Pan, Tap, MouseMove, MouseWheel
 from bokeh.palettes import Category20
 import numpy as np
 
 
+TEMPLATE = """
+{% block postamble %}
+<style>
+.bk-root .bk {
+    margin: 0 auto !important;
+}
+</style>
+<script>
+    // Disable mouse wheel on page
+    window.addEventListener("wheel", e => e.preventDefault(), { passive:false });
+</script>
+{% endblock %}
+"""
+
+
 class Visualize:
     def __init__(
-        self, wavs, wavf, moll, ortho, spec, theta, flux, inc, **kwargs
+        self, wavs, wavf, moll, ortho, spec, theta, flux0, flux, inc, **kwargs
     ):
         # Store as single precision
         self.wavs = np.array(wavs, dtype="float32")
@@ -20,6 +41,7 @@ class Visualize:
         self.moll = np.array(moll, dtype="float32")
         self.ortho = np.array(ortho, dtype="float32")
         self.spec = np.array(spec, dtype="float32")
+        self.flux0 = np.array(flux0, dtype="float32")
         self.flux = np.array(flux, dtype="float32")
         self.theta = np.array(theta, dtype="float32")
         self.inc = inc
@@ -36,9 +58,26 @@ class Visualize:
         values = (
             self.spec.T @ self.moll[:, ::10, ::10].reshape(self.nc, -1)
         ).flatten()
-        self.vmax_m = 1.1 * np.nanmax(values)
-        self.vmax_o = 1.1 * np.nanmax(self.ortho)
-        self.vmax_f = 1.1 * np.nanmax(self.flux)
+        mx = np.nanmax(values)
+        mn = np.nanmin(values)
+        rg = mx - mn
+        self.vmax_m = mx + 0.1 * rg
+        self.vmin_m = mn - 0.1 * rg
+        mx = np.nanmax(self.ortho)
+        mn = np.nanmin(self.ortho)
+        rg = mx - mn
+        self.vmax_o = mx + 0.1 * rg
+        self.vmin_o = mn - 0.1 * rg
+        mx = np.nanmax(self.flux)
+        mn = np.nanmin(self.flux)
+        rg = mx - mn
+        self.vmax_f = mx + 0.1 * rg
+        self.vmin_f = mn - 0.1 * rg
+        mx = np.nanmax(self.flux0)
+        mn = np.nanmin(self.flux0)
+        rg = mx - mn
+        self.vmax_f0 = mx + 0.1 * rg
+        self.vmin_f0 = mn - 0.1 * rg
 
         # Get the image at the central wavelength bin
         moll0 = (
@@ -55,11 +94,11 @@ class Visualize:
             data=dict(spec=spec0, wavs=self.wavs)
         )
         self.source_flux = ColumnDataSource(
-            data=dict(flux=self.flux[0], wavf=self.wavf)
+            data=dict(flux=self.flux[0], flux0=self.flux0[0], wavf=self.wavf)
         )
         self.source_index = ColumnDataSource(
             data=dict(
-                l=[self.nws // 2], x=[self.wavs[self.nws // 2]], y=[0.0], t=[0]
+                l=[self.nws // 2], x=[self.wavs[self.nws // 2]], y=[-1], t=[0]
             )
         )
         lon_lines = []
@@ -94,7 +133,10 @@ class Visualize:
         plot_moll.grid.visible = False
         plot_moll.outline_line_color = None
         color_mapper = LinearColorMapper(
-            palette="Plasma256", nan_color="white", low=0.0, high=self.vmax_m
+            palette="Plasma256",
+            nan_color="white",
+            low=self.vmin_m,
+            high=self.vmax_m,
         )
         plot_moll.image(
             image="moll",
@@ -230,7 +272,7 @@ class Visualize:
             plot_height=2 * 130,
             toolbar_location=None,
             x_range=(self.wavs[0], self.wavs[-1]),
-            y_range=(0, self.vmax_m),
+            y_range=(self.vmin_m, self.vmax_m),
         )
         plot_spec.line(
             "wavs",
@@ -242,7 +284,7 @@ class Visualize:
         plot_spec.ray(
             x="x",
             y="y",
-            length=300,
+            length=99,
             angle=0.5 * np.pi,
             source=self.source_index,
             line_width=3,
@@ -290,7 +332,10 @@ class Visualize:
         plot_ortho.grid.visible = False
         plot_ortho.outline_line_color = None
         color_mapper = LinearColorMapper(
-            palette="Plasma256", nan_color="white", low=0.0, high=self.vmax_o
+            palette="Plasma256",
+            nan_color="white",
+            low=self.vmin_o,
+            high=self.vmax_o,
         )
         plot_ortho.image(
             image="ortho",
@@ -344,6 +389,7 @@ class Visualize:
                 "lon_y": self.lon_y,
                 "nlon": len(self.lon_x[0]),
                 "ortho": self.ortho,
+                "flux0": self.flux0,
                 "flux": self.flux,
                 "npix_o": self.npix_o,
                 "nt": self.nt,
@@ -373,6 +419,7 @@ class Visualize:
 
                 // Update the flux
                 source_flux.data["flux"] = flux[tidx];
+                source_flux.data["flux0"] = flux0[tidx];
                 source_flux.change.emit();
                 """,
         )
@@ -387,7 +434,15 @@ class Visualize:
             plot_height=2 * 130,
             toolbar_location=None,
             x_range=(self.wavf[0], self.wavf[-1]),
-            y_range=(0, self.vmax_f),
+            y_range=(self.vmin_f, self.vmax_f),
+        )
+        plot_flux.line(
+            "wavf",
+            "flux0",
+            source=self.source_flux,
+            line_width=1,
+            color=Category20[3][2],
+            alpha=0.5,
         )
         plot_flux.line(
             "wavf",
@@ -419,49 +474,25 @@ class Visualize:
 
         return plot_flux
 
-    def save(self, file="starry.html"):
-        template = """
-        {% block postamble %}
-        <style>
-        .bk-root .bk {
-            margin: 0 auto !important;
-        }
-        </style>
-        <script>
-            // Disable mouse wheel on page
-            window.addEventListener("wheel", e => e.preventDefault(), { passive:false });
-        </script>
-        {% endblock %}
-        """
-        layout = row(
+    def layout(self):
+        return row(
             column(self.plot_moll(), self.plot_spec()),
             Div(),
             column(self.plot_ortho(), self.plot_flux()),
         )
+
+    def show(self):
+        output_notebook()
+        show(self.layout())
+
+    def save(self, file="starry.html"):
         output_file(file, title="starry")
-        save(layout, filename=file, title="starry", template=template)
+        save(self.layout(), filename=file, title="starry", template=TEMPLATE)
 
     def _launch(self, doc):
         doc.title = "starry"
-        doc.template = """
-        {% block postamble %}
-        <style>
-        .bk-root .bk {
-            margin: 0 auto !important;
-        }
-        </style>
-        <script>
-            // Disable mouse wheel on page
-            window.addEventListener("wheel", e => e.preventDefault(), { passive:false });
-        </script>
-        {% endblock %}
-        """
-        layout = row(
-            column(self.plot_moll(), self.plot_spec()),
-            Div(),
-            column(self.plot_ortho(), self.plot_flux()),
-        )
-        doc.add_root(layout)
+        doc.template = TEMPLATE
+        doc.add_root(self.layout())
 
     def launch(self):
         server = Server({"/": self._launch})

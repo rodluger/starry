@@ -9,6 +9,8 @@ rootLogger.setLevel(logging.INFO)
 class ConfigType(type):
     """Global config container."""
 
+    message_lock = False
+
     @property
     def rootLogger(cls):
         return rootLogger

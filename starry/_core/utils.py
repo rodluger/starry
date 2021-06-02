@@ -34,17 +34,24 @@ class CompileLogMessage:
     def __init__(self, name, custom_message=None):
         self.name = name
         self.custom_message = custom_message
+        self.locking = False
 
     def __enter__(self):
-        config.rootHandler.terminator = ""
-        if self.custom_message is None:
-            logger.info("Compiling `{0}`... ".format(self.name))
-        else:
-            logger.info(self.custom_message)
+        if not config.message_lock:
+            config.message_lock = True
+            self.locking = True
+            config.rootHandler.terminator = ""
+            if self.custom_message is None:
+                logger.info("Compiling `{0}`...".format(self.name))
+            else:
+                logger.info(self.custom_message)
 
     def __exit__(self, type, value, traceback):
-        config.rootHandler.terminator = "\n"
-        logger.info("Done.")
+        if self.locking:
+            config.rootHandler.terminator = "\n"
+            logger.info(" Done.")
+            config.message_lock = False
+            self.locking = False
 
 
 def _get_type(arg):

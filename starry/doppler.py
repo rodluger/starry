@@ -134,7 +134,10 @@ class DopplerMap:
         # This map reflects all the properties of the DopplerMap except
         # the spherical harmonic coefficients `y`; these are set on an
         # as-needed basis.
+        _quiet = config.quiet
+        config.quiet = True
         self._map = Map(ydeg=self.ydeg, udeg=self.udeg, lazy=self.lazy)
+        config.quiet = _quiet
 
         # Initialize
         self.reset(**kwargs)
@@ -351,10 +354,15 @@ class DopplerMap:
 
     @spectrum.setter
     def spectrum(self, value):
-        self._spectrum = self.ops.enforce_shape(
-            self._math.transpose(self._math.cast(value)),
-            np.array([self._nc, self._nwp]),
-        )
+        if self._nc == 1:
+            self._spectrum = self._math.reshape(
+                self._math.cast(value), np.array([1, self._nwp])
+            )
+        else:
+            self._spectrum = self.ops.enforce_shape(
+                self._math.transpose(self._math.cast(value)),
+                np.array([self._nc, self._nwp]),
+            )
 
     @property
     def y(self):
@@ -495,44 +503,78 @@ class DopplerMap:
         """
 
         """
-        get_val = evaluator(**kwargs)
-        if theta is None:
-            theta = np.linspace(0, 2 * np.pi, self.nt, endpoint=False)
-        else:
-            if is_tensor(theta):
-                theta = get_val(theta)
-            theta *= self._angle_factor
+        with CompileLogMessage("show", custom_message="Rendering the map..."):
 
-        # Render the map
-        moll = np.zeros((self.nc, res, res))
-        ortho = np.zeros((self.nt, res, res))
-        for k in range(self.nc):
-            self._map._y = self._math.reshape(self[:, :, k], (-1,))
-            img = get_val(self._map.render(projection="moll", res=res))
-            moll[k] = img / np.nanmax(img)
-            ortho += get_val(
-                self._map.render(
-                    projection="ortho",
-                    theta=theta / self._angle_factor,
-                    res=res,
+            get_val = evaluator(**kwargs)
+            if theta is None:
+                theta = np.linspace(0, 2 * np.pi, self.nt, endpoint=False)
+            else:
+                if is_tensor(theta):
+                    theta = get_val(theta)
+                theta *= self._angle_factor
+
+            # Render the map
+            moll = np.zeros((self.nc, res, res))
+            ortho = np.zeros((self.nt, res, res))
+            for k in range(self.nc):
+                if self._nc == 1:
+                    self._map._y = self._math.reshape(self[:, :], (-1,))
+                else:
+                    self._map._y = self._math.reshape(self[:, :, k], (-1,))
+                img = get_val(self._map.render(projection="moll", res=res))
+                moll[k] = img / np.nanmax(img)
+                ortho += get_val(
+                    self._map.render(
+                        projection="ortho",
+                        theta=theta / self._angle_factor,
+                        res=res,
+                    )
                 )
+
+            # Get the observed spectrum at each phase (vsini = 0)
+            # We'll normalize it to the median >90th percentile flux level
+            veq = self.veq
+            self.veq = 0.0
+            flux0 = get_val(self.flux(theta / self._angle_factor))
+            norm = np.nanmedian(
+                np.sort(flux0, axis=-1)[:, int(0.9 * flux0.shape[-1]) :],
+                axis=-1,
+            )
+            flux0 /= norm.reshape(-1, 1)
+            self.veq = veq
+
+            # Get the observed spectrum at each phase
+            # We'll normalize it to the median >90th percentile flux level
+            flux = get_val(self.flux(theta / self._angle_factor))
+            norm = np.nanmedian(
+                np.sort(flux, axis=-1)[:, int(0.9 * flux.shape[-1]) :], axis=-1
+            )
+            flux /= norm.reshape(-1, 1)
+
+            # Init the web app
+            viz = Visualize(
+                get_val(self.wavs),
+                get_val(self.wavf),
+                moll,
+                ortho,
+                get_val(self.spectrum).T,
+                theta,
+                flux0,
+                flux,
+                get_val(self._inc),
             )
 
-        # Get the observed spectrum at each phase
-        flux = get_val(self.flux(theta / self._angle_factor))
-
-        # Launch the web app
-        viz = Visualize(
-            get_val(self.wavs),
-            get_val(self.wavf),
-            moll,
-            ortho,
-            get_val(self.spectrum).T,
-            theta,
-            flux,
-            get_val(self._inc),
-        )
-        if file is None:
-            viz.launch()
-        else:
+        # Save or display
+        if file is not None:
             viz.save(file=file)
+        else:
+            # Are we in a Jupyter notebook?
+            try:
+                if "zmqshell" in str(type(get_ipython())):
+                    # YES: display inline
+                    viz.show()
+                else:
+                    raise NameError("")
+            except NameError:
+                # NO: start a web server
+                viz.launch()
