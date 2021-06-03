@@ -249,6 +249,7 @@ setup(
             "rtds_action",
             "nbsphinx",
             "tqdm",
+            "jinja2<=2.11.3",  # jinja2>=3.0.0 --> 'nbformat.notebooknode.NotebookNode object' has no attribute 'tags'
         ],
     },
     setup_requires=["setuptools_scm", "pybind11>2.4"],
