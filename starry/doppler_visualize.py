@@ -11,6 +11,8 @@ from bokeh.models import (
     Div,
     CheckboxButtonGroup,
     Band,
+    Range1d,
+    LinearAxis,
 )
 from bokeh.events import (
     Pan,
@@ -88,7 +90,6 @@ class Visualize:
         rg = mx - mn
         self.vmax_f0 = mx + 0.1 * rg
         self.vmin_f0 = mn - 0.1 * rg
-        self.aspect = 2.0
 
         # Get the image at the central wavelength bin
         moll0 = (
@@ -237,7 +238,7 @@ class Visualize:
     def plot_moll(self):
         # Plot the map
         plot_moll = figure(
-            aspect_ratio=self.aspect,
+            aspect_ratio=2,
             toolbar_location=None,
             x_range=(-2, 2),
             y_range=(-1, 1),
@@ -384,11 +385,13 @@ class Visualize:
     def plot_spec(self):
         # Plot the spectrum
         plot_spec = figure(
-            plot_width=2 * 280,
-            plot_height=2 * 130,
+            plot_width=280,
+            plot_height=130,
             toolbar_location=None,
             x_range=(self.wavs[0], self.wavs[-1]),
             y_range=(self.vmin_m, self.vmax_m),
+            min_border_left=40,
+            min_border_right=40,
         )
         plot_spec.line(
             "wavs",
@@ -436,12 +439,14 @@ class Visualize:
     def plot_ortho(self):
         # Plot the map
         plot_ortho = figure(
-            aspect_ratio=self.aspect,
+            aspect_ratio=2,
             toolbar_location=None,
             x_range=(-2, 2),
             y_range=(-1, 1),
             id="plot_ortho",
             name="plot_ortho",
+            min_border_left=0,
+            min_border_right=0,
         )
         plot_ortho.axis.visible = False
         plot_ortho.grid.visible = False
@@ -507,6 +512,8 @@ class Visualize:
                 source_index.data["t"][0] = t;
                 source_index.change.emit();
                 var tidx = Math.floor(t);
+                while (tidx < 0) tidx += nt;
+                while (tidx > nt - 1) tidx -= nt;
 
                 // Update the map
                 source_ortho.data["ortho"][0] = ortho[tidx];
@@ -547,12 +554,20 @@ class Visualize:
     def plot_flux(self):
         # Plot the flux (the output spectrum)
         plot_flux = figure(
-            plot_width=2 * 280,
-            plot_height=2 * 130,
+            plot_width=280,
+            plot_height=130,
             toolbar_location=None,
             x_range=(self.wavf[0], self.wavf[-1]),
             y_range=(self.vmin_f, self.vmax_f),
+            min_border_left=40,
+            min_border_right=40,
         )
+
+        # Rest frame
+        plot_flux.extra_y_ranges["flux0"] = Range1d(
+            start=self.vmin_f0, end=self.vmax_f0
+        )
+        plot_flux.add_layout(LinearAxis(y_range_name="flux0"), "right")
         plot_flux.line(
             "wavf",
             "flux0",
@@ -560,7 +575,10 @@ class Visualize:
             line_width=1,
             color=Category20[3][2],
             alpha=0.5,
+            y_range_name="flux0",
         )
+
+        # Observed
         plot_flux.line(
             "wavf",
             "flux",
@@ -568,6 +586,19 @@ class Visualize:
             line_width=1,
             color="black",
         )
+
+        plot_flux.yaxis[0].axis_label = "observed spectral intensity"
+        plot_flux.yaxis[0].axis_label_text_color = "black"
+        plot_flux.yaxis[0].axis_label_standoff = 10
+        plot_flux.yaxis[0].axis_label_text_font_style = "normal"
+
+        plot_flux.yaxis[1].axis_label = "rest frame intensity"
+        plot_flux.yaxis[1].axis_label_text_color = Category20[3][2]
+        plot_flux.yaxis[1].axis_label_text_alpha = 0.5
+        plot_flux.yaxis[1].axis_label_standoff = 10
+        plot_flux.yaxis[1].axis_label_text_font_style = "normal"
+        plot_flux.yaxis[1].major_label_text_color = Category20[3][2]
+        plot_flux.yaxis[1].major_label_text_alpha = 0.5
 
         plot_flux.toolbar.active_drag = None
         plot_flux.toolbar.active_scroll = None
@@ -580,11 +611,6 @@ class Visualize:
         plot_flux.xaxis.axis_label_standoff = 10
         plot_flux.xaxis.axis_label_text_font_style = "normal"
 
-        plot_flux.yaxis.axis_label = "observed spectral intensity"
-        plot_flux.yaxis.axis_label_text_color = "black"
-        plot_flux.yaxis.axis_label_standoff = 10
-        plot_flux.yaxis.axis_label_text_font_style = "normal"
-
         plot_flux.outline_line_width = 1.5
         plot_flux.outline_line_alpha = 1
         plot_flux.outline_line_color = "black"
@@ -594,11 +620,15 @@ class Visualize:
     def layout(self):
         return row(
             column(
-                self.plot_moll(), self.plot_spec(), sizing_mode="scale_width"
+                self.plot_moll(),
+                column(self.plot_spec(), sizing_mode="scale_width"),
+                sizing_mode="scale_width",
             ),
             Div(),
             column(
-                self.plot_ortho(), self.plot_flux(), sizing_mode="scale_width"
+                self.plot_ortho(),
+                column(self.plot_flux(), sizing_mode="scale_width"),
+                sizing_mode="scale_width",
             ),
             min_width=600,
             max_width=1200,
@@ -618,24 +648,14 @@ class Visualize:
         """
             )
         )
-
-        # TODO: Bokeh still has trouble honoring aspect ratios,
-        # so we need to fudge it.
-        self.aspect = 2.25
         output_notebook(hide_banner=True)
         show(self.layout())
 
     def save(self, file="starry.html"):
-        # TODO: Bokeh still has trouble honoring aspect ratios,
-        # so we need to fudge it.
-        self.aspect = 2.1
         output_file(file, title="starry")
         save(self.layout(), filename=file, title="starry", template=TEMPLATE)
 
     def _launch(self, doc):
-        # TODO: Bokeh still has trouble honoring aspect ratios,
-        # so we need to fudge it.
-        self.aspect = 2.1
         doc.title = "starry"
         doc.template = TEMPLATE
         doc.add_root(self.layout())

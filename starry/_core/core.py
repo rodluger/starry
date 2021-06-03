@@ -1483,53 +1483,24 @@ class OpsDoppler(OpsYlm):
         return kT0 / tt.sum(kT0[0])
 
     @autocompile
-    def get_D_data(self, inc, theta_scalar, veq):
+    def get_D_data(self, kT0, inc, theta_scalar):
         """
         Return the Doppler matrix as a stack of data arrays.
 
         """
-        # Compute the convolution kernels
-        vsini = self.enforce_bounds(veq * tt.sin(inc), 0.0, self.vsini_max)
-        x = self.get_x(vsini)
-        rT = self.get_rT(x)
-        kT0 = self.get_kT0(rT)
-
-        # Loop through each epoch
-        if self.udeg > 0:
-
-            # Compute the limb darkening operator
-            F = self.F(
-                tt.as_tensor_variable(np.append([-1.0], u)),
-                tt.as_tensor_variable([np.pi]),
+        # Rotate the kernels
+        kT = tt.transpose(
+            self.right_project(
+                tt.transpose(kT0),
+                inc,
+                tt.as_tensor_variable(0.0),
+                theta_scalar,
             )
-            L = ts.dot(ts.dot(self.A1Inv, F), self.A1)
-
-            # Rotate the kernels
-            kT = tt.transpose(
-                self.right_project(
-                    tt.transpose(tt.dot(tt.transpose(L), kT0)),
-                    inc,
-                    tt.as_tensor_variable(0.0),
-                    theta_scalar,
-                )
-            )
-
-        else:
-
-            # Rotate the kernels
-            kT = tt.transpose(
-                self.right_project(
-                    tt.transpose(kT0),
-                    inc,
-                    tt.as_tensor_variable(0.0),
-                    theta_scalar,
-                )
-            )
-
+        )
         return tt.tile(tt.reshape(kT, (-1,)), self.nw)
 
     @autocompile
-    def get_D(self, inc, theta, veq):
+    def get_D(self, inc, theta, veq, u):
         """
         Return the full Doppler matrix.
 
@@ -1537,10 +1508,26 @@ class OpsDoppler(OpsYlm):
         spherical harmonic. These matrices are then stacked vertically for
         each rotational phase.
         """
+        # Compute the convolution kernels
+        vsini = self.enforce_bounds(veq * tt.sin(inc), 0.0, self.vsini_max)
+        x = self.get_x(vsini)
+        rT = self.get_rT(x)
+        kT0 = self.get_kT0(rT)
+
+        # Compute the limb darkening operator
+        if self.udeg > 0:
+            F = self.F(
+                tt.as_tensor_variable(np.append([-1.0], u)),
+                tt.as_tensor_variable([np.pi]),
+            )
+            L = ts.dot(ts.dot(self.A1Inv, F), self.A1)
+            kT0 = tt.dot(tt.transpose(L), kT0)
+
+        # Stack to get the full matrix
         return ts.vstack(
             [
                 ts.basic.CSR(
-                    self.get_D_data(inc, theta[m], veq),
+                    self.get_D_data(kT0, inc, theta[m]),
                     self.indices,
                     self.indptr,
                     self.shape,
@@ -1550,8 +1537,8 @@ class OpsDoppler(OpsYlm):
         )
 
     @autocompile
-    def get_flux(self, inc, theta, veq, a):
-        D = self.get_D(inc, theta, veq)
+    def get_flux(self, inc, theta, veq, u, a):
+        D = self.get_D(inc, theta, veq, u)
         flux = ts.dot(D, tt.reshape(a, (-1,)))
         return tt.reshape(flux, (self.nt, self.nw))
 

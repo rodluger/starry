@@ -483,7 +483,7 @@ class DopplerMap:
             )
             * self._angle_factor
         )
-        D = self.ops.get_D(self._inc, theta, self._veq)
+        D = self.ops.get_D(self._inc, theta, self._veq, self._u)
         return D
 
     def flux(self, theta):
@@ -495,7 +495,7 @@ class DopplerMap:
             * self._angle_factor
         )
         flux = self.ops.get_flux(
-            self._inc, theta, self._veq, self.spectral_map
+            self._inc, theta, self._veq, self._u, self.spectral_map
         )
         return flux
 
