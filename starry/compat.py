@@ -1,26 +1,4 @@
 # -*- coding: utf-8 -*-
-
-"""
-# Hack to allow importing `pymc3` without an internet connection
-# This was fixed in https://github.com/dask/distributed/pull/3991
-try:
-    import distributed
-except Exception as e:
-    try:
-        import socket
-
-        getaddrinfo = socket.getaddrinfo
-        socket.getaddrinfo = lambda *args: [
-            [None, None, None, None, ["0.0.0.0"]]
-        ]
-
-        import distributed
-
-        socket.getaddrinfo = getaddrinfo
-    except:
-        raise e
-"""
-
 import warnings
 import aesara_theano_fallback
 from aesara_theano_fallback import aesara as theano
