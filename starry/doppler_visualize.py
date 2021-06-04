@@ -23,6 +23,7 @@ from bokeh.events import (
     MouseLeave,
 )
 from bokeh.palettes import Category20
+from bokeh.resources import INLINE
 import numpy as np
 from IPython.display import HTML, display
 
@@ -652,8 +653,13 @@ class Visualize:
         show(self.layout())
 
     def save(self, file="starry.html"):
-        output_file(file, title="starry")
-        save(self.layout(), filename=file, title="starry", template=TEMPLATE)
+        save(
+            self.layout(),
+            filename=file,
+            title="starry",
+            template=TEMPLATE,
+            resources=INLINE,
+        )
 
     def _launch(self, doc):
         doc.title = "starry"
@@ -666,3 +672,20 @@ class Visualize:
         print("Press Ctrl+C to exit.")
         server.io_loop.add_callback(server.show, "/")
         server.io_loop.start()
+
+    def show(self, file=None):
+        if file is not None:
+            assert file.endswith(".htm") or file.endswith(
+                ".html"
+            ), "Keyword `file` must be a path to an HTML file."
+            self.save(file=file)
+        else:
+            # Are we in a Jupyter notebook?
+            try:
+                if "zmqshell" in str(type(get_ipython())):
+                    # YES: display inline
+                    self.show_notebook()
+                else:
+                    raise NameError("")
+            except NameError:
+                self.launch()

@@ -33,7 +33,7 @@ class DopplerMap:
     ):
         # Check args
         ydeg = int(ydeg)
-        assert ydeg >= 0, "Keyword `ydeg` must be positive."
+        assert ydeg >= 1, "Keyword `ydeg` must be >= 1."
         udeg = int(udeg)
         assert udeg >= 0, "Keyword `udeg` must be positive."
         assert nc is not None, "Please specify the number of map components."
@@ -475,6 +475,13 @@ class DopplerMap:
             self._math.reshape(self._y, [self._Ny, self._nc]), self._spectrum
         )
 
+    def spot(self, *, component=0, **kwargs):
+        self._map.spot(**kwargs)
+        if self.nc == 1:
+            self[:, :] = self._map[:, :]
+        else:
+            self[:, :, component] = self._map[:, :]
+
     def design_matrix(self, theta):
         """Return the Doppler operator."""
         theta = (
@@ -565,16 +572,4 @@ class DopplerMap:
             )
 
         # Save or display
-        if file is not None:
-            viz.save(file=file)
-        else:
-            # Are we in a Jupyter notebook?
-            try:
-                if "zmqshell" in str(type(get_ipython())):
-                    # YES: display inline
-                    viz.show_notebook()
-                else:
-                    raise NameError("")
-            except NameError:
-                # NO: start a web server
-                viz.launch()
+        viz.show(file=file)
