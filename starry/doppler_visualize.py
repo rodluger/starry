@@ -593,7 +593,7 @@ class Visualize:
         plot_flux.yaxis[0].axis_label_standoff = 10
         plot_flux.yaxis[0].axis_label_text_font_style = "normal"
 
-        plot_flux.yaxis[1].axis_label = "rest frame intensity"
+        plot_flux.yaxis[1].axis_label = "rest intensity"
         plot_flux.yaxis[1].axis_label_text_color = Category20[3][2]
         plot_flux.yaxis[1].axis_label_text_alpha = 0.5
         plot_flux.yaxis[1].axis_label_standoff = 10
