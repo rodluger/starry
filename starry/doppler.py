@@ -3,7 +3,7 @@ from . import config
 from ._constants import *
 from ._core import OpsDoppler, math
 from ._core.utils import is_tensor, CompileLogMessage
-from ._indices import integers, get_ylm_inds, get_ylmw_inds
+from ._indices import integers, get_ylm_inds, get_ylmw_inds, get_ul_inds
 from .compat import evaluator
 from .maps import YlmBase, MapBase, Map
 from .doppler_visualize import Visualize

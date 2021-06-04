@@ -1417,6 +1417,9 @@ class OpsDoppler(OpsYlm):
         )
         self.shape = tt.as_tensor_variable([self.nw, self.Ny * self.nwp])
 
+        # Change of basis matrix (ydeg + udeg)
+        self._A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
+
     @autocompile
     def enforce_shape(self, tensor, shape):
         return tensor + RaiseValueErrorIfOp(
@@ -1478,7 +1481,7 @@ class OpsDoppler(OpsYlm):
         for each term in the  spherical harmonic decomposition of the
         surface.
         """
-        kT0 = ts.dot(ts.transpose(self._A1), rT)
+        kT0 = ts.dot(ts.transpose(self._A1Big), rT)
         # Normalize to preserve the unit baseline
         return kT0 / tt.sum(kT0[0])
 
@@ -1517,8 +1520,7 @@ class OpsDoppler(OpsYlm):
         # Compute the limb darkening operator
         if self.udeg > 0:
             F = self.F(
-                tt.as_tensor_variable(np.append([-1.0], u)),
-                tt.as_tensor_variable([np.pi]),
+                tt.as_tensor_variable(u), tt.as_tensor_variable([np.pi])
             )
             L = ts.dot(ts.dot(self.A1Inv, F), self.A1)
             kT0 = tt.dot(tt.transpose(L), kT0)

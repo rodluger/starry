@@ -426,7 +426,7 @@ class Visualize:
         plot_spec.xaxis.axis_label_standoff = 10
         plot_spec.xaxis.axis_label_text_font_style = "normal"
 
-        plot_spec.yaxis.axis_label = "local spectral intensity"
+        plot_spec.yaxis.axis_label = "local intensity"
         plot_spec.yaxis.axis_label_text_color = "black"
         plot_spec.yaxis.axis_label_standoff = 10
         plot_spec.yaxis.axis_label_text_font_style = "normal"
@@ -588,7 +588,7 @@ class Visualize:
             color="black",
         )
 
-        plot_flux.yaxis[0].axis_label = "observed spectral intensity"
+        plot_flux.yaxis[0].axis_label = "observed intensity"
         plot_flux.yaxis[0].axis_label_text_color = "black"
         plot_flux.yaxis[0].axis_label_standoff = 10
         plot_flux.yaxis[0].axis_label_text_font_style = "normal"
