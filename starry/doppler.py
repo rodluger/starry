@@ -350,6 +350,7 @@ class DopplerMap:
         The rest frame spectrum at wavelengths ``wav`` for each component.
 
         """
+        # NOTE the transpose here!
         return self._math.transpose(self._spectrum)
 
     @spectrum.setter
@@ -482,8 +483,7 @@ class DopplerMap:
         else:
             self[:, :, component] = self._map[:, :]
 
-    def design_matrix(self, theta=None):
-        """Return the full Doppler imaging design matrix."""
+    def _get_default_theta(self, theta):
         if theta is None:
             theta = self._math.cast(
                 np.linspace(0, 2 * np.pi, self._nt, endpoint=False)
@@ -495,23 +495,30 @@ class DopplerMap:
                 )
                 * self._angle_factor
             )
-        D = self.ops.get_D(self._inc, theta, self._veq, self._u)
+        return theta
+
+    def design_matrix(self, theta=None, fix_spectrum=False):
+        """Return the Doppler imaging design matrix."""
+        theta = self._get_default_theta(theta)
+        if fix_spectrum:
+            D = self.ops.get_D_fixed_spectrum(
+                self._inc, theta, self._veq, self._u, self._spectrum
+            )
+        else:
+            D = self.ops.get_D(self._inc, theta, self._veq, self._u)
         return D
 
-    def flux(self, theta=None, mode="conv"):
-        """Return the model for the full spectral timeseries."""
-        if theta is None:
-            theta = self._math.cast(
-                np.linspace(0, 2 * np.pi, self._nt, endpoint=False)
+    def flux(self, theta=None, mode="convdot"):
+        """
+        Return the model for the full spectral timeseries.
+
+        """
+        theta = self._get_default_theta(theta)
+        if mode == "convdot":
+            flux = self.ops.get_flux_from_convdot(
+                self._inc, theta, self._veq, self._u, self._y, self._spectrum
             )
-        else:
-            theta = (
-                self.ops.enforce_shape(
-                    self._math.cast(theta), np.array([self._nt])
-                )
-                * self._angle_factor
-            )
-        if mode == "conv":
+        elif mode == "conv":
             flux = self.ops.get_flux_from_conv(
                 self._inc, theta, self._veq, self._u, self.spectral_map
             )
@@ -522,6 +529,14 @@ class DopplerMap:
         else:
             raise ValueError("Keyword `mode` must be one of `conv`, `design`.")
         return flux
+
+    def dot(self, matrix, theta=None):
+        """Dot the Doppler design matrix into a given matrix or vector."""
+        theta = self._get_default_theta(theta)
+        product = self.ops.dot_design_matrix_into(
+            self._inc, theta, self._veq, self._u, self._math.cast(matrix)
+        )
+        return product
 
     def show(self, theta=None, res=150, file=None, **kwargs):
         """

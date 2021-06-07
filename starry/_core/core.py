@@ -1486,6 +1486,42 @@ class OpsDoppler(OpsYlm):
         return kT0 / tt.sum(kT0[0])
 
     @autocompile
+    def get_kT(self, inc, theta, veq, u):
+        """
+        Get the kernels at an array of angular phases `theta`.
+
+        """
+        # Compute the convolution kernels
+        vsini = self.enforce_bounds(veq * tt.sin(inc), 0.0, self.vsini_max)
+        x = self.get_x(vsini)
+        rT = self.get_rT(x)
+        kT0 = self.get_kT0(rT)
+
+        # Compute the limb darkening operator
+        if self.udeg > 0:
+            F = self.F(
+                tt.as_tensor_variable(u), tt.as_tensor_variable([np.pi])
+            )
+            L = ts.dot(ts.dot(self.A1Inv, F), self.A1)
+            kT0 = tt.dot(tt.transpose(L), kT0)
+
+        # Compute the kernels at each epoch
+        kT = tt.zeros((self.nt, self.Ny, self.nk))
+        for m in range(self.nt):
+            kT = tt.set_subtensor(
+                kT[m],
+                tt.transpose(
+                    self.right_project(
+                        tt.transpose(kT0),
+                        inc,
+                        tt.as_tensor_variable(0.0),
+                        theta[m],
+                    )
+                ),
+            )
+        return kT
+
+    @autocompile
     def get_D_data(self, kT0, inc, theta_scalar):
         """
         Return the Doppler matrix as a stack of data arrays.
@@ -1542,6 +1578,52 @@ class OpsDoppler(OpsYlm):
         )
 
     @autocompile
+    def get_D_fixed_spectrum(self, inc, theta, veq, u, spectrum):
+        """
+        Return the Doppler matrix for a fixed spectrum.
+
+        """
+        # Get the convolution kernels
+        kT = self.get_kT(inc, theta, veq, u)
+
+        # The dot product is just a 2d convolution!
+        product = tt.nnet.conv2d(
+            tt.reshape(tt.reshape(spectrum, (-1,)), (self.nc, 1, 1, self.nwp)),
+            tt.reshape(kT, (self.nt * self.Ny, 1, 1, self.nk)),
+            border_mode="valid",
+            filter_flip=False,
+            input_shape=(self.nc, 1, 1, self.nwp),
+            filter_shape=(self.nt * self.Ny, 1, 1, self.nk),
+        )
+        product = tt.reshape(product, (self.nc, self.nt, self.Ny, self.nw))
+        product = tt.swapaxes(product, 1, 2)
+        product = tt.reshape(product, (self.Ny * self.nc, self.nt * self.nw))
+        product = tt.transpose(product)
+        return product
+
+    @autocompile
+    def dot_design_matrix_into(self, inc, theta, veq, u, matrix):
+        """
+        Dot the full Doppler design matrix into an arbitrary dense `matrix`.
+        This is equivalent to tt.dot(get_D(), matrix), but computes the
+        product with a single `conv2d` operation.
+
+        """
+        # Get the convolution kernels
+        kT = self.get_kT(inc, theta, veq, u)
+
+        # The dot product is just a 2d convolution!
+        product = tt.nnet.conv2d(
+            tt.reshape(tt.transpose(matrix), (-1, self.Ny, 1, self.nwp)),
+            tt.reshape(kT, (self.nt, self.Ny, 1, self.nk)),
+            border_mode="valid",
+            filter_flip=False,
+            input_shape=(None, self.Ny, 1, self.nwp),
+            filter_shape=(self.nt, self.Ny, 1, self.nk),
+        )
+        return tt.transpose(tt.reshape(product, (-1, self.nt * self.nw)))
+
+    @autocompile
     def get_flux_from_design(self, inc, theta, veq, u, a):
         """
         Compute the flux by dotting the design matrix into
@@ -1557,46 +1639,33 @@ class OpsDoppler(OpsYlm):
     def get_flux_from_conv(self, inc, theta, veq, u, a):
         """
         Compute the flux via a single 2d convolution.
-        This is the *fast* way of computing the model.
+        This is the *faster* way of computing the model.
 
         """
-        # Compute the convolution kernels
-        vsini = self.enforce_bounds(veq * tt.sin(inc), 0.0, self.vsini_max)
-        x = self.get_x(vsini)
-        rT = self.get_rT(x)
-        kT0 = self.get_kT0(rT)
-
-        # Compute the limb darkening operator
-        if self.udeg > 0:
-            F = self.F(
-                tt.as_tensor_variable(u), tt.as_tensor_variable([np.pi])
-            )
-            L = ts.dot(ts.dot(self.A1Inv, F), self.A1)
-            kT0 = tt.dot(tt.transpose(L), kT0)
-
-        # Compute the kernels at each epoch
-        kT0_r = kT0[:, ::-1]
-        kT = tt.zeros((self.nt, self.Ny, self.nk))
-        for m in range(self.nt):
-            kT = tt.set_subtensor(
-                kT[m],
-                tt.transpose(
-                    self.right_project(
-                        tt.transpose(kT0_r),
-                        inc,
-                        tt.as_tensor_variable(0.0),
-                        theta[m],
-                    )
-                ),
-            )
+        # Get the convolution kernels
+        kT = self.get_kT(inc, theta, veq, u)
 
         # The flux is just a 2d convolution!
         flux = tt.nnet.conv2d(
             tt.reshape(a, (1, self.Ny, 1, self.nwp)),
             tt.reshape(kT, (self.nt, self.Ny, 1, self.nk)),
             border_mode="valid",
+            filter_flip=False,
+            input_shape=(1, self.Ny, 1, self.nwp),
+            filter_shape=(self.nt, self.Ny, 1, self.nk),
         )
         return flux[0, :, 0, :]
+
+    @autocompile
+    def get_flux_from_convdot(self, inc, theta, veq, u, y, spectrum):
+        """
+        Compute the flux via a 2d convolution followed by a dot product.
+        This is usually the *fastest* way of computing the model.
+
+        """
+        D = self.get_D_fixed_spectrum(inc, theta, veq, u, spectrum)
+        flux = tt.dot(D, tt.reshape(tt.transpose(y), (-1,)))
+        return tt.reshape(flux, (self.nt, self.nw))
 
 
 class OpsSystem(object):
