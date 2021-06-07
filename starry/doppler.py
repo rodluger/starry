@@ -482,25 +482,35 @@ class DopplerMap:
         else:
             self[:, :, component] = self._map[:, :]
 
-    def design_matrix(self, theta):
+    def design_matrix(self, theta=None):
         """Return the Doppler operator."""
-        theta = (
-            self.ops.enforce_shape(
-                self._math.cast(theta), np.array([self._nt])
+        if theta is None:
+            theta = self._math.cast(
+                np.linspace(0, 2 * np.pi, self._nt, endpoint=False)
             )
-            * self._angle_factor
-        )
+        else:
+            theta = (
+                self.ops.enforce_shape(
+                    self._math.cast(theta), np.array([self._nt])
+                )
+                * self._angle_factor
+            )
         D = self.ops.get_D(self._inc, theta, self._veq, self._u)
         return D
 
-    def flux(self, theta):
+    def flux(self, theta=None):
         """Return the model for the full spectral timeseries."""
-        theta = (
-            self.ops.enforce_shape(
-                self._math.cast(theta), np.array([self._nt])
+        if theta is None:
+            theta = self._math.cast(
+                np.linspace(0, 2 * np.pi, self._nt, endpoint=False)
             )
-            * self._angle_factor
-        )
+        else:
+            theta = (
+                self.ops.enforce_shape(
+                    self._math.cast(theta), np.array([self._nt])
+                )
+                * self._angle_factor
+            )
         flux = self.ops.get_flux(
             self._inc, theta, self._veq, self._u, self.spectral_map
         )
