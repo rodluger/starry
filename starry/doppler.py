@@ -483,7 +483,7 @@ class DopplerMap:
             self[:, :, component] = self._map[:, :]
 
     def design_matrix(self, theta=None):
-        """Return the Doppler operator."""
+        """Return the full Doppler imaging design matrix."""
         if theta is None:
             theta = self._math.cast(
                 np.linspace(0, 2 * np.pi, self._nt, endpoint=False)
@@ -498,7 +498,7 @@ class DopplerMap:
         D = self.ops.get_D(self._inc, theta, self._veq, self._u)
         return D
 
-    def flux(self, theta=None):
+    def flux(self, theta=None, mode="conv"):
         """Return the model for the full spectral timeseries."""
         if theta is None:
             theta = self._math.cast(
@@ -511,9 +511,16 @@ class DopplerMap:
                 )
                 * self._angle_factor
             )
-        flux = self.ops.get_flux(
-            self._inc, theta, self._veq, self._u, self.spectral_map
-        )
+        if mode == "conv":
+            flux = self.ops.get_flux_from_conv(
+                self._inc, theta, self._veq, self._u, self.spectral_map
+            )
+        elif mode == "design":
+            flux = self.ops.get_flux_from_design(
+                self._inc, theta, self._veq, self._u, self.spectral_map
+            )
+        else:
+            raise ValueError("Keyword `mode` must be one of `conv`, `design`.")
         return flux
 
     def show(self, theta=None, res=150, file=None, **kwargs):

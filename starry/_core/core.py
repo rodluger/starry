@@ -1510,6 +1510,9 @@ class OpsDoppler(OpsYlm):
         This is a horizontal stack of Toeplitz convolution matrices, one per
         spherical harmonic. These matrices are then stacked vertically for
         each rotational phase.
+
+        In general, instantiating this matrix (even in its sparse form) is not
+        a good idea: it's very slow, and can consume a ton of memory!
         """
         # Compute the convolution kernels
         vsini = self.enforce_bounds(veq * tt.sin(inc), 0.0, self.vsini_max)
@@ -1539,10 +1542,61 @@ class OpsDoppler(OpsYlm):
         )
 
     @autocompile
-    def get_flux(self, inc, theta, veq, u, a):
+    def get_flux_from_design(self, inc, theta, veq, u, a):
+        """
+        Compute the flux by dotting the design matrix into
+        the spectral map. This is the *slow* way of computing
+        the model.
+
+        """
         D = self.get_D(inc, theta, veq, u)
         flux = ts.dot(D, tt.reshape(a, (-1,)))
         return tt.reshape(flux, (self.nt, self.nw))
+
+    @autocompile
+    def get_flux_from_conv(self, inc, theta, veq, u, a):
+        """
+        Compute the flux via a single 2d convolution.
+        This is the *fast* way of computing the model.
+
+        """
+        # Compute the convolution kernels
+        vsini = self.enforce_bounds(veq * tt.sin(inc), 0.0, self.vsini_max)
+        x = self.get_x(vsini)
+        rT = self.get_rT(x)
+        kT0 = self.get_kT0(rT)
+
+        # Compute the limb darkening operator
+        if self.udeg > 0:
+            F = self.F(
+                tt.as_tensor_variable(u), tt.as_tensor_variable([np.pi])
+            )
+            L = ts.dot(ts.dot(self.A1Inv, F), self.A1)
+            kT0 = tt.dot(tt.transpose(L), kT0)
+
+        # Compute the kernels at each epoch
+        kT0_r = kT0[:, ::-1]
+        kT = tt.zeros((self.nt, self.Ny, self.nk))
+        for m in range(self.nt):
+            kT = tt.set_subtensor(
+                kT[m],
+                tt.transpose(
+                    self.right_project(
+                        tt.transpose(kT0_r),
+                        inc,
+                        tt.as_tensor_variable(0.0),
+                        theta[m],
+                    )
+                ),
+            )
+
+        # The flux is just a 2d convolution!
+        flux = tt.nnet.conv2d(
+            tt.reshape(a, (1, self.Ny, 1, self.nwp)),
+            tt.reshape(kT, (self.nt, self.Ny, 1, self.nk)),
+            border_mode="valid",
+        )
+        return flux[0, :, 0, :]
 
 
 class OpsSystem(object):
