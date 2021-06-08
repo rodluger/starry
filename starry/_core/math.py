@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 from .. import config
-from ..compat import tt, slinalg, floatX
+from ..compat import tt, ts, slinalg, floatX
 from .._constants import *
 from .utils import *
 import numpy as np
 from scipy.linalg import block_diag as scipy_block_diag
 import scipy
+from scipy.sparse import issparse, csr_matrix
 
 __all__ = ["lazy_math", "greedy_math", "lazy_linalg", "greedy_linalg"]
 
@@ -159,6 +160,15 @@ class MathType(type):
             else:
                 return [np.array(arg, dtype=floatX) for arg in args]
 
+    def sparse_cast(cls, *args):
+        if cls.lazy:
+            return cls.to_sparse_tensor(*args)
+        else:
+            if len(args) == 1:
+                return csr_matrix(args[0], dtype=floatX)
+            else:
+                return [csr_matrix(arg, dtype=floatX) for arg in args]
+
     def to_array_or_tensor(cls, x):
         if cls.lazy:
             return tt.as_tensor_variable(x)
@@ -188,6 +198,27 @@ class MathType(type):
             return tt.as_tensor_variable(args[0]).astype(floatX)
         else:
             return [tt.as_tensor_variable(arg).astype(floatX) for arg in args]
+
+    def to_sparse_tensor(cls, *args):
+        """Convert all ``args`` to Theano sparse tensor variables.
+
+        Converts to tensor regardless of whether `cls.lazy` is True or False.
+        """
+        if len(args) == 1:
+            return ts.as_sparse_variable(args[0]).astype(floatX)
+        else:
+            return [ts.as_sparse_variable(arg).astype(floatX) for arg in args]
+
+    def sparse_dot(cls, A, B):
+        if cls.lazy:
+            return ts.dot(A, B)
+        else:
+            if issparse(A):
+                return A.dot(B)
+            elif issparse(B):
+                return (B.T.dot(A.T)).T
+            else:
+                raise ValueError("At least one input must be sparse.")
 
     def __getattr__(cls, attr):
         if cls.lazy:

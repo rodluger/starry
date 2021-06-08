@@ -1632,7 +1632,7 @@ class OpsDoppler(OpsYlm):
 
         """
         D = self.get_D(inc, theta, veq, u)
-        flux = ts.dot(D, tt.reshape(a, (-1,)))
+        flux = ts.dot(D, a)
         return tt.reshape(flux, (self.nt, self.nw))
 
     @autocompile

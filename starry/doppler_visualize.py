@@ -36,9 +36,11 @@ TEMPLATE = """
 }
 </style>
 <script>
+    var DISABLE_WHEEL = false;
     var disable_wheel = function (e) {
-        e.preventDefault();
+        if (DISABLE_WHEEL) e.preventDefault();
     };
+    window.addEventListener("wheel", disable_wheel, { passive:false });
 </script>
 {% endblock %}
 """
@@ -369,14 +371,14 @@ class Visualize:
 
         mouse_enter_callback = CustomJS(
             code="""
-            window.addEventListener("wheel", disable_wheel, { passive:false });
+            DISABLE_WHEEL= true;
             """
         )
         plot_moll.js_on_event(MouseEnter, mouse_enter_callback)
 
         mouse_leave_callback = CustomJS(
             code="""
-            window.removeEventListener("wheel", disable_wheel, { passive:false });
+            DISABLE_WHEEL = false;
             """
         )
         plot_moll.js_on_event(MouseLeave, mouse_leave_callback)
@@ -538,14 +540,14 @@ class Visualize:
 
         mouse_enter_callback = CustomJS(
             code="""
-            window.addEventListener("wheel", disable_wheel, { passive:false });
+            DISABLE_WHEEL = true;
             """
         )
         plot_ortho.js_on_event(MouseEnter, mouse_enter_callback)
 
         mouse_leave_callback = CustomJS(
             code="""
-            window.removeEventListener("wheel", disable_wheel, { passive:false });
+            DISABLE_WHEEL = false;
             """
         )
         plot_ortho.js_on_event(MouseLeave, mouse_leave_callback)
@@ -642,9 +644,11 @@ class Visualize:
             HTML(
                 """
             <script>
+                var DISABLE_WHEEL = false;
                 var disable_wheel = function (e) {
-                    e.preventDefault();
+                    if (DISABLE_WHEEL) e.preventDefault();
                 };
+                window.addEventListener("wheel", disable_wheel, { passive:false });
             </script>
         """
             )

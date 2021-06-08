@@ -8,6 +8,10 @@ from .compat import evaluator
 from .maps import YlmBase, MapBase, Map
 from .doppler_visualize import Visualize
 import numpy as np
+from scipy.interpolate import InterpolatedUnivariateSpline as Spline
+from scipy.sparse import block_diag as sparse_block_diag
+from scipy.sparse import csr_matrix
+from warnings import warn
 
 
 class DopplerMap:
@@ -20,13 +24,16 @@ class DopplerMap:
 
     def __init__(
         self,
-        ydeg=0,
+        ydeg=1,
         udeg=0,
         nc=1,
         nt=10,
-        wav1=642.5,  # Fe 6430
-        wav2=643.5,
+        wav=None,
+        wav0=None,
         nw=199,
+        interpolate=True,
+        interp_order=1,
+        interp_tol=1e-12,
         vsini_max=None,
         lazy=None,
         **kwargs
@@ -50,6 +57,9 @@ class DopplerMap:
             nw += 1
         nt = int(nt)
         assert nt > 0, "Number of epochs must be positive."
+        assert (
+            interp_order >= 1 and interp_order <= 5
+        ), "Keyword `interp_order` must be in the range [1, 5]."
         if lazy is None:
             lazy = config.lazy
         self._lazy = lazy
@@ -68,14 +78,6 @@ class DopplerMap:
         self._N = (ydeg + udeg + 1) ** 2
         self._nc = nc
         self._nt = nt
-        self._nw = nw
-
-        # Wavelength grid (uniform in log)
-        assert not is_tensor(
-            wav1, wav2
-        ), "Wavelength bounds must be numerical quantities."
-        wavr = np.exp(0.5 * (np.log(wav1) + np.log(wav2)))
-        log_lambda = np.linspace(np.log(wav1 / wavr), np.log(wav2 / wavr), nw)
 
         # This parameter determines the convolution kernel width
         self.velocity_unit = kwargs.pop("velocity_unit", units.m / units.s)
@@ -83,10 +85,30 @@ class DopplerMap:
             vsini_max = 1e5  # m/s = 100 km/s
         else:
             vsini_max *= self._velocity_factor
+        self.vsini_max = self._math.cast(vsini_max)
 
-        # Compute the padded wavelength grid. We add bins corresponding to
-        # the maximum kernel width to each end to prevent edge effects
-        dlam = log_lambda[1] - log_lambda[0]
+        # Compute the user-facing data wavelength grid (wav)
+        assert not is_tensor(
+            wav
+        ), "Wavelength grids must be numerical quantities."
+        if wav is None:
+            wav = np.linspace(642.5, 643.5, 300)  # FeI 6430
+        wav = np.array(wav)
+        self._wav = self._math.cast(wav)
+
+        # Compute the internal wavelength grid (wav_int)
+        wav1 = np.min(wav)
+        wav2 = np.max(wav)
+        wavr = np.exp(0.5 * (np.log(wav1) + np.log(wav2)))
+        log_wav = np.linspace(np.log(wav1 / wavr), np.log(wav2 / wavr), nw)
+        wav_int = wavr * np.exp(log_wav)
+        self._wav_int = self._math.cast(wav_int)
+        self._nw_int = nw
+
+        # Compute the padded internal wavelength grid (wav_int_padded).
+        # We add bins corresponding to the maximum kernel width to each
+        # end of wav_int to prevent edge effects
+        dlam = log_wav[1] - log_wav[0]
         betasini_max = vsini_max / self._clight
         hw = np.array(
             np.floor(
@@ -96,23 +118,74 @@ class DopplerMap:
             dtype="int32",
         )
         x = np.arange(0, hw + 1) * dlam
-        pad_l = log_lambda[0] - hw * dlam + x[:-1]
-        pad_r = log_lambda[-1] + x[1:]
-        log_lambda_padded = np.concatenate([pad_l, log_lambda, pad_r])
-        nwp = len(log_lambda_padded)
+        pad_l = log_wav[0] - hw * dlam + x[:-1]
+        pad_r = log_wav[-1] + x[1:]
+        log_wav_padded = np.concatenate([pad_l, log_wav, pad_r])
+        wav_int_padded = wavr * np.exp(log_wav_padded)
+        nwp = len(log_wav_padded)
+        self._log_wav_padded = self._math.cast(log_wav_padded)
+        self._wav_int_padded = self._math.cast(wav_int_padded)
+        self._nw_int_padded = nwp
 
-        # Store
-        self.vsini_max = self._math.cast(vsini_max)
-        self.log_lambda = self._math.cast(log_lambda)
-        self._lambda = wavr * self._math.cast(np.exp(log_lambda))
-        self._log_lambda_padded = self._math.cast(log_lambda_padded)
-        self._lambda_padded = wavr * self._math.cast(np.exp(log_lambda_padded))
-        self._nwp = nwp
+        # Compute the user-facing rest spectrum wavelength grid (wav0)
+        assert not is_tensor(
+            wav0
+        ), "Wavelength grids must be numerical quantities."
+        if wav0 is None:
+            wav0 = wav_int_padded
+        wav0 = np.array(wav0)
+        nw0 = len(wav0)
+        self._wav0 = self._math.cast(wav0)
+        self._nw0 = nw0
+        if (wav_int_padded[0] < np.min(wav0)) or (
+            wav_int_padded[-1] > np.max(wav0)
+        ):
+            warn(
+                "Rest frame wavelength grid `wav0` is not sufficiently padded. "
+                "Edge effects may occur. See the documentation for mode details."
+            )
+
+        # Interpolation between internal grid and user grid
+        self._interp = interpolate
+        self._interp_order = interp_order
+        self._interp_tol = interp_tol
+        if self._interp:
+
+            # Compute the flux interpolation operator (wav <-- wav_int)
+            # `S` interpolates the flux back onto the user-facing `wav` grid
+            # `SBlock` interpolates the design matrix onto the `wav grid`
+            S = self._get_spline_operator(wav_int, wav)
+            S[np.abs(S) < interp_tol] = 0
+            S = csr_matrix(S)
+            self._S = self._math.sparse_cast(S.T)
+            self._SBlock = self._math.sparse_cast(
+                sparse_block_diag([S for n in range(nt)])
+            )
+
+            # Compute the spec interpolation operator (wav0 <-- wav_int_padded)
+            # `S0` interpolates the user-provided spectrum onto the internal grid
+            # `S0Inv` performs the inverse operation
+            S = self._get_spline_operator(wav_int_padded, wav0)
+            S[np.abs(S) < interp_tol] = 0
+            S = csr_matrix(S)
+            self._S0 = self._math.sparse_cast(S.T)
+            S = self._get_spline_operator(wav0, wav_int_padded)
+            S[np.abs(S) < interp_tol] = 0
+            S = csr_matrix(S)
+            self._S0Inv = self._math.sparse_cast(S.T)
+
+        else:
+
+            # No interpolation. User-facing grids *are* the internal grids
+            # User will handle interpolation on their own
+            self._wav = self._wav_int
+            self._wav0 = self._wav_int_padded
+            self._nw0 = self._nw_int_padded
 
         # Default spectrum (one centered absorption line, sigma = 1/2 Angstrom)
-        spectrum = np.ones((nwp, nc))
-        spectrum[:, 0] = 1 - 0.5 * np.exp(
-            -0.5 * (wavr * np.exp(log_lambda_padded) - wavr) ** 2 / 0.05 ** 2
+        spectrum = self._math.ones((self._nc, self._nw0))
+        spectrum[0] = 1 - 0.5 * self._math.exp(
+            -0.5 * (self._wav0 - wavr) ** 2 / 0.05 ** 2
         )
         self._default_spectrum = spectrum
 
@@ -126,7 +199,7 @@ class DopplerMap:
             hw,
             vsini_max,
             self._clight,
-            log_lambda_padded,
+            log_wav_padded,
             **kwargs
         )
 
@@ -161,11 +234,13 @@ class DopplerMap:
         self._u = self._math.cast(u)
         self._map._u = self._u
 
+        # Reset the spectrum
+        self.spectrum = kwargs.pop("spectrum", self._default_spectrum)
+
         # Basic properties
         self.inc = kwargs.pop("inc", 0.5 * np.pi / self._angle_factor)
         self.obl = kwargs.pop("obl", 0.0)
         self.veq = kwargs.pop("veq", 0.0)
-        self.spectrum = kwargs.pop("spectrum", self._default_spectrum)
 
     @property
     def lazy(self):
@@ -183,14 +258,9 @@ class DopplerMap:
         return self._nt
 
     @property
-    def nwf(self):
-        """Number of wavelength bins in the output (``flux``). *Read-only*"""
-        return self._nw
-
-    @property
-    def nws(self):
-        """Number of wavelength bins in the input (``spectrum``). *Read-only*"""
-        return self._nwp
+    def nw(self):
+        """Number of internal wavelength bins. *Read-only*"""
+        return self._nw_int
 
     @property
     def ydeg(self):
@@ -329,41 +399,60 @@ class DopplerMap:
                 self[1:, :, n] = self._math.reshape(self._map[1:, :], [-1, 1])
 
     @property
-    def wavf(self):
+    def wav(self):
         """
         The output wavelength grid. *Read-only*
 
+        This is the wavelength grid on which quantities like the ``flux``
+        and ``design_matrix`` are defined.
+
         """
-        return self._lambda
+        return self._wav
 
     @property
-    def wavs(self):
+    def wav0(self):
         """
-        The input wavelength grid. *Read-only*
+        The rest-frame wavelength grid. *Read-only*
+
+        This is the wavelength grid on which the ``spectrum`` is defined.
 
         """
-        return self._lambda_padded
+        return self._wav0
 
     @property
     def spectrum(self):
         """
-        The rest frame spectrum at wavelengths ``wav`` for each component.
+        The rest frame spectrum for each component.
+
+        This quantity is defined on the wavelength grid ``wav0``.
+
+        Shape must be ``(nc, len(wav0))``. If ``nc = 1``, a one-dimensional
+        array of length ``len(wav0)`` is also accepted.
 
         """
-        # NOTE the transpose here!
-        return self._math.transpose(self._spectrum)
+        # Interpolate to the `wav0` grid
+        if self._interp:
+            return self._math.sparse_dot(self._spectrum, self._S0)
+        else:
+            return self._spectrum
 
     @spectrum.setter
-    def spectrum(self, value):
+    def spectrum(self, spectrum):
+        # Cast & reshape
         if self._nc == 1:
-            self._spectrum = self._math.reshape(
-                self._math.cast(value), np.array([1, self._nwp])
+            spectrum = self._math.reshape(
+                self._math.cast(spectrum), (1, self._nw0)
             )
         else:
-            self._spectrum = self.ops.enforce_shape(
-                self._math.transpose(self._math.cast(value)),
-                np.array([self._nc, self._nwp]),
+            spectrum = self.ops.enforce_shape(
+                self._math.cast(spectrum), np.array([self._nc, self._nw0])
             )
+
+        # Interpolate from `wav0` grid to internal, padded grid
+        if self._interp:
+            self._spectrum = self._math.sparse_dot(spectrum, self._S0Inv)
+        else:
+            self._spectrum = spectrum
 
     @property
     def y(self):
@@ -464,26 +553,50 @@ class DopplerMap:
     @property
     def spectral_map(self):
         """
-        The spectral-spatial map.
+        The spectral-spatial map vector.
 
-        This is equal to the outer product of the spherical harmonic
+        This is equal to the (unrolled) outer product of the spherical harmonic
         decompositions and their corresponding spectral components. Dot
         the design matrix into this quantity to obtain the observed
         spectral timeseries (the ``flux``).
         """
         # Outer product with the map
-        return self._math.dot(
-            self._math.reshape(self._y, [self._Ny, self._nc]), self._spectrum
+        return self._math.reshape(
+            self._math.dot(
+                self._math.reshape(self._y, [self._Ny, self._nc]),
+                self._spectrum,
+            ),
+            (-1,),
         )
 
     def spot(self, *, component=0, **kwargs):
+        """
+
+        """
         self._map.spot(**kwargs)
         if self.nc == 1:
             self[:, :] = self._map[:, :]
         else:
             self[:, :, component] = self._map[:, :]
 
+    def _get_spline_operator(self, input_grid, output_grid):
+        """
+
+        """
+        assert not is_tensor(
+            input_grid, output_grid
+        ), "Wavelength grids must be numerical quantities."
+        S = np.zeros((len(output_grid), len(input_grid)))
+        for n in range(len(input_grid)):
+            y = np.zeros_like(input_grid)
+            y[n] = 1.0
+            S[:, n] = Spline(input_grid, y, k=self._interp_order)(output_grid)
+        return S
+
     def _get_default_theta(self, theta):
+        """
+
+        """
         if theta is None:
             theta = self._math.cast(
                 np.linspace(0, 2 * np.pi, self._nt, endpoint=False)
@@ -497,15 +610,36 @@ class DopplerMap:
             )
         return theta
 
-    def design_matrix(self, theta=None, fix_spectrum=False):
+    def design_matrix(self, theta=None, fix_spectrum=False, fix_map=False):
         """Return the Doppler imaging design matrix."""
         theta = self._get_default_theta(theta)
+        assert not (
+            fix_spectrum and fix_map
+        ), "Cannot fix both the spectrum and the map."
+
+        # Compute the Doppler operator
         if fix_spectrum:
+
+            # Fixed spectrum (dense)
             D = self.ops.get_D_fixed_spectrum(
                 self._inc, theta, self._veq, self._u, self._spectrum
             )
+
+        elif fix_map:
+
+            # Fixed map (dense)
+            # TODO
+            raise NotImplementedError("Not yet implemented.")
+
         else:
+
+            # Full matrix (sparse)
             D = self.ops.get_D(self._inc, theta, self._veq, self._u)
+
+        # Interpolate to the output grid
+        if self._interp:
+            D = self._math.sparse_dot(self._SBlock, D)
+
         return D
 
     def flux(self, theta=None, mode="convdot"):
@@ -528,6 +662,11 @@ class DopplerMap:
             )
         else:
             raise ValueError("Keyword `mode` must be one of `conv`, `design`.")
+
+        # Interpolate to the output grid
+        if self._interp:
+            flux = self._math.sparse_dot(flux, self._S)
+
         return flux
 
     def dot(self, matrix, theta=None):
@@ -536,6 +675,11 @@ class DopplerMap:
         product = self.ops.dot_design_matrix_into(
             self._inc, theta, self._veq, self._u, self._math.cast(matrix)
         )
+
+        # Interpolate to the output grid
+        if self._interp:
+            product = self._math.sparse_dot(self._SBlock, product)
+
         return product
 
     def show(self, theta=None, res=150, file=None, **kwargs):
@@ -592,11 +736,11 @@ class DopplerMap:
 
             # Init the web app
             viz = Visualize(
-                get_val(self.wavs),
-                get_val(self.wavf),
+                get_val(self.wav0),
+                get_val(self.wav),
                 moll,
                 ortho,
-                get_val(self.spectrum).T,
+                get_val(self.spectrum),
                 theta,
                 flux0,
                 flux,
