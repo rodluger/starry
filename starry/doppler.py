@@ -31,8 +31,9 @@ class DopplerMap:
         udeg (int, optional): Degree of the limb darkening filter.
             Default is 0.
         nc (int, optional): Number of spectral components. The surface is
-            represented as the outer product of ``nc`` spherical harmonic
-            coefficient vectors and ``nc`` associated spectra. Default is 1.
+            represented as the outer product of :py:attr:``nc`` spherical
+            harmonic coefficient vectors and :py:attr:``nc`` associated
+            spectra. Default is 1.
         nt (int, optional): Number of epochs. This is the number of spectra
             one wishes to model. Default is 10.
         wav (ndarray, optional): Wavelength grid on which the data is defined
@@ -42,40 +43,43 @@ class DopplerMap:
             in Doppler imaging.
         wav0 (ndarray, optional): Wavelength grid on which the rest frame
             spectrum (the "template") is defined. This can be the same as
-            ``wav``, but it is strongly recommended to pad it on either side to
-            avoid edge effects. If ``wav0`` is insufficiently padded, the
-            values of the model near the edges of the wavelength grid will be
-            incorrect, since they include contribution from Doppler-shifted
-            spectral features beyond the edge of the grid. By default, if
-            ``wav0`` is not provided or set to ``None``,
-            ``starry`` will compute the required amount of padding
-            automatically. See ``vsini_max`` below for more info.
+            :py:attr:``wav``, but it is strongly recommended to pad it on
+            either side to avoid edge effects. If :py:attr:``wav0`` is
+            insufficiently padded, the values of the model near the edges
+            of the wavelength grid will be incorrect, since they include
+            contribution from Doppler-shifted spectral features beyond the
+            edge of the grid. By default, if :py:attr:``wav0`` is not provided
+            or set to :py:obj:``None``, ``starry`` will compute the required
+            amount of padding automatically. See :py:attr:``vsini_max`` below
+            for more info.
         oversample (float, optional): The oversampling factor for the internal
             wavelength grid. The number of spectral bins used to perform the
-            convolutions is equal to this value times the length of ``wav``.
-            Default is 1.
+            convolutions is equal to this value times the length of
+            :py:attr:``wav``. Default is 1.
         interpolate (bool, optional): The wavelength grid used internally is
-            different from ``wav``, since ``starry`` requires a grid that is
-            uniformly spaced in the log of the wavelength. By default,
-            ``interpolate`` is True, in which case ``starry`` automatically
-            interpolates to the user-defined wavelength grids (``wav`` and
-            ``wav0``) when any method or property is accessed. This incurs a
-            slight slowdown in the computation, so users can obtain higher
-            efficiency by setting this to False and handling the interpolation
-            on their own. If False, all spectra returned by the methods and
-            properties of this class will instead be defined on the ``map.wav_``
-            and ``map.wav0_`` grids.
+            different from :py:attr:``wav``, since ``starry`` requires a grid
+            that is uniformly spaced in the log of the wavelength. By default,
+            :py:attr:``interpolate`` is True, in which case ``starry``
+            interpolates to the user-defined wavelength grids (:py:attr:``wav``
+            and :py:attr:``wav0``) when any method or property is accessed.
+            This incurs a slight slowdown in the computation, so users can
+            obtain higher efficiency by setting this to False and handling the
+            interpolation on their own. If False, all spectra returned by the
+            methods and properties of this class will instead be defined on the
+            :py:attr:``wav_`` and :py:attr:``wav0_`` grids.
         interp_order (int, optional): Order of the spline interpolation between
-            the internal (``map.wav_`` and ``map.wav0_``) and user-facing
-            (``map.wav`` and ``map.wav0``) wavelength grids. Default is 1
-            (linear).
-        interp_tol (float, optional): For splines with ``interp_order > 1``, the
-            interpolation can be made much faster by zeroing out elements of
+            the internal (:py:attr:``wav_`` and :py:attr:``wav0_``) and
+            user-facing (:py:attr:``wav`` and :py:attr:``wav0``) wavelength
+            grids. Default is 1 (linear).
+        interp_tol (float, optional): For splines with
+            :py:attr::``interp_order`` greater than one, the interpolation
+            can be made much faster by zeroing out elements of
             the interpolation operator whose absolute value is smaller than
-            some small tolerance given by ``interp_tol``. Default is ``1e-12``.
+            some small tolerance given by :py:attr:``interp_tol``.
+            Default is ``1e-12``.
         vsini_max (float, optional): Maximum value of ``vsini`` for this map.
             This sets the size of the convolution kernel (and the amount of
-            padding required in ``wav0``) and should be adjusted
+            padding required in :py:attr:``wav0``) and should be adjusted
             to ensure that ``map.veq * sin(map.inc)`` is never larger than
             this quantity. Lower values of this quantity will result in faster
             evaluation times. Default is ``100 km/s``.
@@ -84,9 +88,11 @@ class DopplerMap:
         spectrum (matrix, optional): Default is a single Gaussian absorption
             line at the central wavelength of the first spectral component,
             and unity for all other components.
-        inc (scalar, optional): In units of ``angle_unit``. Default is ``90.0``.
-        obl (scalar, optional): In units of ``angle_unit``. Default is ``0.0``.
-        veq (scalar, optional): In units of ``velocity_unit``.
+        inc (scalar, optional): In units of :py:attr:``angle_unit``.
+            Default is ``90.0``.
+        obl (scalar, optional): In units of :py:attr:``angle_unit``.
+            Default is ``0.0``.
+        veq (scalar, optional): In units of :py:attr:``velocity_unit``.
             Default is ``0.0``.
     """
 
@@ -339,7 +345,7 @@ class DopplerMap:
 
     @property
     def lazy(self):
-        """Map evaluation mode: lazy or greedy?"""
+        """Map evaluation mode -- lazy or greedy?"""
         return self._lazy
 
     @property
@@ -354,22 +360,34 @@ class DopplerMap:
 
     @property
     def nw(self):
-        """Length of the user-facing flux wavelength grid ``wav``. *Read-only*"""
+        """Length of the user-facing flux wavelength grid :py:attr:``wav``.
+        *Read-only*
+
+        """
         return self._nw
 
     @property
     def nw0(self):
-        """Length of the user-facing rest frame spectrum wavelength grid ``wav0``. *Read-only*"""
+        """Length of the user-facing rest frame spectrum wavelength grid
+        :py:attr:``wav0``. *Read-only*
+
+        """
         return self._nw0
 
     @property
     def nw_(self):
-        """Length of the *internal* flux wavelength grid ``wav``. *Read-only*"""
+        """Length of the *internal* flux wavelength grid :py:attr:``wav``.
+        *Read-only*
+
+        """
         return self._nw_int
 
     @property
     def nw0_(self):
-        """Length of the *internal* rest frame spectrum wavelength grid ``wav0``. *Read-only*"""
+        """Length of the *internal* rest frame spectrum wavelength grid
+        :py:attr:``wav0``. *Read-only*
+
+        """
         return self._nw0_int
 
     @property
@@ -397,7 +415,8 @@ class DopplerMap:
 
     @property
     def Nu(self):
-        r"""Number of limb darkening coefficients, including :math:``u_0``. *Read-only*
+        r"""Number of limb darkening coefficients, including :math:``u_0``.
+        *Read-only*
 
         This is equal to :math:``u_\mathrm{deg} + 1``.
         """
@@ -421,7 +440,7 @@ class DopplerMap:
 
     @property
     def angle_unit(self):
-        """An ``astropy.units`` unit defining the angle metric for this map."""
+        """An ``astropy.units`` unit defining the angle metric."""
         return self._angle_unit
 
     @angle_unit.setter
@@ -432,7 +451,7 @@ class DopplerMap:
 
     @property
     def velocity_unit(self):
-        """An ``astropy.units`` unit defining the velocity metric for this map."""
+        """An ``astropy.units`` unit defining the velocity metric."""
         return self._velocity_unit
 
     @velocity_unit.setter
@@ -443,7 +462,10 @@ class DopplerMap:
 
     @property
     def inc(self):
-        """The inclination of the rotation axis in units of :py:attr:``angle_unit``."""
+        """The inclination of the rotation axis in units of
+        :py:attr:``angle_unit``.
+
+        """
         return self._inc / self._angle_factor
 
     @inc.setter
@@ -453,7 +475,10 @@ class DopplerMap:
 
     @property
     def obl(self):
-        """The obliquity of the rotation axis in units of :py:attr:``angle_unit``."""
+        """The obliquity of the rotation axis in units of
+        :py:attr:``angle_unit``.
+
+        """
         return self._obl / self._angle_factor
 
     @obl.setter
@@ -462,7 +487,9 @@ class DopplerMap:
 
     @property
     def veq(self):
-        """The equatorial velocity of the body in units of :py:attr:``velocity_unit``.
+        """The equatorial velocity of the body in units of
+        :py:attr:``velocity_unit``.
+
         """
         return self._veq / self._velocity_factor
 
@@ -473,8 +500,8 @@ class DopplerMap:
     @property
     def vsini(self):
         """
-        The projected equatorial radial velocity in units of ``velocity_unit``.
-        *Read-only*
+        The projected equatorial radial velocity in units of
+        :py:attr:``velocity_unit``. *Read-only*
 
         """
         return self._veq * self._math.sin(self._inc) / self._velocity_factor
@@ -491,17 +518,17 @@ class DopplerMap:
         Args:
             images: A list of paths to PNG files or a sequence of two-dimensional
                 ``numpy`` arrays on a latitude-longitude grid. There should be
-                as many images as map components (``map.nc``). Users may
-                provide ``None`` for any map component, which will set it
-                to a uniform surface map. If ``map.nc = 1``, a single item
-                (string or ndarray) may be provided (instead of a one-element
-                list).
+                as many images as map components (:py:attr:``nc``). Users may
+                provide :py:obj:``None`` for any map component, which will set
+                it to a uniform surface map. If :py:attr:``nc`` is unity, a
+                single item (string or ndarray) may be provided (instead of a
+                one-element list).
             extent (tuple, optional): The lat-lon values corresponding to the
                 edges of the image in degrees, ``(lat0, lat1, lon0, lon1)``.
                 Default is ``(-180, 180, -90, 90)``.
             smoothing (float, optional): Gaussian smoothing strength.
-                Increase this value to suppress ringing or explicitly set to zero to
-                disable smoothing. Default is ``1/self.ydeg``.
+                Increase this value to suppress ringing or explicitly set to
+                zero to disable smoothing. Default is ``1/self.ydeg``.
             fac (float, optional): Factor by which to oversample the image
                 when applying the SHT. Default is ``1.0``. Increase this
                 number for higher fidelity (at the expense of increased
@@ -511,7 +538,7 @@ class DopplerMap:
             force_psd (bool, optional): Force the map to be positive
                 semi-definite? Default is False.
             kwargs (optional): Any other kwargs passed directly to
-                :py:meth:``minimize`` (only if ``psd`` is True).
+                :py:meth:``minimize`` (only if ``force_psd`` is True).
 
         """
         # Args checks
@@ -548,8 +575,8 @@ class DopplerMap:
         """
         The wavelength grid for the spectral timeseries model. *Read-only*
 
-        This is the wavelength grid on which quantities like the ``flux``
-        and ``design_matrix`` are defined.
+        This is the wavelength grid on which quantities like the
+        :py:meth:``flux`` and :py:meth:``design_matrix`` are defined.
 
         """
         return self._wav
@@ -567,7 +594,8 @@ class DopplerMap:
         """
         The rest-frame wavelength grid. *Read-only*
 
-        This is the wavelength grid on which the ``spectrum`` is defined.
+        This is the wavelength grid on which the :py:meth:``spectrum``
+        is defined.
 
         """
         return self._wav0
@@ -577,6 +605,9 @@ class DopplerMap:
         """
         The *internal* rest frame spectrum wavelength grid. *Read-only*
 
+        This is the wavelength grid on which the :py:meth:``spectrum_``
+        is defined.
+
         """
         return self._wav0_int
 
@@ -585,10 +616,10 @@ class DopplerMap:
         """
         The rest frame spectrum for each component.
 
-        This quantity is defined on the wavelength grid ``wav0``.
+        This quantity is defined on the wavelength grid :py:attr:``wav0``.
 
-        Shape must be ``(nc, len(wav0))``. If ``nc = 1``, a one-dimensional
-        array of length ``len(wav0)`` is also accepted.
+        Shape must be ``(nc, len(wav0))``. If :py:attr:``nc`` is unity, a
+        one-dimensional array of length ``len(wav0)`` is also accepted.
 
         """
         # Interpolate to the ``wav0`` grid
@@ -619,6 +650,8 @@ class DopplerMap:
     def spectrum_(self):
         """
         The *internal* rest frame spectrum for each component. *Read only*
+
+        This is defined on the wavelength grid :py:attr:`wav0_`.
 
         """
         return self._spectrum
@@ -727,7 +760,7 @@ class DopplerMap:
         This is equal to the (unrolled) outer product of the spherical harmonic
         decompositions and their corresponding spectral components. Dot
         the design matrix into this quantity to obtain the observed
-        spectral timeseries (the ``flux``).
+        spectral timeseries (the :py:meth:``flux``).
         """
         # Outer product with the map
         return self._math.reshape(
@@ -866,9 +899,9 @@ class DopplerMap:
 
         Args:
             theta (vector, optional): The angular phase(s) at which to compute
-                the design matrix, in units of ``map.angle_unit``. This must
-                be a vector of size ``map.nt``. Default is uniformly spaced
-                values in the range ``[0, 2 * pi)``.
+                the design matrix, in units of :py:attr:``angle_unit``. This
+                must be a vector of size :py:attr:``nt``. Default is uniformly
+                spaced values in the range ``[0, 2 * pi)``.
             fix_spectrum (bool, optional): If True, returns the design matrix
                 for a fixed spectrum; this can then be dotted into the
                 spherical harmonic coefficient matrix to obtain the flux. See
@@ -881,7 +914,7 @@ class DopplerMap:
         If ``fix_spectrum`` and ``fix_map`` are False (default), this method
         returns a sparse matrix of shape
         ``(map.nt * map.nw, map.nw0_ * map.Ny)``. The flux may be
-        computed from (assuming ``map.lazy = False``)
+        computed from (assuming :py:attr:``lazy`` is ``False``)
 
         .. code-block::python
 
@@ -890,7 +923,7 @@ class DopplerMap:
 
         If ``fix_spectrum`` is True, returns a dense matrix of shape
         ``(map.nt * map.nw, map.Ny * map.nc)``. The flux may be computed from
-        (assuming ``map.lazy = False``)
+        (assuming :py:attr:``lazy`` is ``False``)
 
         .. code-block::python
 
@@ -900,7 +933,7 @@ class DopplerMap:
 
         Finally, if ``fix_map`` is True, returns a dense matrix of shape
         ``(map.nt * map.nw, map.nw0_ * map.nc)``. The flux may be
-        computed from (assuming ``map.lazy = False``)
+        computed from (assuming :py:attr:``lazy`` is ``False``)
 
         .. code-block::python
 
@@ -952,9 +985,9 @@ class DopplerMap:
 
         Args:
             theta (vector, optional): The angular phase(s) at which to compute
-                the design matrix, in units of ``map.angle_unit``. This must
-                be a vector of size ``map.nt``. Default is uniformly spaced
-                values in the range ``[0, 2 * pi)``.
+                the design matrix, in units of :py:attr:``angle_unit``. This
+                must be a vector of size :py:attr:``nt``. Default is uniformly
+                spaced values in the range ``[0, 2 * pi)``.
             method (str, optional): The strategy for computing the flux. Must
                 be one of ``dotconv``, ``convdot``, ``conv``, or ``design``.
                 Default is ``dotconv``, which is the fastest method in most
@@ -967,7 +1000,7 @@ class DopplerMap:
 
         This method returns a matrix of shape ``(map.nt, map.nw)`` corresponding
         to the model for the observed spectrum (evaluated on the wavelength
-        grid ``map.wav``) at each of ``map.nt`` epochs.
+        grid :py:attr:``wav``) at each of :py:attr:``nt`` epochs.
 
         """
         theta = self._get_default_theta(theta)
@@ -1008,9 +1041,9 @@ class DopplerMap:
                 shape that depends on the other arguments to this method;
                 see below.
             theta (vector, optional): The angular phase(s) at which to compute
-                the design matrix, in units of ``map.angle_unit``. This must
-                be a vector of size ``map.nt``. Default is uniformly spaced
-                values in the range ``[0, 2 * pi)``.
+                the design matrix, in units of :py:attr:``angle_unit``. This
+                must be a vector of size :py:attr:``nt``. Default is uniformly
+                spaced values in the range ``[0, 2 * pi)``.
             fix_spectrum (bool, optional): If True, performs the operation
                 using the design matrix for a fixed spectrum. The current
                 spectrum is "baked into" the design matrix, so the tensor ``x``
@@ -1035,7 +1068,8 @@ class DopplerMap:
         ``(map.nt * map.nw, ...)``, where ``...`` are any additional dimensions
         in ``x`` beyond the first. If this method is used to compute the
         spectral timeseries, the result should be reshaped into a matrix of
-        shape ``(map.nt, map.nw)`` to match the return value of ``flux()``.
+        shape ``(map.nt, map.nw)`` to match the return value of
+        :py:methd:``flux()``.
 
         """
         theta = self._get_default_theta(theta)
@@ -1094,9 +1128,9 @@ class DopplerMap:
 
         Args:
             theta (vector, optional): The angular phase(s) at which to compute
-                the design matrix, in units of ``map.angle_unit``. This must
-                be a vector of size ``map.nt``. Default is uniformly spaced
-                values in the range ``[0, 2 * pi)``.
+                the design matrix, in units of :py:attr:``angle_unit``. This
+                must be a vector of size :py:attr:``nt``. Default is uniformly
+                spaced values in the range ``[0, 2 * pi)``.
             res (int, optional): Resolution of the map image in pixels on a
                 side. Default is ``150``.
             file (str, optional): Path to an HTML file to which the
