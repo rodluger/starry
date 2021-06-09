@@ -37,8 +37,8 @@ class DopplerMap:
             one wishes to model. Default is 10.
         wav (ndarray, optional): Wavelength grid on which the data is defined
             (and on which the model will be computed) in nanometers. Default
-            is a grid of `200` bins uniformly spaced between `642.5 nm` and
-            `643.5 nm`, the region spanning the classical FeI 6430 line used
+            is a grid of ``200`` bins uniformly spaced between ``642.5 nm`` and
+            ``643.5 nm``, the region spanning the classical FeI 6430 line used
             in Doppler imaging.
         wav0 (ndarray, optional): Wavelength grid on which the rest frame
             spectrum (the "template") is defined. This can be the same as
@@ -135,9 +135,9 @@ class DopplerMap:
     ):
         # Check args
         ydeg = int(ydeg)
-        assert ydeg >= 1, "Keyword `ydeg` must be >= 1."
+        assert ydeg >= 1, "Keyword ``ydeg`` must be >= 1."
         udeg = int(udeg)
-        assert udeg >= 0, "Keyword `udeg` must be positive."
+        assert udeg >= 0, "Keyword ``udeg`` must be positive."
         assert nc is not None, "Please specify the number of map components."
         nc = int(nc)
         assert nc > 0, "Number of map components must be positive."
@@ -145,7 +145,7 @@ class DopplerMap:
         assert nt > 0, "Number of epochs must be positive."
         assert (
             interp_order >= 1 and interp_order <= 5
-        ), "Keyword `interp_order` must be in the range [1, 5]."
+        ), "Keyword ``interp_order`` must be in the range [1, 5]."
         if lazy is None:
             lazy = config.lazy
         self._lazy = lazy
@@ -241,7 +241,7 @@ class DopplerMap:
         self._nw0 = nw0
         if (wav0_int[0] < np.min(wav0)) or (wav0_int[-1] > np.max(wav0)):
             warn(
-                "Rest frame wavelength grid `wav0` is not sufficiently padded. "
+                "Rest frame wavelength grid ``wav0`` is not sufficiently padded. "
                 "Edge effects may occur. See the documentation for mode details."
             )
 
@@ -252,8 +252,8 @@ class DopplerMap:
         if self._interp:
 
             # Compute the flux interpolation operator (wav <-- wav_int)
-            # `S` interpolates the flux back onto the user-facing `wav` grid
-            # `SBlock` interpolates the design matrix onto the `wav grid`
+            # ``S`` interpolates the flux back onto the user-facing ``wav`` grid
+            # ``SBlock`` interpolates the design matrix onto the ``wav grid``
             S = self._get_spline_operator(wav_int, wav)
             S[np.abs(S) < interp_tol] = 0
             S = csr_matrix(S)
@@ -263,8 +263,8 @@ class DopplerMap:
             )
 
             # Compute the spec interpolation operator (wav0 <-- wav0_int)
-            # `S0` interpolates the user-provided spectrum onto the internal grid
-            # `S0Inv` performs the inverse operation
+            # ``S0`` interpolates the user-provided spectrum onto the internal grid
+            # ``S0Inv`` performs the inverse operation
             S = self._get_spline_operator(wav0_int, wav0)
             S[np.abs(S) < interp_tol] = 0
             S = csr_matrix(S)
@@ -296,9 +296,9 @@ class DopplerMap:
             **kwargs
         )
 
-        # Support map (for certain operations like `load`, `show`, etc.)
+        # Support map (for certain operations like ``load``, ``show``, etc.)
         # This map reflects all the properties of the DopplerMap except
-        # the spherical harmonic coefficients `y`; these are set on an
+        # the spherical harmonic coefficients ``y``; these are set on an
         # as-needed basis.
         _quiet = config.quiet
         config.quiet = True
@@ -354,22 +354,22 @@ class DopplerMap:
 
     @property
     def nw(self):
-        """Length of the user-facing flux wavelength grid `wav`. *Read-only*"""
+        """Length of the user-facing flux wavelength grid ``wav``. *Read-only*"""
         return self._nw
 
     @property
     def nw0(self):
-        """Length of the user-facing rest frame spectrum wavelength grid `wav0`. *Read-only*"""
+        """Length of the user-facing rest frame spectrum wavelength grid ``wav0``. *Read-only*"""
         return self._nw0
 
     @property
     def nw_(self):
-        """Length of the *internal* flux wavelength grid `wav`. *Read-only*"""
+        """Length of the *internal* flux wavelength grid ``wav``. *Read-only*"""
         return self._nw_int
 
     @property
     def nw0_(self):
-        """Length of the *internal* rest frame spectrum wavelength grid `wav0`. *Read-only*"""
+        """Length of the *internal* rest frame spectrum wavelength grid ``wav0``. *Read-only*"""
         return self._nw0_int
 
     @property
@@ -386,7 +386,7 @@ class DopplerMap:
     def Ny(self):
         r"""Number of spherical harmonic coefficients. *Read-only*
 
-        This is equal to :math:`(y_\mathrm{deg} + 1)^2`.
+        This is equal to :math:``(y_\mathrm{deg} + 1)^2``.
         """
         return self._Ny
 
@@ -397,9 +397,9 @@ class DopplerMap:
 
     @property
     def Nu(self):
-        r"""Number of limb darkening coefficients, including :math:`u_0`. *Read-only*
+        r"""Number of limb darkening coefficients, including :math:``u_0``. *Read-only*
 
-        This is equal to :math:`u_\mathrm{deg} + 1`.
+        This is equal to :math:``u_\mathrm{deg} + 1``.
         """
         return self._Nu
 
@@ -407,7 +407,7 @@ class DopplerMap:
     def deg(self):
         r"""Total degree of the map. *Read-only*
 
-        This is equal to :math:`y_\mathrm{deg} + u_\mathrm{deg}`.
+        This is equal to :math:``y_\mathrm{deg} + u_\mathrm{deg}``.
         """
         return self._deg
 
@@ -415,7 +415,7 @@ class DopplerMap:
     def N(self):
         r"""Total number of map coefficients. *Read-only*
 
-        This is equal to :math:`N_\mathrm{y} + N_\mathrm{u}`.
+        This is equal to :math:``N_\mathrm{y} + N_\mathrm{u}``.
         """
         return self._N
 
@@ -443,7 +443,7 @@ class DopplerMap:
 
     @property
     def inc(self):
-        """The inclination of the rotation axis in units of :py:attr:`angle_unit`."""
+        """The inclination of the rotation axis in units of :py:attr:``angle_unit``."""
         return self._inc / self._angle_factor
 
     @inc.setter
@@ -453,7 +453,7 @@ class DopplerMap:
 
     @property
     def obl(self):
-        """The obliquity of the rotation axis in units of :py:attr:`angle_unit`."""
+        """The obliquity of the rotation axis in units of :py:attr:``angle_unit``."""
         return self._obl / self._angle_factor
 
     @obl.setter
@@ -462,7 +462,7 @@ class DopplerMap:
 
     @property
     def veq(self):
-        """The equatorial velocity of the body in units of :py:attr:`velocity_unit`.
+        """The equatorial velocity of the body in units of :py:attr:``velocity_unit``.
         """
         return self._veq / self._velocity_factor
 
@@ -511,7 +511,7 @@ class DopplerMap:
             force_psd (bool, optional): Force the map to be positive
                 semi-definite? Default is False.
             kwargs (optional): Any other kwargs passed directly to
-                :py:meth:`minimize` (only if ``psd`` is True).
+                :py:meth:``minimize`` (only if ``psd`` is True).
 
         """
         # Args checks
@@ -591,7 +591,7 @@ class DopplerMap:
         array of length ``len(wav0)`` is also accepted.
 
         """
-        # Interpolate to the `wav0` grid
+        # Interpolate to the ``wav0`` grid
         if self._interp:
             return self._math.sparse_dot(self._spectrum, self._S0)
         else:
@@ -609,7 +609,7 @@ class DopplerMap:
                 self._math.cast(spectrum), np.array([self._nc, self._nw0])
             )
 
-        # Interpolate from `wav0` grid to internal, padded grid
+        # Interpolate from ``wav0`` grid to internal, padded grid
         if self._interp:
             self._spectrum = self._math.sparse_dot(spectrum, self._S0Inv)
         else:
@@ -742,7 +742,7 @@ class DopplerMap:
         r"""Add the expansion of a circular spot to the map.
 
         This function adds a spot whose functional form is a top
-        hat in :math:`\Delta\theta`, the
+        hat in :math:``\Delta\theta``, the
         angular separation between the center of the spot and another
         point on the surface. The spot intensity is controlled by the
         parameter ``contrast``, defined as the fractional change in the
@@ -761,11 +761,11 @@ class DopplerMap:
                 spots. Default is ``1.0``, corresponding to a spot with
                 central intensity close to zero.
             radius (scalar, optional): The angular radius of the spot in
-                units of :py:attr:`angle_unit`. Defaults to ``20.0`` degrees.
+                units of :py:attr:``angle_unit``. Defaults to ``20.0`` degrees.
             lat (scalar, optional): The latitude of the spot in units of
-                :py:attr:`angle_unit`. Defaults to ``0.0``.
+                :py:attr:``angle_unit``. Defaults to ``0.0``.
             lon (scalar, optional): The longitude of the spot in units of
-                :py:attr:`angle_unit`. Defaults to ``0.0``.
+                :py:attr:``angle_unit``. Defaults to ``0.0``.
 
         .. note::
 
@@ -878,9 +878,9 @@ class DopplerMap:
                 matrix to obtain the flux. See below for details. Default is
                 False.
 
-        If `fix_spectrum` and `fix_map` are False (default), this method
+        If ``fix_spectrum`` and ``fix_map`` are False (default), this method
         returns a sparse matrix of shape
-        `(map.nt * map.nw, map.nw0_ * map.Ny)`. The flux may be
+        ``(map.nt * map.nw, map.nw0_ * map.Ny)``. The flux may be
         computed from (assuming ``map.lazy = False``)
 
         .. code-block::python
@@ -888,8 +888,8 @@ class DopplerMap:
             D = map.design_matrix()
             flux = D.dot(map.spectral_map).reshape(map.nt, map.nw)
 
-        If `fix_spectrum` is True, returns a dense matrix of shape
-        `(map.nt * map.nw, map.Ny * map.nc)`. The flux may be computed from
+        If ``fix_spectrum`` is True, returns a dense matrix of shape
+        ``(map.nt * map.nw, map.Ny * map.nc)``. The flux may be computed from
         (assuming ``map.lazy = False``)
 
         .. code-block::python
@@ -898,8 +898,8 @@ class DopplerMap:
             y = map.y.transpose().flatten()
             flux = D.dot(y).reshape(map.nt, map.nw)
 
-        Finally, if `fix_map` is True, returns a dense matrix of shape
-        `(map.nt * map.nw, map.nw0_ * map.nc)`. The flux may be
+        Finally, if ``fix_map`` is True, returns a dense matrix of shape
+        ``(map.nt * map.nw, map.nw0_ * map.nc)``. The flux may be
         computed from (assuming ``map.lazy = False``)
 
         .. code-block::python
@@ -965,7 +965,7 @@ class DopplerMap:
                 method is usually extremely slow and memory intensive; its
                 use is not recommended in general.
 
-        This method returns a matrix of shape `(map.nt, map.nw)` corresponding
+        This method returns a matrix of shape ``(map.nt, map.nw)`` corresponding
         to the model for the observed spectrum (evaluated on the wavelength
         grid ``map.wav``) at each of ``map.nt`` epochs.
 
@@ -989,7 +989,7 @@ class DopplerMap:
             )
         else:
             raise ValueError(
-                "Keyword `method` must be one of `dotconv`, `convdot`, `conv`, or `design`."
+                "Keyword ``method`` must be one of ``dotconv``, ``convdot``, ``conv``, or ``design``."
             )
 
         # Interpolate to the output grid
@@ -1022,20 +1022,20 @@ class DopplerMap:
                 ``x`` is a representation of the spectral decomposition of the
                 surface. Default is False.
 
-        If `fix_spectrum` and `fix_map` are False (default), the input
-        argument `x` must have shape `(map.Ny * map.nw_, ...)`.
+        If ``fix_spectrum`` and ``fix_map`` are False (default), the input
+        argument ``x`` must have shape ``(map.Ny * map.nw_, ...)``.
 
-        If `fix_spectrum` is True, the input argument `x` must have
-        shape `(map.nc * map.Ny, ...)`.
+        If ``fix_spectrum`` is True, the input argument ``x`` must have
+        shape ``(map.nc * map.Ny, ...)``.
 
-        Finally, if `fix_map` is True, the input argument `x` must have
-        shape `(map.nc * map.nw_, ...)`.
+        Finally, if ``fix_map`` is True, the input argument ``x`` must have
+        shape ``(map.nc * map.nw_, ...)``.
 
         In all cases, this returns a dense matrix of shape
-        `(map.nt * map.nw, ...)`, where `...` are any additional dimensions
-        in `x` beyond the first. If this method is used to compute the
+        ``(map.nt * map.nw, ...)``, where ``...`` are any additional dimensions
+        in ``x`` beyond the first. If this method is used to compute the
         spectral timeseries, the result should be reshaped into a matrix of
-        shape `(map.nt, map.nw)` to match the return value of ``flux()``.
+        shape ``(map.nt, map.nw)`` to match the return value of ``flux()``.
 
         """
         theta = self._get_default_theta(theta)
@@ -1098,7 +1098,7 @@ class DopplerMap:
                 be a vector of size ``map.nt``. Default is uniformly spaced
                 values in the range ``[0, 2 * pi)``.
             res (int, optional): Resolution of the map image in pixels on a
-                side. Default is `150`.
+                side. Default is ``150``.
             file (str, optional): Path to an HTML file to which the
                 visualization will be saved. Default is None, in which case
                 the visualization is displayed.
