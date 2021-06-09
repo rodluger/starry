@@ -16,8 +16,78 @@ from warnings import warn
 
 class DopplerMap:
     """
-    The Doppler ``starry`` map class.
+    Class representing a spectral-spatial stellar surface.
 
+    Instances of this class can be used to model the spatial and wavelength
+    dependence of stellar surfaces and the spectral timeseries one would
+    observe in the presence of rotation-induced Doppler shifts. This class
+    is specifically suited to Doppler imaging studies. It is similar (but
+    different in important ways) to the traditional ``starry.Map`` class.
+    Currently, this class does not model occultations.
+
+    Args:
+        ydeg (int, optional): Degree of the spherical harmonic map.
+            Default is 1.
+        udeg (int, optional): Degree of the limb darkening filter.
+            Default is 0.
+        nc (int, optional): Number of spectral components. The surface is
+            represented as the outer product of ``nc`` spherical harmonic
+            coefficient vectors and ``nc`` associated spectra. Default is 1.
+        nt (int, optional): Number of epochs. This is the number of spectra
+            one wishes to model. Default is 10.
+        wav (ndarray, optional): Wavelength grid on which the data is defined
+            (and on which the model will be computed) in nanometers. Default
+            is a grid of `200` bins uniformly spaced between `642.5 nm` and
+            `643.5 nm`, the region spanning the classical FeI 6430 line used
+            in Doppler imaging.
+        wav0 (ndarray, optional): Wavelength grid on which the rest frame
+            spectrum (the "template") is defined. This can be the same as
+            ``wav``, but it is strongly recommended to pad it on either side to
+            avoid edge effects. If ``wav0`` is insufficiently padded, the
+            values of the model near the edges of the wavelength grid will be
+            incorrect, since they include contribution from Doppler-shifted
+            spectral features beyond the edge of the grid. By default, if
+            ``wav0`` is not provided or set to ``None``,
+            ``starry`` will compute the required amount of padding
+            automatically. See ``vsini_max`` below for more info.
+        oversample (float, optional): The oversampling factor for the internal
+            wavelength grid. The number of spectral bins used to perform the
+            convolutions is equal to this value times the length of ``wav``.
+            Default is 1.
+        interpolate (bool, optional): The wavelength grid used internally is
+            different from ``wav``, since ``starry`` requires a grid that is
+            uniformly spaced in the log of the wavelength. By default,
+            ``interpolate`` is True, in which case ``starry`` automatically
+            interpolates to the user-defined wavelength grids (``wav`` and
+            ``wav0``) when any method or property is accessed. This incurs a
+            slight slowdown in the computation, so users can obtain higher
+            efficiency by setting this to False and handling the interpolation
+            on their own. If False, all spectra returned by the methods and
+            properties of this class will instead be defined on the ``map.wav_``
+            and ``map.wav0_`` grids.
+        interp_order (int, optional): Order of the spline interpolation between
+            the internal (``map.wav_`` and ``map.wav0_``) and user-facing
+            (``map.wav`` and ``map.wav0``) wavelength grids. Default is 1
+            (linear).
+        interp_tol (float, optional): For splines with ``interp_order > 1``, the
+            interpolation can be made much faster by zeroing out elements of
+            the interpolation operator whose absolute value is smaller than
+            some small tolerance given by ``interp_tol``. Default is ``1e-12``.
+        vsini_max (float, optional): Maximum value of ``vsini`` for this map.
+            This sets the size of the convolution kernel (and the amount of
+            padding required in ``wav0``) and should be adjusted
+            to ensure that ``map.veq * sin(map.inc)`` is never larger than
+            this quantity. Lower values of this quantity will result in faster
+            evaluation times. Default is ``100 km/s``.
+        angle_unit (``astropy.units.Unit``, optional): Default ``deg``.
+        velocity_unit (``astropy.units.Unit``, optional): Default ``m/s``.
+        spectrum (matrix, optional): Default is a single Gaussian absorption
+            line at the central wavelength of the first spectral component,
+            and unity for all other components.
+        inc (scalar, optional): In units of ``angle_unit``. Default is ``90.0``.
+        obl (scalar, optional): In units of ``angle_unit``. Default is ``0.0``.
+        veq (scalar, optional): In units of ``velocity_unit``.
+            Default is ``0.0``.
     """
 
     _clight = 299792458.0  # m/s
@@ -25,11 +95,27 @@ class DopplerMap:
     _default_wav = np.linspace(642.5, 643.5, 200)  # FeI 6430
 
     def _default_spectrum(self):
-        spectrum = self._math.ones((self._nc, self._nw0))
-        spectrum[0] = 1 - 0.5 * self._math.exp(
-            -0.5 * (self._wav0 - self._wavr) ** 2 / 0.05 ** 2
+        """
+        The default spectrum to use if the user doesn't provide one.
+
+        This consists of a single Gaussian absorption line at the central
+        wavelength of the first spectral component, and unity for all
+        other components.
+        """
+        return self._math.concatenate(
+            (
+                self._math.reshape(
+                    1
+                    - 0.5
+                    * self._math.exp(
+                        -0.5 * (self._wav0 - self._wavr) ** 2 / 0.05 ** 2
+                    ),
+                    (1, self._nw0),
+                ),
+                self._math.ones((self._nc - 1, self._nw0)),
+            ),
+            axis=0,
         )
-        return spectrum
 
     def __init__(
         self,
@@ -173,7 +259,7 @@ class DopplerMap:
             S = csr_matrix(S)
             self._S = self._math.sparse_cast(S.T)
             self._SBlock = self._math.sparse_cast(
-                sparse_block_diag([S for n in range(nt)])
+                sparse_block_diag([S for n in range(nt)], format="csr")
             )
 
             # Compute the spec interpolation operator (wav0 <-- wav0_int)
@@ -223,7 +309,9 @@ class DopplerMap:
         self.reset(**kwargs)
 
     def reset(self, **kwargs):
+        """Reset all map coefficients and attributes.
 
+        """
         # Units
         self.angle_unit = kwargs.pop("angle_unit", units.degree)
         self.velocity_unit = kwargs.pop("velocity_unit", units.m / units.s)
@@ -391,9 +479,39 @@ class DopplerMap:
         """
         return self._veq * self._math.sin(self._inc) / self._velocity_factor
 
-    def load(self, map, **kwargs):
+    def load(self, images, **kwargs):
         """
-        Load the spatial map(s).
+        Load a sequence of ndarrays or a series of images.
+
+        This routine performs a simple spherical harmonic transform (SHT)
+        to compute the spherical harmonic expansion corresponding to
+        a list of input image files or a sequencey of ``numpy`` ndarrays on a
+        lat-lon grid. The resulting coefficients are ingested into the map.
+
+        Args:
+            images: A list of paths to PNG files or a sequence of two-dimensional
+                ``numpy`` arrays on a latitude-longitude grid. There should be
+                as many images as map components (``map.nc``). Users may
+                provide ``None`` for any map component, which will set it
+                to a uniform surface map. If ``map.nc = 1``, a single item
+                (string or ndarray) may be provided (instead of a one-element
+                list).
+            extent (tuple, optional): The lat-lon values corresponding to the
+                edges of the image in degrees, ``(lat0, lat1, lon0, lon1)``.
+                Default is ``(-180, 180, -90, 90)``.
+            smoothing (float, optional): Gaussian smoothing strength.
+                Increase this value to suppress ringing or explicitly set to zero to
+                disable smoothing. Default is ``1/self.ydeg``.
+            fac (float, optional): Factor by which to oversample the image
+                when applying the SHT. Default is ``1.0``. Increase this
+                number for higher fidelity (at the expense of increased
+                computational time).
+            eps (float, optional): Regularization strength for the spherical
+                harmonic transform. Default is ``1e-12``.
+            force_psd (bool, optional): Force the map to be positive
+                semi-definite? Default is False.
+            kwargs (optional): Any other kwargs passed directly to
+                :py:meth:`minimize` (only if ``psd`` is True).
 
         """
         # Args checks
@@ -402,18 +520,18 @@ class DopplerMap:
             "The map must be provided as a list of ``nc``"
             "file names or as a numerical array of length ``nc``."
         )
-        assert not is_tensor(map), msg
+        assert not is_tensor(images), msg
         if self._nc > 1:
-            assert hasattr(map, "__len__"), msg
-            assert len(map) == self._nc, msg
+            assert hasattr(images, "__len__"), msg
+            assert len(images) == self._nc, msg
         else:
-            if type(map) is str or not hasattr(map, "__len__"):
-                map = [map]
-            elif type(map) is np.ndarray and map.ndim == 1:
-                map = [map]
+            if type(images) is str or not hasattr(images, "__len__"):
+                images = [images]
+            elif type(images) is np.ndarray and images.ndim == 1:
+                images = [images]
 
         # Load
-        for n, map_n in enumerate(map):
+        for n, map_n in enumerate(images):
             if (map_n is None) or (
                 type(map_n) is str and map_n.lower() == "none"
             ):
@@ -621,7 +739,85 @@ class DopplerMap:
         )
 
     def spot(self, *, component=0, **kwargs):
-        """
+        r"""Add the expansion of a circular spot to the map.
+
+        This function adds a spot whose functional form is a top
+        hat in :math:`\Delta\theta`, the
+        angular separation between the center of the spot and another
+        point on the surface. The spot intensity is controlled by the
+        parameter ``contrast``, defined as the fractional change in the
+        intensity at the center of the spot.
+
+        Args:
+            component (int, optional): Indicates which spectral component
+                to add the spot to. Default is ``0``.
+            contrast (scalar or vector, optional): The contrast of the spot.
+                This is equal to the fractional change in the intensity of the
+                map at the *center* of the spot relative to the baseline intensity
+                of an unspotted map. If the map has more than one
+                wavelength bin, this must be a vector of length equal to the
+                number of wavelength bins. Positive values of the contrast
+                result in dark spots; negative values result in bright
+                spots. Default is ``1.0``, corresponding to a spot with
+                central intensity close to zero.
+            radius (scalar, optional): The angular radius of the spot in
+                units of :py:attr:`angle_unit`. Defaults to ``20.0`` degrees.
+            lat (scalar, optional): The latitude of the spot in units of
+                :py:attr:`angle_unit`. Defaults to ``0.0``.
+            lon (scalar, optional): The longitude of the spot in units of
+                :py:attr:`angle_unit`. Defaults to ``0.0``.
+
+        .. note::
+
+            Keep in mind that things are normalized in ``starry`` such that
+            the disk-integrated *flux* (not the *intensity*!)
+            of an unspotted body is unity. The default intensity of an
+            unspotted map is ``1.0 / np.pi`` everywhere (this ensures the
+            integral over the unit disk is unity).
+            So when you instantiate a map and add a spot of contrast ``c``,
+            you'll see that the intensity at the center is actually
+            ``(1 - c) / np.pi``. This is expected behavior, since that's
+            a factor of ``1 - c`` smaller than the baseline intensity.
+
+        .. note::
+
+            This function computes the spherical harmonic expansion of a
+            circular spot with uniform contrast. At finite spherical
+            harmonic degree, this will return an *approximation* that
+            may be subject to ringing. Users can control the amount of
+            ringing and the smoothness of the spot profile (see below).
+            In general, however, at a given spherical harmonic degree
+            ``ydeg``, there is always minimum spot radius that can be
+            modeled well. For ``ydeg = 15``, for instance, that radius
+            is about ``10`` degrees. Attempting to add a spot smaller
+            than this will in general result in a large amount of ringing and
+            a smaller contrast than desired.
+
+        There are a few additional under-the-hood keywords
+        that control the behavior of the spot expansion. These are
+
+        Args:
+            spot_pts (int, optional): The number of points in the expansion
+                of the (1-dimensional) spot profile. Default is ``1000``.
+            spot_eps (float, optional): Regularization parameter in the
+                expansion. Default is ``1e-9``.
+            spot_smoothing (float, optional): Standard deviation of the
+                Gaussian smoothing applied to the spot to suppress
+                ringing (unitless). Default is ``2.0 / self.ydeg``.
+            spot_fac (float, optional): Parameter controlling the smoothness
+                of the spot profile. Increasing this parameter increases
+                the steepness of the profile (which approaches a top hat
+                as ``spot_fac -> inf``). Decreasing it results in a smoother
+                sigmoidal function. Default is ``300``. Changing this
+                parameter is not recommended; change ``spot_smoothing``
+                instead.
+
+        .. note::
+
+            These last four parameters are cached. That means that
+            changing their value in a call to ``spot`` will result in
+            all future calls to ``spot`` "remembering" those settings,
+            unless you change them back!
 
         """
         self._map.spot(**kwargs)
@@ -750,33 +946,50 @@ class DopplerMap:
 
         return D
 
-    def flux(self, theta=None, mode="dotconv"):
+    def flux(self, theta=None, method="dotconv"):
         """
         Return the model for the full spectral timeseries.
 
-        Shape is `(map.nt, map.nw)`.
+        Args:
+            theta (vector, optional): The angular phase(s) at which to compute
+                the design matrix, in units of ``map.angle_unit``. This must
+                be a vector of size ``map.nt``. Default is uniformly spaced
+                values in the range ``[0, 2 * pi)``.
+            method (str, optional): The strategy for computing the flux. Must
+                be one of ``dotconv``, ``convdot``, ``conv``, or ``design``.
+                Default is ``dotconv``, which is the fastest method in most
+                cases. All three of ``dotconv``, ``convdot``, and ``conv``
+                compute the flux via fast two-dimensional convolutions
+                (via ``conv2d``), while ``design`` computes the flux by
+                instantiating the design matrix and dotting it in. This last
+                method is usually extremely slow and memory intensive; its
+                use is not recommended in general.
+
+        This method returns a matrix of shape `(map.nt, map.nw)` corresponding
+        to the model for the observed spectrum (evaluated on the wavelength
+        grid ``map.wav``) at each of ``map.nt`` epochs.
 
         """
         theta = self._get_default_theta(theta)
-        if mode == "dotconv":
+        if method == "dotconv":
             flux = self.ops.get_flux_from_dotconv(
                 self._inc, theta, self._veq, self._u, self._y, self._spectrum
             )
-        elif mode == "convdot":
+        elif method == "convdot":
             flux = self.ops.get_flux_from_convdot(
                 self._inc, theta, self._veq, self._u, self._y, self._spectrum
             )
-        elif mode == "conv":
+        elif method == "conv":
             flux = self.ops.get_flux_from_conv(
                 self._inc, theta, self._veq, self._u, self.spectral_map
             )
-        elif mode == "design":
+        elif method == "design":
             flux = self.ops.get_flux_from_design(
                 self._inc, theta, self._veq, self._u, self.spectral_map
             )
         else:
             raise ValueError(
-                "Keyword `mode` must be one of `convdot`, `conv`, `design`."
+                "Keyword `method` must be one of `dotconv`, `convdot`, `conv`, or `design`."
             )
 
         # Interpolate to the output grid
@@ -818,6 +1031,12 @@ class DopplerMap:
         Finally, if `fix_map` is True, the input argument `x` must have
         shape `(map.nc * map.nw_, ...)`.
 
+        In all cases, this returns a dense matrix of shape
+        `(map.nt * map.nw, ...)`, where `...` are any additional dimensions
+        in `x` beyond the first. If this method is used to compute the
+        spectral timeseries, the result should be reshaped into a matrix of
+        shape `(map.nt, map.nw)` to match the return value of ``flux()``.
+
         """
         theta = self._get_default_theta(theta)
         assert not (
@@ -857,6 +1076,37 @@ class DopplerMap:
 
     def show(self, theta=None, res=150, file=None, **kwargs):
         """
+        Display (or save) an interactive visualization of the star.
+
+        This method uses the ``bokeh`` package to render an interactive
+        visualization of the spectro-spatial stellar surface and the
+        model for the spectral timeseries. The output is an HTML page that
+        is either saved to disk (if ``file`` is provided) or displayed in
+        a browser window or inline (if calling this method from within a
+        Jupyter notebook).
+
+        Users can interact with the visualization by moving the mouse over
+        the map to show the emergent, rest frame spectrum at different points
+        on the surface. Users can also scroll (with the mouse wheel or track
+        pad) to change the wavelength at which the map is visualized (in the
+        left panel) or to rotate the orthographic projection of the map (in
+        the right panel).
+
+        Args:
+            theta (vector, optional): The angular phase(s) at which to compute
+                the design matrix, in units of ``map.angle_unit``. This must
+                be a vector of size ``map.nt``. Default is uniformly spaced
+                values in the range ``[0, 2 * pi)``.
+            res (int, optional): Resolution of the map image in pixels on a
+                side. Default is `150`.
+            file (str, optional): Path to an HTML file to which the
+                visualization will be saved. Default is None, in which case
+                the visualization is displayed.
+
+        .. note::
+
+            The visualization can be somewhat memory-intensive! Try decreasing
+            the map resolution if you experience issues.
 
         """
         with CompileLogMessage("show", custom_message="Rendering the map..."):
