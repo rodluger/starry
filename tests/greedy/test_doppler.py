@@ -23,10 +23,10 @@ def test_flux(map):
     yield identical results.
 
     """
-    flux1 = map.flux(mode="convdot")
-    flux2 = map.flux(mode="dotconv")
-    flux3 = map.flux(mode="conv")
-    flux4 = map.flux(mode="design")
+    flux1 = map.flux(method="convdot")
+    flux2 = map.flux(method="dotconv")
+    flux3 = map.flux(method="conv")
+    flux4 = map.flux(method="design")
     assert np.allclose(flux1, flux2)
     assert np.allclose(flux1, flux3)
     assert np.allclose(flux1, flux4)
