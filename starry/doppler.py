@@ -21,6 +21,15 @@ class DopplerMap:
     """
 
     _clight = 299792458.0  # m/s
+    _default_vsini_max = 1e5  # m/s
+    _default_wav = np.linspace(642.5, 643.5, 200)  # FeI 6430
+
+    def _default_spectrum(self):
+        spectrum = self._math.ones((self._nc, self._nw0))
+        spectrum[0] = 1 - 0.5 * self._math.exp(
+            -0.5 * (self._wav0 - self._wavr) ** 2 / 0.05 ** 2
+        )
+        return spectrum
 
     def __init__(
         self,
@@ -30,7 +39,7 @@ class DopplerMap:
         nt=10,
         wav=None,
         wav0=None,
-        nw=199,
+        oversample=1,
         interpolate=True,
         interp_order=1,
         interp_tol=1e-12,
@@ -46,15 +55,6 @@ class DopplerMap:
         assert nc is not None, "Please specify the number of map components."
         nc = int(nc)
         assert nc > 0, "Number of map components must be positive."
-        assert nw is not None, "Please specify the number of wavelength bins."
-        nw = int(nw)
-        assert nw > 0, "Number of wavelength bins must be positive."
-        # Enforce a minimum number of bins
-        if nw < 99:
-            nw = 99
-        # Enforce an odd number of bins
-        if nw % 2 == 0:
-            nw += 1
         nt = int(nt)
         assert nt > 0, "Number of epochs must be positive."
         assert (
@@ -82,7 +82,7 @@ class DopplerMap:
         # This parameter determines the convolution kernel width
         self.velocity_unit = kwargs.pop("velocity_unit", units.m / units.s)
         if vsini_max is None:
-            vsini_max = 1e5  # m/s = 100 km/s
+            vsini_max = self._default_vsini_max
         else:
             vsini_max *= self._velocity_factor
         self.vsini_max = self._math.cast(vsini_max)
@@ -92,9 +92,15 @@ class DopplerMap:
             wav
         ), "Wavelength grids must be numerical quantities."
         if wav is None:
-            wav = np.linspace(642.5, 643.5, 300)  # FeI 6430
+            wav = self._default_wav
         wav = np.array(wav)
         self._wav = self._math.cast(wav)
+
+        # Compute the size of the internal wavelength grid
+        # Note that this must be odd!
+        nw = int(len(wav) * oversample)
+        if (nw % 2) == 0:
+            nw += 1
 
         # Compute the internal wavelength grid (wav_int)
         wav1 = np.min(wav)
@@ -102,8 +108,10 @@ class DopplerMap:
         wavr = np.exp(0.5 * (np.log(wav1) + np.log(wav2)))
         log_wav = np.linspace(np.log(wav1 / wavr), np.log(wav2 / wavr), nw)
         wav_int = wavr * np.exp(log_wav)
+        self._wavr = wavr
         self._wav_int = self._math.cast(wav_int)
         self._nw_int = nw
+        self._oversample = oversample
 
         # Compute the padded internal wavelength grid (wav_int_padded).
         # We add bins corresponding to the maximum kernel width to each
@@ -132,7 +140,14 @@ class DopplerMap:
             wav0
         ), "Wavelength grids must be numerical quantities."
         if wav0 is None:
-            wav0 = wav_int_padded
+            # The default grid is the data wavelength grid with
+            # a bit of padding on either side
+            delta_wav = np.median(np.diff(np.sort(wav)))
+            pad_l = np.arange(wav1, wav_int_padded[0] - delta_wav, -delta_wav)
+            pad_l = pad_l[::-1][:-1]
+            pad_r = np.arange(wav2, wav_int_padded[-1] + delta_wav, delta_wav)
+            pad_r = pad_r[1:]
+            wav0 = np.concatenate([pad_l, wav, pad_r])
         wav0 = np.array(wav0)
         nw0 = len(wav0)
         self._wav0 = self._math.cast(wav0)
@@ -182,13 +197,6 @@ class DopplerMap:
             self._wav0 = self._wav_int_padded
             self._nw0 = self._nw_int_padded
 
-        # Default spectrum (one centered absorption line, sigma = 1/2 Angstrom)
-        spectrum = self._math.ones((self._nc, self._nw0))
-        spectrum[0] = 1 - 0.5 * self._math.exp(
-            -0.5 * (self._wav0 - wavr) ** 2 / 0.05 ** 2
-        )
-        self._default_spectrum = spectrum
-
         # Instantiate the Theano ops classs
         self.ops = OpsDoppler(
             ydeg,
@@ -235,7 +243,7 @@ class DopplerMap:
         self._map._u = self._u
 
         # Reset the spectrum
-        self.spectrum = kwargs.pop("spectrum", self._default_spectrum)
+        self.spectrum = kwargs.pop("spectrum", self._default_spectrum())
 
         # Basic properties
         self.inc = kwargs.pop("inc", 0.5 * np.pi / self._angle_factor)
@@ -258,9 +266,9 @@ class DopplerMap:
         return self._nt
 
     @property
-    def nw(self):
-        """Number of internal wavelength bins. *Read-only*"""
-        return self._nw_int
+    def oversample(self):
+        """Spectrum oversampling factor. *Read-only*"""
+        return self._oversample
 
     @property
     def ydeg(self):
