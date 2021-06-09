@@ -4,9 +4,9 @@ from scipy.linalg import block_diag
 import pytest
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def map():
-    map = starry.DopplerMap(ydeg=10, nt=3, nc=2, nw=199, veq=50000)
+    map = starry.DopplerMap(ydeg=10, nt=3, nc=2, veq=50000)
     map.load(["spot", "earth"], force_psd=True)
     yield map
 
@@ -36,7 +36,7 @@ def test_dot(map, random):
 
     """
     D = map.design_matrix().todense()
-    matrix = random.normal(size=(len(map.wav0) * map.Ny, 5))
+    matrix = random.normal(size=(map.nw0_internal * map.Ny, 5))
     product1 = D @ matrix
     product2 = map.dot(matrix)
     assert np.allclose(product1, product2)
@@ -49,11 +49,11 @@ def test_D_fixed_spectrum(map, random):
     the full design matrix and dotting the spectral block matrix in.
 
     """
-    DS = np.zeros((map.nt * len(map.wav), 0))
+    DS = np.zeros((map.nt * map.nw, 0))
     D = map.design_matrix().todense()
     for k in range(map.nc):
         S = block_diag(
-            *[map.spectrum[k].reshape(-1, 1) for n in range(map.Ny)]
+            *[map._spectrum[k].reshape(-1, 1) for n in range(map.Ny)]
         )
         DS = np.hstack((DS, D @ S))
     DS_fast = map.design_matrix(fix_spectrum=True)

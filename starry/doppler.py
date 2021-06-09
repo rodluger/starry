@@ -95,6 +95,7 @@ class DopplerMap:
             wav = self._default_wav
         wav = np.array(wav)
         self._wav = self._math.cast(wav)
+        self._nw = len(wav)
 
         # Compute the size of the internal wavelength grid
         # Note that this must be odd!
@@ -264,6 +265,26 @@ class DopplerMap:
     def nt(self):
         """Number of spectral epochs. *Read-only*"""
         return self._nt
+
+    @property
+    def nw(self):
+        """Length of the user-facing flux wavelength grid `wav`. *Read-only*"""
+        return self._nw
+
+    @property
+    def nw0(self):
+        """Length of the user-facing rest frame spectrum wavelength grid `wav0`. *Read-only*"""
+        return self._nw0
+
+    @property
+    def nw_internal(self):
+        """Length of the *internal* flux wavelength grid `wav`. *Read-only*"""
+        return self._nw_int
+
+    @property
+    def nw0_internal(self):
+        """Length of the *internal* rest frame spectrum wavelength grid `wav0`. *Read-only*"""
+        return self._nw_int_padded
 
     @property
     def oversample(self):
