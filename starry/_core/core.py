@@ -23,6 +23,7 @@ from .ops import (
 from .utils import logger, autocompile, is_tensor, clear_cache
 from .math import lazy_math as math
 from scipy.special import legendre as LegendreP
+from scipy.sparse import eye as sparse_eye
 import numpy as np
 from astropy import units
 import os
@@ -1400,22 +1401,22 @@ class OpsDoppler(OpsYlm):
         # The factor used to compute `x`
         self.xamp = (
             self.clight
-            * (tt.exp(-2 * lam_kernel) - 1)
-            / (tt.exp(-2 * lam_kernel) + 1)
+            * (np.exp(-2 * lam_kernel) - 1)
+            / (np.exp(-2 * lam_kernel) + 1)
         )
 
         # Pre-compute the CSR matrix indices
         self.indptr = (self.Ny * self.nk) * np.arange(
             self.nw + 1, dtype="int32"
         )
-        i0 = tt.reshape(tt.arange(self.nk), (-1, 1))
+        i0 = np.reshape(np.arange(self.nk), (-1, 1))
         i1 = self.nwp * np.arange(self.Ny).reshape(1, -1)
         i2 = np.arange(self.nw).reshape(1, -1)
-        self.indices = tt.reshape(
-            tt.transpose(tt.reshape(tt.transpose(i0 + i1), (-1, 1)) + i2),
+        self.indices = np.reshape(
+            np.transpose(np.reshape(np.transpose(i0 + i1), (-1, 1)) + i2),
             (-1,),
         )
-        self.shape = tt.as_tensor_variable([self.nw, self.Ny * self.nwp])
+        self.shape = np.array([self.nw, self.Ny * self.nwp])
 
         # Change of basis matrix (ydeg + udeg)
         self._A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
@@ -1582,13 +1583,16 @@ class OpsDoppler(OpsYlm):
         """
         Return the Doppler matrix for a fixed spectrum.
 
+        This routine is heavily optimized, and can often be the fastest
+        way to compute the flux!
+
         """
         # Get the convolution kernels
         kT = self.get_kT(inc, theta, veq, u)
 
         # The dot product is just a 2d convolution!
         product = tt.nnet.conv2d(
-            tt.reshape(tt.reshape(spectrum, (-1,)), (self.nc, 1, 1, self.nwp)),
+            tt.reshape(spectrum, (self.nc, 1, 1, self.nwp)),
             tt.reshape(kT, (self.nt * self.Ny, 1, 1, self.nk)),
             border_mode="valid",
             filter_flip=False,
@@ -1602,6 +1606,60 @@ class OpsDoppler(OpsYlm):
         return product
 
     @autocompile
+    def get_D_fixed_map(self, inc, theta, veq, u, y):
+        """
+        Return the Doppler matrix for a fixed map.
+
+        In general, instantiating this matrix (even in its sparse form) is not
+        a good idea: it's much, much faster to use
+        `dot_design_matrix_fixed_map_into` below.
+
+        """
+        D = self.get_D(inc, theta, veq, u)
+        I = ts.as_sparse_variable(sparse_eye(self.nwp, format="csr"))
+        y = tt.reshape(y, (self.Ny, self.nc))
+        Y = ts.hstack(
+            [
+                ts.vstack([y[n, k] * I for n in range(self.Ny)])
+                for k in range(self.nc)
+            ]
+        )
+        return ts.dot(D, Y)
+
+    @autocompile
+    def dot_design_matrix_fixed_map_into(self, inc, theta, veq, u, y, matrix):
+        """
+        Dot the Doppler design matrix for a fixed Ylm map
+        into an arbitrary dense `matrix`. This is equivalent to
+        tt.dot(get_D_fixed_map(), matrix), but computes the
+        product with a single `conv2d` operation.
+
+        """
+        # Get the convolution kernels
+        kT = self.get_kT(inc, theta, veq, u)
+
+        # Dot them into the Ylms
+        # kTy has shape (nt, nc, nk)
+        kTy = tt.swapaxes(
+            tt.dot(tt.transpose(tt.reshape(y, (self.Ny, self.nc))), kT), 0, 1
+        )
+
+        # Ensure we have a matrix, not a vector
+        if matrix.ndim == 1:
+            matrix = tt.shape_padright(matrix)
+
+        # The dot product is just a 2d convolution!
+        product = tt.nnet.conv2d(
+            tt.reshape(tt.transpose(matrix), (-1, self.nc, 1, self.nwp)),
+            tt.reshape(kTy, (self.nt, self.nc, 1, self.nk)),
+            border_mode="valid",
+            filter_flip=False,
+            input_shape=(None, self.nc, 1, self.nwp),
+            filter_shape=(self.nt, self.nc, 1, self.nk),
+        )
+        return tt.transpose(tt.reshape(product, (-1, self.nt * self.nw)))
+
+    @autocompile
     def dot_design_matrix_into(self, inc, theta, veq, u, matrix):
         """
         Dot the full Doppler design matrix into an arbitrary dense `matrix`.
@@ -1611,6 +1669,10 @@ class OpsDoppler(OpsYlm):
         """
         # Get the convolution kernels
         kT = self.get_kT(inc, theta, veq, u)
+
+        # Ensure we have a matrix, not a vector
+        if matrix.ndim == 1:
+            matrix = tt.shape_padright(matrix)
 
         # The dot product is just a 2d convolution!
         product = tt.nnet.conv2d(
@@ -1657,10 +1719,23 @@ class OpsDoppler(OpsYlm):
         return flux[0, :, 0, :]
 
     @autocompile
+    def get_flux_from_dotconv(self, inc, theta, veq, u, y, spectrum):
+        """
+        Compute the flux via a dot product followed by a 2d convolution.
+        This is usually the *fastest* way of computing the model.
+
+        """
+        flux = self.dot_design_matrix_fixed_map_into(
+            inc, theta, veq, u, y, tt.reshape(spectrum, (-1,))
+        )
+        return tt.reshape(flux, (self.nt, self.nw))
+
+    @autocompile
     def get_flux_from_convdot(self, inc, theta, veq, u, y, spectrum):
         """
-        Compute the flux via a 2d convolution followed by a dot product.
-        This is usually the *fastest* way of computing the model.
+        Compute the flux via a 2d convolution follwed by a dot product.
+        This is very fast, but usually slightly slower than
+        ``get_flux_from_dotconv``.
 
         """
         D = self.get_D_fixed_spectrum(inc, theta, veq, u, spectrum)

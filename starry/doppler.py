@@ -114,7 +114,7 @@ class DopplerMap:
         self._nw_int = nw
         self._oversample = oversample
 
-        # Compute the padded internal wavelength grid (wav_int_padded).
+        # Compute the padded internal wavelength grid (wav0_int).
         # We add bins corresponding to the maximum kernel width to each
         # end of wav_int to prevent edge effects
         dlam = log_wav[1] - log_wav[0]
@@ -129,12 +129,12 @@ class DopplerMap:
         x = np.arange(0, hw + 1) * dlam
         pad_l = log_wav[0] - hw * dlam + x[:-1]
         pad_r = log_wav[-1] + x[1:]
-        log_wav_padded = np.concatenate([pad_l, log_wav, pad_r])
-        wav_int_padded = wavr * np.exp(log_wav_padded)
-        nwp = len(log_wav_padded)
-        self._log_wav_padded = self._math.cast(log_wav_padded)
-        self._wav_int_padded = self._math.cast(wav_int_padded)
-        self._nw_int_padded = nwp
+        log_wav0_int = np.concatenate([pad_l, log_wav, pad_r])
+        wav0_int = wavr * np.exp(log_wav0_int)
+        nwp = len(log_wav0_int)
+        self._log_wav0_int = self._math.cast(log_wav0_int)
+        self._wav0_int = self._math.cast(wav0_int)
+        self._nw0_int = nwp
 
         # Compute the user-facing rest spectrum wavelength grid (wav0)
         assert not is_tensor(
@@ -144,18 +144,16 @@ class DopplerMap:
             # The default grid is the data wavelength grid with
             # a bit of padding on either side
             delta_wav = np.median(np.diff(np.sort(wav)))
-            pad_l = np.arange(wav1, wav_int_padded[0] - delta_wav, -delta_wav)
+            pad_l = np.arange(wav1, wav0_int[0] - delta_wav, -delta_wav)
             pad_l = pad_l[::-1][:-1]
-            pad_r = np.arange(wav2, wav_int_padded[-1] + delta_wav, delta_wav)
+            pad_r = np.arange(wav2, wav0_int[-1] + delta_wav, delta_wav)
             pad_r = pad_r[1:]
             wav0 = np.concatenate([pad_l, wav, pad_r])
         wav0 = np.array(wav0)
         nw0 = len(wav0)
         self._wav0 = self._math.cast(wav0)
         self._nw0 = nw0
-        if (wav_int_padded[0] < np.min(wav0)) or (
-            wav_int_padded[-1] > np.max(wav0)
-        ):
+        if (wav0_int[0] < np.min(wav0)) or (wav0_int[-1] > np.max(wav0)):
             warn(
                 "Rest frame wavelength grid `wav0` is not sufficiently padded. "
                 "Edge effects may occur. See the documentation for mode details."
@@ -178,14 +176,14 @@ class DopplerMap:
                 sparse_block_diag([S for n in range(nt)])
             )
 
-            # Compute the spec interpolation operator (wav0 <-- wav_int_padded)
+            # Compute the spec interpolation operator (wav0 <-- wav0_int)
             # `S0` interpolates the user-provided spectrum onto the internal grid
             # `S0Inv` performs the inverse operation
-            S = self._get_spline_operator(wav_int_padded, wav0)
+            S = self._get_spline_operator(wav0_int, wav0)
             S[np.abs(S) < interp_tol] = 0
             S = csr_matrix(S)
             self._S0 = self._math.sparse_cast(S.T)
-            S = self._get_spline_operator(wav0, wav_int_padded)
+            S = self._get_spline_operator(wav0, wav0_int)
             S[np.abs(S) < interp_tol] = 0
             S = csr_matrix(S)
             self._S0Inv = self._math.sparse_cast(S.T)
@@ -195,8 +193,8 @@ class DopplerMap:
             # No interpolation. User-facing grids *are* the internal grids
             # User will handle interpolation on their own
             self._wav = self._wav_int
-            self._wav0 = self._wav_int_padded
-            self._nw0 = self._nw_int_padded
+            self._wav0 = self._wav0_int
+            self._nw0 = self._nw0_int
 
         # Instantiate the Theano ops classs
         self.ops = OpsDoppler(
@@ -208,7 +206,7 @@ class DopplerMap:
             hw,
             vsini_max,
             self._clight,
-            log_wav_padded,
+            log_wav0_int,
             **kwargs
         )
 
@@ -277,14 +275,14 @@ class DopplerMap:
         return self._nw0
 
     @property
-    def nw_internal(self):
+    def nw_(self):
         """Length of the *internal* flux wavelength grid `wav`. *Read-only*"""
         return self._nw_int
 
     @property
-    def nw0_internal(self):
+    def nw0_(self):
         """Length of the *internal* rest frame spectrum wavelength grid `wav0`. *Read-only*"""
-        return self._nw_int_padded
+        return self._nw0_int
 
     @property
     def oversample(self):
@@ -430,13 +428,21 @@ class DopplerMap:
     @property
     def wav(self):
         """
-        The output wavelength grid. *Read-only*
+        The wavelength grid for the spectral timeseries model. *Read-only*
 
         This is the wavelength grid on which quantities like the ``flux``
         and ``design_matrix`` are defined.
 
         """
         return self._wav
+
+    @property
+    def wav_(self):
+        """
+        The *internal* model wavelength grid. *Read-only*
+
+        """
+        return self._wav_int
 
     @property
     def wav0(self):
@@ -447,6 +453,14 @@ class DopplerMap:
 
         """
         return self._wav0
+
+    @property
+    def wav0_(self):
+        """
+        The *internal* rest frame spectrum wavelength grid. *Read-only*
+
+        """
+        return self._wav0_int
 
     @property
     def spectrum(self):
@@ -482,6 +496,14 @@ class DopplerMap:
             self._spectrum = self._math.sparse_dot(spectrum, self._S0Inv)
         else:
             self._spectrum = spectrum
+
+    @property
+    def spectrum_(self):
+        """
+        The *internal* rest frame spectrum for each component. *Read only*
+
+        """
+        return self._spectrum
 
     @property
     def y(self):
@@ -640,7 +662,63 @@ class DopplerMap:
         return theta
 
     def design_matrix(self, theta=None, fix_spectrum=False, fix_map=False):
-        """Return the Doppler imaging design matrix."""
+        """
+        Return the Doppler imaging design matrix.
+
+        This matrix dots into the spectral map to yield the model for the
+        observed spectral timeseries (the ``flux``).
+
+        Args:
+            theta (vector, optional): The angular phase(s) at which to compute
+                the design matrix, in units of ``map.angle_unit``. This must
+                be a vector of size ``map.nt``. Default is uniformly spaced
+                values in the range ``[0, 2 * pi)``.
+            fix_spectrum (bool, optional): If True, returns the design matrix
+                for a fixed spectrum; this can then be dotted into the
+                spherical harmonic coefficient matrix to obtain the flux. See
+                below for details. Default is False.
+            fix_map (bool, optional): If True, returns the design matrix
+                for a fixed map; this can then be dotted into the spectrum
+                matrix to obtain the flux. See below for details. Default is
+                False.
+
+        If `fix_spectrum` and `fix_map` are False (default), this method
+        returns a sparse matrix of shape
+        `(map.nt * map.nw, map.nw0_ * map.Ny)`. The flux may be
+        computed from (assuming ``map.lazy = False``)
+
+        .. code-block::python
+
+            D = map.design_matrix()
+            flux = D.dot(map.spectral_map).reshape(map.nt, map.nw)
+
+        If `fix_spectrum` is True, returns a dense matrix of shape
+        `(map.nt * map.nw, map.Ny * map.nc)`. The flux may be computed from
+        (assuming ``map.lazy = False``)
+
+        .. code-block::python
+
+            D = map.design_matrix(fix_spectrum=True)
+            y = map.y.transpose().flatten()
+            flux = D.dot(y).reshape(map.nt, map.nw)
+
+        Finally, if `fix_map` is True, returns a dense matrix of shape
+        `(map.nt * map.nw, map.nw0_ * map.nc)`. The flux may be
+        computed from (assuming ``map.lazy = False``)
+
+        .. code-block::python
+
+            D = map.design_matrix(fix_map=True)
+            spectrum = map.spectrum_.flatten()
+            flux = D.dot(spectrum).reshape(map.nt, map.nw)
+
+        .. note::
+
+            Instantiating this matrix is usually a bad idea, since it can
+            be very slow and consume a lot of memory. Check out the ``dot``
+            method instead for fast dot products with the design matrix.
+
+        """
         theta = self._get_default_theta(theta)
         assert not (
             fix_spectrum and fix_map
@@ -657,8 +735,9 @@ class DopplerMap:
         elif fix_map:
 
             # Fixed map (dense)
-            # TODO
-            raise NotImplementedError("Not yet implemented.")
+            D = self.ops.get_D_fixed_map(
+                self._inc, theta, self._veq, self._u, self._y
+            )
 
         else:
 
@@ -671,13 +750,19 @@ class DopplerMap:
 
         return D
 
-    def flux(self, theta=None, mode="convdot"):
+    def flux(self, theta=None, mode="dotconv"):
         """
         Return the model for the full spectral timeseries.
 
+        Shape is `(map.nt, map.nw)`.
+
         """
         theta = self._get_default_theta(theta)
-        if mode == "convdot":
+        if mode == "dotconv":
+            flux = self.ops.get_flux_from_dotconv(
+                self._inc, theta, self._veq, self._u, self._y, self._spectrum
+            )
+        elif mode == "convdot":
             flux = self.ops.get_flux_from_convdot(
                 self._inc, theta, self._veq, self._u, self._y, self._spectrum
             )
@@ -690,7 +775,9 @@ class DopplerMap:
                 self._inc, theta, self._veq, self._u, self.spectral_map
             )
         else:
-            raise ValueError("Keyword `mode` must be one of `conv`, `design`.")
+            raise ValueError(
+                "Keyword `mode` must be one of `convdot`, `conv`, `design`."
+            )
 
         # Interpolate to the output grid
         if self._interp:
@@ -698,12 +785,69 @@ class DopplerMap:
 
         return flux
 
-    def dot(self, matrix, theta=None):
-        """Dot the Doppler design matrix into a given matrix or vector."""
+    def dot(self, x, theta=None, fix_spectrum=False, fix_map=False):
+        """
+        Dot the Doppler design matrix into a given matrix or vector.
+
+        Args:
+            x (vector or matrix): The column vector or matrix into which
+                the design matrix is dotted. This argument must have a specific
+                shape that depends on the other arguments to this method;
+                see below.
+            theta (vector, optional): The angular phase(s) at which to compute
+                the design matrix, in units of ``map.angle_unit``. This must
+                be a vector of size ``map.nt``. Default is uniformly spaced
+                values in the range ``[0, 2 * pi)``.
+            fix_spectrum (bool, optional): If True, performs the operation
+                using the design matrix for a fixed spectrum. The current
+                spectrum is "baked into" the design matrix, so the tensor ``x``
+                is a representation of the spherical harmonic decomposition of
+                the surface. Default is False.
+            fix_map (bool, optional): If True, performs the oprtation using the
+                the design matrix for a fixed map. The current spherical
+                harmonic map is "baked into" the design matrix, so the tensor
+                ``x`` is a representation of the spectral decomposition of the
+                surface. Default is False.
+
+        If `fix_spectrum` and `fix_map` are False (default), the input
+        argument `x` must have shape `(map.Ny * map.nw_, ...)`.
+
+        If `fix_spectrum` is True, the input argument `x` must have
+        shape `(map.nc * map.Ny, ...)`.
+
+        Finally, if `fix_map` is True, the input argument `x` must have
+        shape `(map.nc * map.nw_, ...)`.
+
+        """
         theta = self._get_default_theta(theta)
-        product = self.ops.dot_design_matrix_into(
-            self._inc, theta, self._veq, self._u, self._math.cast(matrix)
-        )
+        assert not (
+            fix_spectrum and fix_map
+        ), "Cannot fix both the spectrum and the map."
+
+        if fix_spectrum:
+
+            # This is inherently fast -- no need for a special Op
+            D = self.ops.get_D_fixed_spectrum(
+                self._inc, theta, self._veq, self._u, self._spectrum
+            )
+            product = self._math.dot(D, self._math.cast(x))
+
+        elif fix_map:
+
+            product = self.ops.dot_design_matrix_fixed_map_into(
+                self._inc,
+                theta,
+                self._veq,
+                self._u,
+                self._y,
+                self._math.cast(x),
+            )
+
+        else:
+
+            product = self.ops.dot_design_matrix_into(
+                self._inc, theta, self._veq, self._u, self._math.cast(x)
+            )
 
         # Interpolate to the output grid
         if self._interp:
