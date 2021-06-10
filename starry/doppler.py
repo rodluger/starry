@@ -83,17 +83,21 @@ class DopplerMap:
             to ensure that ``map.veq * sin(map.inc)`` is never larger than
             this quantity. Lower values of this quantity will result in faster
             evaluation times. Default is ``100 km/s``.
-        angle_unit (``astropy.units.Unit``, optional): Default ``deg``.
-        velocity_unit (``astropy.units.Unit``, optional): Default ``m/s``.
-        spectrum (matrix, optional): Default is a single Gaussian absorption
+        angle_unit (``astropy.units.Unit``, optional): The unit used for
+            angular quantities. Default ``deg``.
+        velocity_unit (``astropy.units.Unit``, optional): The unit used for
+            velocity quantities. Default ``m/s``.
+        spectrum (matrix, optional): The spectrum of the star. This should be
+            a matrix of shape (:py:attr:`nc`, :py:attr:`nw0`), i.e., one
+            spectrum per map component. Default is a single Gaussian absorption
             line at the central wavelength of the first spectral component,
             and unity for all other components.
-        inc (scalar, optional): In units of :py:attr:`angle_unit`.
-            Default is ``90.0``.
-        obl (scalar, optional): In units of :py:attr:`angle_unit`.
-            Default is ``0.0``.
-        veq (scalar, optional): In units of :py:attr:`velocity_unit`.
-            Default is ``0.0``.
+        inc (scalar, optional): Inclination of the star in units of
+            :py:attr:`angle_unit`. Default is ``90.0``.
+        obl (scalar, optional): Obliquity of the star in units of
+            :py:attr:`angle_unit`. Default is ``0.0``.
+        veq (scalar, optional): Equatorial rotational velocity of the star
+            in units of :py:attr:`velocity_unit`. Default is ``0.0``.
     """
 
     _clight = 299792458.0  # m/s
@@ -364,7 +368,7 @@ class DopplerMap:
 
     @property
     def nc(self):
-        """Number of map components. *Read-only*"""
+        """Number of spectro-spatial map components. *Read-only*"""
         return self._nc
 
     @property
@@ -424,7 +428,7 @@ class DopplerMap:
 
     @property
     def udeg(self):
-        """Limb darkening degree. *Read-only*"""
+        """Degree of the limb darkening applied to the star. *Read-only*"""
         return self._udeg
 
     @property
@@ -454,7 +458,7 @@ class DopplerMap:
 
     @property
     def angle_unit(self):
-        """An ``astropy.units`` unit defining the angle metric."""
+        """An ``astropy.units`` unit defining the angle metric for this map."""
         return self._angle_unit
 
     @angle_unit.setter
@@ -465,7 +469,7 @@ class DopplerMap:
 
     @property
     def velocity_unit(self):
-        """An ``astropy.units`` unit defining the velocity metric."""
+        """An ``astropy.units`` unit defining the velocity metric for this map."""
         return self._velocity_unit
 
     @velocity_unit.setter
@@ -608,7 +612,7 @@ class DopplerMap:
         """
         The rest-frame wavelength grid. *Read-only*
 
-        This is the wavelength grid on which the :py:meth:`spectrum`
+        This is the wavelength grid on which the :py:attr:`spectrum`
         is defined.
 
         """
@@ -673,9 +677,12 @@ class DopplerMap:
 
     @property
     def y(self):
-        """The spherical harmonic coefficient vector. *Read-only*
+        """The spherical harmonic coefficient matrix. *Read-only*
 
-        To set this vector, index the map directly using two indices:
+        Changing the spatial representation of the map should be done by
+        directly accessing this class, as follows.
+
+        If ``nc = 1``, index the map directly using two indices:
         ``map[l, m] = ...`` where ``l`` is the spherical harmonic degree and
         ``m`` is the spherical harmonic order. These may be integers or
         arrays of integers. Slice notation may also be used.
