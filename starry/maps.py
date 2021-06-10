@@ -2684,7 +2684,7 @@ def Map(
 
         @property
         def lazy(self):
-            """Map evaluation mode: lazy or greedy?"""
+            """Map evaluation mode -- lazy or greedy?"""
             return self._lazy
 
     return Map(ydeg, udeg, fdeg, nw, **kwargs)

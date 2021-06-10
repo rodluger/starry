@@ -1392,7 +1392,7 @@ class OpsDoppler(OpsYlm):
 
         # The wavelength grid spanning the kernel
         self.vsini_max = vsini_max
-        self.nk = 2 * hw + 1
+        self.nk = int(2 * hw + 1)
         self.nwp = len(log_lambda_padded)
         lam_kernel = log_lambda_padded[
             self.nwp // 2 - hw : self.nwp // 2 + hw + 1
@@ -1631,7 +1631,7 @@ class OpsDoppler(OpsYlm):
         """
         Dot the Doppler design matrix for a fixed Ylm map
         into an arbitrary dense `matrix`. This is equivalent to
-        tt.dot(get_D_fixed_map(), matrix), but computes the
+        ``tt.dot(get_D_fixed_map(), matrix)``, but computes the
         product with a single `conv2d` operation.
 
         """
@@ -1660,10 +1660,47 @@ class OpsDoppler(OpsYlm):
         return tt.transpose(tt.reshape(product, (-1, self.nt * self.nw)))
 
     @autocompile
+    def dot_design_matrix_fixed_map_transpose_into(
+        self, inc, theta, veq, u, y, matrix
+    ):
+        """
+        Dot the transpose of the Doppler design matrix for a fixed Ylm map
+        into an arbitrary dense `matrix`. This is equivalent to
+        ``tt.dot(get_D_fixed_map().transpose(), matrix)``, but computes the
+        product with a single `conv2d_transpose` operation.
+
+        """
+        # Get the convolution kernels
+        kT = self.get_kT(inc, theta, veq, u)
+
+        # Dot them into the Ylms
+        # kTy has shape (nt, nc, nk)
+        kTy = tt.swapaxes(
+            tt.dot(tt.transpose(tt.reshape(y, (self.Ny, self.nc))), kT), 0, 1
+        )
+
+        # Ensure we have a matrix, not a vector
+        if matrix.ndim == 1:
+            matrix = tt.shape_padright(matrix)
+
+        # The dot product is just a 2d convolution!
+        product = tt.nnet.conv2d_transpose(
+            tt.reshape(tt.transpose(matrix), (-1, self.nt, 1, self.nw)),
+            tt.reshape(kTy, (self.nt, 1, self.nc, self.nk)),
+            border_mode="valid",
+            filter_flip=False,
+            output_shape=(None, 1, self.nc, self.nwp),
+            filter_shape=(self.nt, 1, self.nc, self.nk),
+        )
+        product = tt.swapaxes(product, 2, 3)
+        product = tt.swapaxes(product, 0, 3)
+        return tt.reshape(product, (self.nc * self.nwp, -1))
+
+    @autocompile
     def dot_design_matrix_into(self, inc, theta, veq, u, matrix):
         """
         Dot the full Doppler design matrix into an arbitrary dense `matrix`.
-        This is equivalent to tt.dot(get_D(), matrix), but computes the
+        This is equivalent to ``tt.dot(get_D(), matrix)``, but computes the
         product with a single `conv2d` operation.
 
         """
@@ -1684,6 +1721,35 @@ class OpsDoppler(OpsYlm):
             filter_shape=(self.nt, self.Ny, 1, self.nk),
         )
         return tt.transpose(tt.reshape(product, (-1, self.nt * self.nw)))
+
+    @autocompile
+    def dot_design_matrix_transpose_into(self, inc, theta, veq, u, matrix):
+        """
+        Dot the transpose of the full Doppler design matrix into an arbitrary
+        dense `matrix`. This is equivalent to
+        ``tt.dot(get_D().transpose(), matrix)``, but computes the product with
+        a single `conv2d` operation.
+
+        """
+        # Get the convolution kernels
+        kT = self.get_kT(inc, theta, veq, u)
+
+        # Ensure we have a matrix, not a vector
+        if matrix.ndim == 1:
+            matrix = tt.shape_padright(matrix)
+
+        # The dot product is just a 2d convolution!
+        product = tt.nnet.conv2d_transpose(
+            tt.reshape(tt.transpose(matrix), (-1, self.nt, 1, self.nw)),
+            tt.reshape(kT, (self.nt, 1, self.Ny, self.nk)),
+            border_mode="valid",
+            filter_flip=False,
+            output_shape=(None, 1, self.Ny, self.nwp),
+            filter_shape=(self.nt, 1, self.Ny, self.nk),
+        )
+        product = tt.swapaxes(product, 2, 3)
+        product = tt.swapaxes(product, 0, 3)
+        return tt.reshape(product, (self.Ny * self.nwp, -1))
 
     @autocompile
     def get_flux_from_design(self, inc, theta, veq, u, a):

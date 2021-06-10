@@ -277,6 +277,9 @@ class DopplerMap:
             self._SBlock = self._math.sparse_cast(
                 sparse_block_diag([S for n in range(nt)], format="csr")
             )
+            self._STrBlock = self._math.sparse_cast(
+                sparse_block_diag([S.T for n in range(nt)], format="csr")
+            )
 
             # Compute the spec interpolation operator (wav0 <-- wav0_int)
             # ``S0`` interpolates the user-provided spectrum onto the internal grid
@@ -297,6 +300,7 @@ class DopplerMap:
             self._wav = self._wav_int
             self._wav0 = self._wav0_int
             self._nw0 = self._nw0_int
+            self._nw = self._nw_int
 
         # Instantiate the Theano ops classs
         self.ops = OpsDoppler(
@@ -386,7 +390,7 @@ class DopplerMap:
 
     @property
     def nw_(self):
-        """Length of the *internal* flux wavelength grid :py:attr:`wav`.
+        """Length of the *internal* flux wavelength grid :py:attr:`wav_`.
         *Read-only*
 
         """
@@ -395,7 +399,7 @@ class DopplerMap:
     @property
     def nw0_(self):
         """Length of the *internal* rest frame spectrum wavelength grid
-        :py:attr:`wav0`. *Read-only*
+        :py:attr:`wav0_`. *Read-only*
 
         """
         return self._nw0_int
@@ -628,8 +632,9 @@ class DopplerMap:
 
         This quantity is defined on the wavelength grid :py:attr:`wav0`.
 
-        Shape must be ``(nc, len(wav0))``. If :py:attr:`nc` is unity, a
-        one-dimensional array of length ``len(wav0)`` is also accepted.
+        Shape must be (:py:attr:`nc`, :py:attr:`nw0`). If :py:attr:`nc` is
+        unity, a one-dimensional array of length :py:attr:`nw0` is also
+        accepted.
 
         """
         # Interpolate to the ``wav0`` grid
@@ -933,7 +938,7 @@ class DopplerMap:
 
         If ``fix_spectrum`` is True, returns a dense matrix of shape
         (:py:attr:`nt` * :py:attr:`nw`, :py:attr:`nc` * :py:attr:`Ny`).
-        The flux may be computed from (assuming :py:attr:`lazy` is ``False``)
+        The flux may be computed from
 
         .. code-block::python
 
@@ -943,7 +948,7 @@ class DopplerMap:
 
         Finally, if ``fix_map`` is True, returns a dense matrix of shape
         (:py:attr:`nt` * :py:attr:`nw`, :py:attr:`nc` * :py:attr:`nw0_`).
-        The flux may be computed from (assuming :py:attr:`lazy` is ``False``)
+        The flux may be computed from
 
         .. code-block::python
 
@@ -1084,62 +1089,93 @@ class DopplerMap:
 
             - If ``fix_spectrum`` and ``fix_map`` are False (default), the
               input argument ``x`` must have shape
-              (:py:attr:`Ny` * :py:attr:`nw_`, ``...``).
+              (:py:attr:`Ny` * :py:attr:`nw0_`, ``...``).
 
             - If ``fix_spectrum`` is True, the input argument ``x`` must have
               shape (:py:attr:`nc` * :py:attr:`Ny`, ``...``).
 
             - If ``fix_map`` is True, the input argument ``x`` must have
-              shape (:py:attr:`nc` * :py:attr:`nw_`, ``...``).
+              shape (:py:attr:`nc` * :py:attr:`nw0_`, ``...``).
 
         If, instead, ``transpose`` is True, this returns a dense
-        matrix of shape (:py:attr:`Ny` * :py:attr:`nw0_`, ``...``). In this
-        case, the input argument ``x`` must always have shape
-        (:py:attr:`nt` * :py:attr:`nw`, ``...``).
+        matrix of a shape that depends on the arguments:
 
-        Note that this method is used to compute the spectral timeseries (with
-        ``tranpose = False``), the result should be reshaped into a matrix of
-        shape (:py:attr:`nt`, :py:attr:`nw`) to match the return value of
-        :py:meth:`flux()`.
+            - If ``fix_spectrum`` and ``fix_map`` are False (default), the
+              return value has shape
+              (:py:attr:`Ny` * :py:attr:`nw0_`, ``...``).
+
+            - If ``fix_spectrum`` is True, the return value has shape
+              (:py:attr:`nc` * :py:attr:`Ny`, ``...``).
+
+            - If ``fix_map`` is True, the return value has shape
+              (:py:attr:`nc` * :py:attr:`nw0_`, ``...``).
+
+        When ``transpose`` is True, the input argument ``x`` must always have
+        shape (:py:attr:`nt` * :py:attr:`nw`, ``...``).
+
+        Note that if this method is used to compute the spectral timeseries
+        (with ``tranpose = False``), the result should be reshaped into a
+        matrix of shape (:py:attr:`nt`, :py:attr:`nw`) to match the return
+        value of :py:meth:`flux()`.
 
         """
+        x = self._math.cast(x)
         theta = self._get_default_theta(theta)
         assert not (
             fix_spectrum and fix_map
         ), "Cannot fix both the spectrum and the map."
 
-        # TODO
         if transpose:
-            raise NotImplementedError("Not yet implemented!")
 
-        if fix_spectrum:
+            # Interpolate from `wav` to `wav_` at each epoch
+            if self._interp:
+                x = self._math.sparse_dot(self._STrBlock, x)
 
-            # This is inherently fast -- no need for a special Op
-            D = self.ops.get_D_fixed_spectrum(
-                self._inc, theta, self._veq, self._u, self._spectrum
-            )
-            product = self._math.dot(D, self._math.cast(x))
+            if fix_spectrum:
 
-        elif fix_map:
+                # This is inherently fast -- no need for a special Op
+                D = self.ops.get_D_fixed_spectrum(
+                    self._inc, theta, self._veq, self._u, self._spectrum
+                )
+                product = self._math.dot(self._math.transpose(D), x)
 
-            product = self.ops.dot_design_matrix_fixed_map_into(
-                self._inc,
-                theta,
-                self._veq,
-                self._u,
-                self._y,
-                self._math.cast(x),
-            )
+            elif fix_map:
+
+                product = self.ops.dot_design_matrix_fixed_map_transpose_into(
+                    self._inc, theta, self._veq, self._u, self._y, x
+                )
+
+            else:
+
+                product = self.ops.dot_design_matrix_transpose_into(
+                    self._inc, theta, self._veq, self._u, x
+                )
 
         else:
 
-            product = self.ops.dot_design_matrix_into(
-                self._inc, theta, self._veq, self._u, self._math.cast(x)
-            )
+            if fix_spectrum:
 
-        # Interpolate to the output grid
-        if self._interp:
-            product = self._math.sparse_dot(self._SBlock, product)
+                # This is inherently fast -- no need for a special Op
+                D = self.ops.get_D_fixed_spectrum(
+                    self._inc, theta, self._veq, self._u, self._spectrum
+                )
+                product = self._math.dot(D, x)
+
+            elif fix_map:
+
+                product = self.ops.dot_design_matrix_fixed_map_into(
+                    self._inc, theta, self._veq, self._u, self._y, x
+                )
+
+            else:
+
+                product = self.ops.dot_design_matrix_into(
+                    self._inc, theta, self._veq, self._u, x
+                )
+
+            # Interpolate from `wav_` to `wav` at each epoch
+            if self._interp:
+                product = self._math.sparse_dot(self._SBlock, product)
 
         return product
 

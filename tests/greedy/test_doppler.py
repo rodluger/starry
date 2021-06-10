@@ -7,8 +7,9 @@ import pytest
 
 @pytest.fixture(scope="module", params=[1, 2])
 def map(request):
-    map = starry.DopplerMap(ydeg=10, nt=3, nc=request.param, veq=50000)
-    map.load(["spot", "earth"], force_psd=True)
+    nc = request.param
+    map = starry.DopplerMap(ydeg=10, nt=3, nc=nc, veq=50000)
+    map.load(["spot", "earth"][:nc], force_psd=True)
     yield map
 
 
@@ -32,30 +33,47 @@ def test_flux(map):
     assert np.allclose(flux1, flux4)
 
 
-def test_dot_matrix(map, random):
+@pytest.mark.parametrize("ranktwo", [False, True])
+@pytest.mark.parametrize("transpose", [False, True])
+@pytest.mark.parametrize("fix_spectrum", [False, True])
+@pytest.mark.parametrize("fix_map", [False, True])
+def test_dot(map, random, ranktwo, transpose, fix_spectrum, fix_map):
     """
     Test that our fast dot product method yields the same result as
     instantiating the full design matrix and dotting it in.
 
     """
-    D = map.design_matrix().todense()
-    matrix = random.normal(size=(map.nw0_ * map.Ny, 5))
-    product1 = D @ matrix
-    product2 = map.dot(matrix)
-    assert np.allclose(product1, product2)
+    # Skip invalid combo
+    if fix_spectrum and fix_map:
+        return
 
+    # Get the design matrix
+    D = map.design_matrix(fix_spectrum=fix_spectrum, fix_map=fix_map)
 
-def test_dot_vector(map, random):
-    """
-    Test that our fast dot product method yields the same result as
-    instantiating the full design matrix and dotting it in.
+    # Instantiate the thing we're dotting it into
+    if transpose:
+        D = D.transpose()
+        size = [map.nt * map.nw]
+    else:
+        if fix_spectrum:
+            size = [map.nc * map.Ny]
+        elif fix_map:
+            size = [map.nc * map.nw0_]
+        else:
+            size = [map.nw0_ * map.Ny]
+    if ranktwo:
+        size += [5]
+    matrix = random.normal(size=size)
 
-    """
-    D = np.array(map.design_matrix().todense())
-    vector = random.normal(size=(map.nw0_ * map.Ny,))
-    product1 = (D @ vector).reshape(-1)
-    product2 = map.dot(vector).reshape(-1)
-    assert np.allclose(product1, product2)
+    # Slow product
+    product1 = D.dot(matrix)
+
+    # Fast product
+    product2 = map.dot(
+        matrix, transpose=transpose, fix_spectrum=fix_spectrum, fix_map=fix_map
+    )
+
+    assert np.allclose(np.squeeze(product1), np.squeeze(product2))
 
 
 def test_D_fixed_spectrum(map, random):
