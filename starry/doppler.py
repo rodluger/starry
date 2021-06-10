@@ -1003,7 +1003,7 @@ class DopplerMap:
 
         return D
 
-    def flux(self, theta=None, baseline=False, method="dotconv"):
+    def flux(self, theta=None, normalize=True, method="dotconv"):
         """
         Return the model for the full spectral timeseries.
 
@@ -1012,9 +1012,9 @@ class DopplerMap:
                 the design matrix, in units of :py:attr:`angle_unit`. This
                 must be a vector of size :py:attr:`nt`. Default is uniformly
                 spaced values in the range ``[0, 2 * pi)``.
-            baseline (bool, optional): Whether or not to include the baseline.
-                If False (default), normalizes the flux so that the continuum
-                level is unity at all epochs. If True, preserves the natural
+            normalize (bool, optional): Whether or not to normalize the flux.
+                If True (default), normalizes the flux so that the continuum
+                level is unity at all epochs. If False, preserves the natural
                 changes in the continuum as the total flux of the star changes
                 during its rotation. Note that this is not usually an
                 observable effect, since spectrographs aren't designed to
@@ -1062,7 +1062,7 @@ class DopplerMap:
             flux = self._math.sparse_dot(flux, self._S)
 
         # Remove the baseline?
-        if not baseline:
+        if normalize:
             flux /= self._math.reshape(
                 self.ops.get_baseline(
                     self._inc, theta, self._veq, self._u, self._y
@@ -1157,7 +1157,8 @@ class DopplerMap:
         Note that if this method is used to compute the spectral timeseries
         (with ``tranpose = False``), the result should be reshaped into a
         matrix of shape (:py:attr:`nt`, :py:attr:`nw`) to match the return
-        value of :py:meth:`flux()`.
+        value of :py:meth:`flux()`. This method does *not* normalize the
+        output.
 
         """
         x = self._math.cast(x)
@@ -1287,21 +1288,15 @@ class DopplerMap:
             # We'll normalize it to the median >90th percentile flux level
             veq = self.veq
             self.veq = 0.0
-            flux0 = get_val(self.flux(theta / self._angle_factor))
-            norm = np.nanmedian(
-                np.sort(flux0, axis=-1)[:, int(0.9 * flux0.shape[-1]) :],
-                axis=-1,
+            flux0 = get_val(
+                self.flux(theta / self._angle_factor, normalize=True)
             )
-            flux0 /= norm.reshape(-1, 1)
             self.veq = veq
 
             # Get the observed spectrum at each phase
-            # We'll normalize it to the median >90th percentile flux level
-            flux = get_val(self.flux(theta / self._angle_factor))
-            norm = np.nanmedian(
-                np.sort(flux, axis=-1)[:, int(0.9 * flux.shape[-1]) :], axis=-1
+            flux = get_val(
+                self.flux(theta / self._angle_factor, normalize=True)
             )
-            flux /= norm.reshape(-1, 1)
 
             # Init the web app
             viz = Visualize(
