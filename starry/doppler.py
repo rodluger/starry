@@ -252,6 +252,16 @@ class DopplerMap:
             )
 
         # Interpolation between internal grid and user grid
+
+        # TODO: Integrate over each wavelength bin in the output!
+        # Currently we're assuming the spectra are measured in delta
+        # function bins, but it should really be an integral. This
+        # should be easy to bake into the interpolation matrix:
+        # compute the matrix for a high resolution output grid and
+        # just dot a trapezoidal integration matrix into it. The
+        # resulting matrix will have the same shape, so there's no
+        # loss in efficiency.
+
         self._interp = interpolate
         self._interp_order = interp_order
         self._interp_tol = interp_tol
@@ -913,8 +923,8 @@ class DopplerMap:
 
         If ``fix_spectrum`` and ``fix_map`` are False (default), this method
         returns a sparse matrix of shape
-        ``(map.nt * map.nw, map.nw0_ * map.Ny)``. The flux may be
-        computed from (assuming :py:attr:`lazy` is ``False``)
+        (:py:attr:`nt` * :py:attr:`nw`, :py:attr:`Ny` * :py:attr:`nw0_`).
+        The flux may be computed from (assuming :py:attr:`lazy` is ``False``)
 
         .. code-block::python
 
@@ -922,8 +932,8 @@ class DopplerMap:
             flux = D.dot(map.spectral_map).reshape(map.nt, map.nw)
 
         If ``fix_spectrum`` is True, returns a dense matrix of shape
-        ``(map.nt * map.nw, map.Ny * map.nc)``. The flux may be computed from
-        (assuming :py:attr:`lazy` is ``False``)
+        (:py:attr:`nt` * :py:attr:`nw`, :py:attr:`nc` * :py:attr:`Ny`).
+        The flux may be computed from (assuming :py:attr:`lazy` is ``False``)
 
         .. code-block::python
 
@@ -932,8 +942,8 @@ class DopplerMap:
             flux = D.dot(y).reshape(map.nt, map.nw)
 
         Finally, if ``fix_map`` is True, returns a dense matrix of shape
-        ``(map.nt * map.nw, map.nw0_ * map.nc)``. The flux may be
-        computed from (assuming :py:attr:`lazy` is ``False``)
+        (:py:attr:`nt` * :py:attr:`nw`, :py:attr:`nc` * :py:attr:`nw0_`).
+        The flux may be computed from (assuming :py:attr:`lazy` is ``False``)
 
         .. code-block::python
 
@@ -944,8 +954,9 @@ class DopplerMap:
         .. note::
 
             Instantiating this matrix is usually a bad idea, since it can
-            be very slow and consume a lot of memory. Check out the ``dot``
-            method instead for fast dot products with the design matrix.
+            be very slow and consume a lot of memory. Check out the
+            :py:meth:`dot` method instead for fast dot products with the design
+            matrix.
 
         """
         theta = self._get_default_theta(theta)
@@ -998,9 +1009,9 @@ class DopplerMap:
                 method is usually extremely slow and memory intensive; its
                 use is not recommended in general.
 
-        This method returns a matrix of shape ``(map.nt, map.nw)`` corresponding
-        to the model for the observed spectrum (evaluated on the wavelength
-        grid :py:attr:`wav`) at each of :py:attr:`nt` epochs.
+        This method returns a matrix of shape (:py:attr:`nt`, :py:attr:`nw`)
+        corresponding to the model for the observed spectrum (evaluated on the
+        wavelength grid :py:attr:`wav`) at each of :py:attr:`nt` epochs.
 
         """
         theta = self._get_default_theta(theta)
@@ -1031,9 +1042,17 @@ class DopplerMap:
 
         return flux
 
-    def dot(self, x, theta=None, fix_spectrum=False, fix_map=False):
+    def dot(
+        self, x, theta=None, transpose=False, fix_spectrum=False, fix_map=False
+    ):
         """
         Dot the Doppler design matrix into a given matrix or vector.
+
+        This method is useful for computing dot products between the design
+        matrix and the spectral map (to compute the model for the spectrum)
+        or between the design matrix and (say) a covariance matrix (when doing
+        inference). This is in general much, much faster than instantiating the
+        :py:meth:`design_matrix` explicitly and dotting it in.
 
         Args:
             x (vector or matrix): The column vector or matrix into which
@@ -1044,6 +1063,8 @@ class DopplerMap:
                 the design matrix, in units of :py:attr:`angle_unit`. This
                 must be a vector of size :py:attr:`nt`. Default is uniformly
                 spaced values in the range ``[0, 2 * pi)``.
+            transpose (bool, optional): If True, dots the transpose of the
+                design matrix into ``x``. Default is False.
             fix_spectrum (bool, optional): If True, performs the operation
                 using the design matrix for a fixed spectrum. The current
                 spectrum is "baked into" the design matrix, so the tensor ``x``
@@ -1055,27 +1076,41 @@ class DopplerMap:
                 ``x`` is a representation of the spectral decomposition of the
                 surface. Default is False.
 
-        If ``fix_spectrum`` and ``fix_map`` are False (default), the input
-        argument ``x`` must have shape ``(map.Ny * map.nw_, ...)``.
+        The shapes of ``x`` and of the matrix returned by this method depend on
+        the method's arguments. If ``transpose`` is False, this returns a dense
+        matrix of shape (:py:attr:`nt` * :py:attr:`nw`, ``...``), where ``...``
+        are any additional dimensions in ``x`` beyond the first. In this case,
+        the shape of ``x`` should be as follows:
 
-        If ``fix_spectrum`` is True, the input argument ``x`` must have
-        shape ``(map.nc * map.Ny, ...)``.
+            - If ``fix_spectrum`` and ``fix_map`` are False (default), the
+              input argument ``x`` must have shape
+              (:py:attr:`Ny` * :py:attr:`nw_`, ``...``).
 
-        Finally, if ``fix_map`` is True, the input argument ``x`` must have
-        shape ``(map.nc * map.nw_, ...)``.
+            - If ``fix_spectrum`` is True, the input argument ``x`` must have
+              shape (:py:attr:`nc` * :py:attr:`Ny`, ``...``).
 
-        In all cases, this returns a dense matrix of shape
-        ``(map.nt * map.nw, ...)``, where ``...`` are any additional dimensions
-        in ``x`` beyond the first. If this method is used to compute the
-        spectral timeseries, the result should be reshaped into a matrix of
-        shape ``(map.nt, map.nw)`` to match the return value of
-        :py:methd:`flux()`.
+            - If ``fix_map`` is True, the input argument ``x`` must have
+              shape (:py:attr:`nc` * :py:attr:`nw_`, ``...``).
+
+        If, instead, ``transpose`` is True, this returns a dense
+        matrix of shape (:py:attr:`Ny` * :py:attr:`nw0_`, ``...``). In this
+        case, the input argument ``x`` must always have shape
+        (:py:attr:`nt` * :py:attr:`nw`, ``...``).
+
+        Note that this method is used to compute the spectral timeseries (with
+        ``tranpose = False``), the result should be reshaped into a matrix of
+        shape (:py:attr:`nt`, :py:attr:`nw`) to match the return value of
+        :py:meth:`flux()`.
 
         """
         theta = self._get_default_theta(theta)
         assert not (
             fix_spectrum and fix_map
         ), "Cannot fix both the spectrum and the map."
+
+        # TODO
+        if transpose:
+            raise NotImplementedError("Not yet implemented!")
 
         if fix_spectrum:
 
