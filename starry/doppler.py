@@ -7,6 +7,7 @@ from ._indices import integers, get_ylm_inds, get_ylmw_inds, get_ul_inds
 from .compat import evaluator
 from .maps import YlmBase, MapBase, Map
 from .doppler_visualize import Visualize
+from .linalg import solve, lnlike
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as Spline
 from scipy.sparse import block_diag as sparse_block_diag
@@ -1002,7 +1003,7 @@ class DopplerMap:
 
         return D
 
-    def flux(self, theta=None, method="dotconv"):
+    def flux(self, theta=None, baseline=False, method="dotconv"):
         """
         Return the model for the full spectral timeseries.
 
@@ -1011,6 +1012,13 @@ class DopplerMap:
                 the design matrix, in units of :py:attr:`angle_unit`. This
                 must be a vector of size :py:attr:`nt`. Default is uniformly
                 spaced values in the range ``[0, 2 * pi)``.
+            baseline (bool, optional): Whether or not to include the baseline.
+                If False (default), normalizes the flux so that the continuum
+                level is unity at all epochs. If True, preserves the natural
+                changes in the continuum as the total flux of the star changes
+                during its rotation. Note that this is not usually an
+                observable effect, since spectrographs aren't designed to
+                preserve this information!
             method (str, optional): The strategy for computing the flux. Must
                 be one of ``dotconv``, ``convdot``, ``conv``, or ``design``.
                 Default is ``dotconv``, which is the fastest method in most
@@ -1045,14 +1053,40 @@ class DopplerMap:
             )
         else:
             raise ValueError(
-                "Keyword ``method`` must be one of ``dotconv``, ``convdot``, ``conv``, or ``design``."
+                "Keyword ``method`` must be one of ``dotconv``, "
+                "``convdot``, ``conv``, or ``design``."
             )
 
         # Interpolate to the output grid
         if self._interp:
             flux = self._math.sparse_dot(flux, self._S)
 
+        # Remove the baseline?
+        if not baseline:
+            flux /= self._math.reshape(
+                self.ops.get_baseline(
+                    self._inc, theta, self._veq, self._u, self._y
+                ),
+                (self.nt, 1),
+            )
+
         return flux
+
+    def baseline(self, theta=None):
+        """
+        Return the photometric baseline at each epoch.
+
+        Args:
+            theta (vector, optional): The angular phase(s) at which to compute
+                the design matrix, in units of :py:attr:`angle_unit`. This
+                must be a vector of size :py:attr:`nt`. Default is uniformly
+                spaced values in the range ``[0, 2 * pi)``.
+        """
+        theta = self._get_default_theta(theta)
+        baseline = self.ops.get_baseline(
+            self._inc, theta, self._veq, self._u, self._y
+        )
+        return baseline
 
     def dot(
         self, x, theta=None, transpose=False, fix_spectrum=False, fix_map=False
@@ -1284,3 +1318,88 @@ class DopplerMap:
 
         # Save or display
         viz.show(file=file)
+
+    def solve(
+        self,
+        flux,
+        flux_err=None,
+        theta=None,
+        spatial_mean=None,
+        spatial_cov=None,
+        spatial_cho_cov=None,
+        normalized=True,
+        baseline=None,
+        fix_spectrum=False,
+        fix_map=False,
+    ):
+        """
+        Solve the linear problem for the spatial and/or spectral map
+        given a spectral timeseries.
+
+        .. warning::
+
+            This method is still being developed!
+
+        """
+        # Pre-process default values
+        flux = self.ops.enforce_shape(
+            self._math.cast(flux), np.array([self.nt, self.nw])
+        )
+        if flux_err is None:
+            flux_err = 1e-6
+        flux_err = flux_err * self._math.ones_like(flux)
+        if spatial_mean is None:
+            spatial_mean = 0.0
+        if spatial_cov is None and spatial_cho_cov is None:
+            spatial_cov = 1e-3
+
+        if fix_spectrum:
+
+            # Get the design matrix conditioned on the current spectrum
+            D = self.design_matrix(theta=theta, fix_spectrum=True)
+            D0 = D[:, 0]
+            D = D[:, 1:]
+
+            if (not normalized) or (baseline is not None):
+
+                # The problem is exactly linear.
+
+                if normalized:
+
+                    # De-normalize the data w/ the given baseline
+                    baseline = self._math.reshape(baseline, (self.nt, 1))
+                    flux = flux * baseline
+                    flux_err = flux_err * baseline
+
+                # Reshape into a vector, subtract the constant (Y_{0,0}) term
+                # (we're not fitting for it -- it's fixed at unity)
+                flux = self._math.reshape(flux, (self.nt * self.nw))
+                flux_err = self._math.reshape(flux_err, (self.nt * self.nw))
+                flux = flux - D0
+
+                # Solve the L2 problem
+                mean, cho_cov = solve(
+                    D,
+                    flux,
+                    C=flux_err ** 2,
+                    cho_C=None,
+                    mu=spatial_mean,
+                    L=spatial_cov,
+                    cho_L=spatial_cho_cov,
+                    N=self.nc * (self.Ny - 1),
+                    lazy=self.lazy,
+                )
+
+                return mean, cho_cov
+
+            else:
+
+                # TODO
+                raise NotImplementedError("Not yet implemented.")
+
+            return cho_C
+
+        else:
+
+            # TODO
+            raise NotImplementedError("Not yet implemented.")

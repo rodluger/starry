@@ -1808,6 +1808,18 @@ class OpsDoppler(OpsYlm):
         flux = tt.dot(D, tt.reshape(tt.transpose(y), (-1,)))
         return tt.reshape(flux, (self.nt, self.nw))
 
+    @autocompile
+    def get_baseline(self, inc, theta, veq, u, y):
+        """
+        Compute the photometric baseline.
+
+        """
+        kT = self.get_kT(inc, theta, veq, u)
+        kTy = tt.swapaxes(
+            tt.dot(tt.transpose(tt.reshape(y, (self.Ny, self.nc))), kT), 0, 1
+        )
+        return tt.sum(kTy, axis=(1, 2))
+
 
 class OpsSystem(object):
     """Class housing ops for modeling Keplerian systems."""

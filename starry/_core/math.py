@@ -255,8 +255,6 @@ class LinAlgType(type):
             covariance matrix.
 
         """
-        # TODO: These if statements won't play well with @autocompile!!!
-
         # Compute C^-1 . X
         if cho_C.ndim == 0:
             CInvX = X / cho_C ** 2
@@ -310,8 +308,6 @@ class LinAlgType(type):
             computable for the linear `starry` model.
 
         """
-        # TODO: These if statements won't play well with @autocompile!!!
-
         # Compute the GP mean
         gp_mu = tt.dot(X, mu)
 
@@ -363,8 +359,6 @@ class LinAlgType(type):
             computable for the linear `starry` model.
 
         """
-        # TODO: These if statements won't play well with @autocompile!!!
-
         # Compute the GP mean
         gp_mu = tt.dot(X, mu)
 
