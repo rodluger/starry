@@ -216,10 +216,12 @@ class DopplerMap:
         # end of wav_int to prevent edge effects
         dlam = log_wav[1] - log_wav[0]
         betasini_max = vsini_max / self._clight
+        # TODO: There used to be a 0.5 multiplying `hw` below, but that
+        # seemed to cause the padding to be almost exactly half of what
+        # it should be. Verify that the current expression is correct.
         hw = np.array(
-            np.floor(
-                np.abs(0.5 * np.log((1 + betasini_max) / (1 - betasini_max)))
-                / dlam
+            np.ceil(
+                np.abs(np.log((1 + betasini_max) / (1 - betasini_max))) / dlam
             ),
             dtype="int32",
         )

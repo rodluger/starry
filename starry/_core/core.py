@@ -1434,7 +1434,7 @@ class OpsDoppler(OpsYlm):
     @autocompile
     def get_x(self, vsini):
         """The `x` coordinate of lines of constant Doppler shift."""
-        # Prevent division by zero
+        # Prevent division by zero: min vsini is 1 m/s
         return self.xamp / tt.maximum(tt.as_tensor_variable(1.0), vsini)
 
     @autocompile
