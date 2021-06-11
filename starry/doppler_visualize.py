@@ -27,29 +27,170 @@ from bokeh.resources import INLINE
 import numpy as np
 from IPython.display import HTML, display
 
+PLOT_COUNTER = 0
 
-TEMPLATE = """
-{% block postamble %}
-<style>
-.bk-root .bk {
-    margin: 0 auto !important;
-}
-</style>
-<script>
-    var DISABLE_WHEEL = false;
-    var disable_wheel = function (e) {
-        if (DISABLE_WHEEL) e.preventDefault();
-    };
-    window.addEventListener("wheel", disable_wheel, { passive:false });
-</script>
-{% endblock %}
+HELP = """
+Interact with the visualization by moving the mouse over
+the map at the top left to show the emergent, rest frame spectrum at
+different points on the surface in the plot at the bottom left.
+Scroll (with the mouse wheel or track pad) to change the wavelength
+at which the map is visualized (top left) or to rotate the orthographic
+projection of the map (top right).
+The plot at the bottom right shows the observed spectrum at the current
+phase (black) and the corresponding rest frame spectrum absent Doppler
+shifts (orange).
 """
+
+HELP_ICON = """
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="30px"
+	 height="30px" viewBox="0 0 30 30" style="enable-background:new 0 0 30 30;" xml:space="preserve">
+<g id="Icons" style="opacity:0.75;">
+	<g id="help">
+		<path id="circle" style="fill-rule:evenodd;clip-rule:evenodd;" d="M12.001,2.085c-5.478,0-9.916,4.438-9.916,9.916
+			c0,5.476,4.438,9.914,9.916,9.914c5.476,0,9.914-4.438,9.914-9.914C21.915,6.523,17.477,2.085,12.001,2.085z M12.002,20.085
+			c-4.465,0-8.084-3.619-8.084-8.083c0-4.465,3.619-8.084,8.084-8.084c4.464,0,8.083,3.619,8.083,8.084
+			C20.085,16.466,16.466,20.085,12.002,20.085z"/>
+		<g id="question_mark">
+			<path id="top" style="fill-rule:evenodd;clip-rule:evenodd;" d="M11.766,6.688c-2.5,0-3.219,2.188-3.219,2.188l1.411,0.854
+				c0,0,0.298-0.791,0.901-1.229c0.516-0.375,1.625-0.625,2.219,0.125c0.701,0.885-0.17,1.587-1.078,2.719
+				C11.047,12.531,11,15,11,15h1.969c0,0,0.135-2.318,1.041-3.381c0.603-0.707,1.443-1.338,1.443-2.494S14.266,6.688,11.766,6.688z"
+				/>
+			<rect id="bottom" x="11" y="16" style="fill-rule:evenodd;clip-rule:evenodd;" width="2" height="2"/>
+		</g>
+	</g>
+</g>
+<g id="Guides" style="display:none;">
+</g>
+</svg>
+"""
+
+SCRIPT = lambda counter: """
+<style>
+    .starry-help-modal {{
+        display: none;
+        position: relative;
+        z-index: 99999;
+        padding-top: 100px;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgb(0,0,0);
+        background-color: rgba(0,0,0,0.4);
+        font-family: Arial, Helvetica, sans-serif;
+    }}
+    .starry-help-modal-content {{
+        background-color: #fefefe;
+        line-height: 1.4em;
+        text-align: justify;
+        width: 50% !important;
+        margin: auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+    }}
+    .starry-help-modal-content p {{
+        margin: 30px;
+    }}
+    .starry-help-close {{
+        color: #aaaaaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+    }}
+    .starry-help-close:hover,
+    .starry-help-close:focus {{
+        color: #000;
+        text-decoration: none;
+        cursor: pointer;
+    }}
+    .starry-help-icon {{
+        position: relative;
+        top: 0px;
+        left: 85%;
+        font-size: 30px;
+        opacity: 0.25;
+        cursor: pointer;
+        z-index: 99999;
+    }}
+    .starry-help-icon:hover,
+    .starry-help-icon:focus {{
+        opacity: 0.5;
+    }}
+</style>
+
+<script>
+    // Disable the natural page scrolling when
+    // hovering over one of the plots
+    var DISABLE_WHEEL = false;
+    var disable_wheel = function (e) {{
+        if (DISABLE_WHEEL) e.preventDefault();
+    }};
+    window.addEventListener("wheel", disable_wheel, {{ passive:false }});
+
+    // Add a help icon to the corner of the page
+    // that opens a modal popup
+    var plotLoaded = setInterval(function() {{
+        var plot = document.getElementsByClassName("plot_{counter:d}")[0];
+        var plot_ortho = document.getElementsByClassName("plot_ortho_{counter:d}")[0];
+        if ((plot != null) && (plot_ortho != null)) {{
+            clearInterval(plotLoaded);
+            var help_modal = document.createElement("div");
+            help_modal.classList.add("starry-help-modal");
+            var help_modal_content = document.createElement("div");
+            help_modal_content.classList.add("starry-help-modal-content");
+            var help_close = document.createElement("span");
+            help_close.classList.add("starry-help-close");
+            help_close.innerHTML = "&times;";
+            var help_text = document.createElement("p");
+            help_text.innerHTML = "{help:s}";
+            help_modal_content.appendChild(help_close);
+            help_modal_content.appendChild(help_text);
+            help_modal.appendChild(help_modal_content);
+            plot.appendChild(help_modal);
+            var help_icon = document.createElement("div");
+            help_icon.innerHTML = '{icon:s}';
+            help_icon.classList.add("starry-help-icon");
+            plot_ortho.appendChild(help_icon);
+            help_icon.onclick = function() {{
+                help_modal.style.display = "block";
+            }}
+            help_close.onclick = function() {{
+                help_modal.style.display = "none";
+            }}
+        }}
+    }}, 100);
+</script>
+""".format(
+    help=HELP.replace("\n", " "),
+    icon=HELP_ICON.replace("\n", " "),
+    counter=counter,
+)
+
+TEMPLATE = lambda counter: """
+{{% block postamble %}}
+<style>
+.bk-root .bk {{
+    margin: 0 auto !important;
+}}
+</style>
+{:s}
+{{% endblock %}}
+""".format(
+    SCRIPT(counter)
+)
 
 
 class Visualize:
     def __init__(
         self, wavs, wavf, moll, ortho, spec, theta, flux0, flux, inc, **kwargs
     ):
+        # Current plot counter
+        global PLOT_COUNTER
+        self.counter = PLOT_COUNTER
+        PLOT_COUNTER += 1
+
         # Store as single precision
         self.wavs = np.array(wavs, dtype="float32")
         self.wavf = np.array(wavf, dtype="float32")
@@ -450,6 +591,7 @@ class Visualize:
             name="plot_ortho",
             min_border_left=0,
             min_border_right=0,
+            css_classes=["plot_ortho_{:d}".format(self.counter)],
         )
         plot_ortho.axis.visible = False
         plot_ortho.grid.visible = False
@@ -635,24 +777,13 @@ class Visualize:
             ),
             min_width=600,
             max_width=1200,
+            css_classes=["plot_{:d}".format(self.counter)],
         )
 
     def show_notebook(self):
         # Define the function we'll use to disable mouse wheel
         # scrolling when hovering over a plot
-        display(
-            HTML(
-                """
-            <script>
-                var DISABLE_WHEEL = false;
-                var disable_wheel = function (e) {
-                    if (DISABLE_WHEEL) e.preventDefault();
-                };
-                window.addEventListener("wheel", disable_wheel, { passive:false });
-            </script>
-        """
-            )
-        )
+        display(HTML(SCRIPT(self.counter)))
         output_notebook(hide_banner=True)
         show(self.layout())
 
@@ -661,13 +792,13 @@ class Visualize:
             self.layout(),
             filename=file,
             title="starry",
-            template=TEMPLATE,
+            template=TEMPLATE(self.counter),
             resources=INLINE,
         )
 
     def _launch(self, doc):
         doc.title = "starry"
-        doc.template = TEMPLATE
+        doc.template = TEMPLATE(self.counter)
         doc.add_root(self.layout())
 
     def launch(self):
