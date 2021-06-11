@@ -1617,7 +1617,6 @@ class OpsDoppler(OpsYlm):
         """
         D = self.get_D(inc, theta, veq, u)
         I = ts.as_sparse_variable(sparse_eye(self.nwp, format="csr"))
-        y = tt.reshape(y, (self.Ny, self.nc))
         Y = ts.hstack(
             [
                 ts.vstack([y[n, k] * I for n in range(self.Ny)])
@@ -1640,9 +1639,7 @@ class OpsDoppler(OpsYlm):
 
         # Dot them into the Ylms
         # kTy has shape (nt, nc, nk)
-        kTy = tt.swapaxes(
-            tt.dot(tt.transpose(tt.reshape(y, (self.Ny, self.nc))), kT), 0, 1
-        )
+        kTy = tt.swapaxes(tt.dot(tt.transpose(y), kT), 0, 1)
 
         # Ensure we have a matrix, not a vector
         if matrix.ndim == 1:
@@ -1675,9 +1672,7 @@ class OpsDoppler(OpsYlm):
 
         # Dot them into the Ylms
         # kTy has shape (nt, nc, nk)
-        kTy = tt.swapaxes(
-            tt.dot(tt.transpose(tt.reshape(y, (self.Ny, self.nc))), kT), 0, 1
-        )
+        kTy = tt.swapaxes(tt.dot(tt.transpose(y), kT), 0, 1)
 
         # Ensure we have a matrix, not a vector
         if matrix.ndim == 1:
@@ -1815,9 +1810,7 @@ class OpsDoppler(OpsYlm):
 
         """
         kT = self.get_kT(inc, theta, veq, u)
-        kTy = tt.swapaxes(
-            tt.dot(tt.transpose(tt.reshape(y, (self.Ny, self.nc))), kT), 0, 1
-        )
+        kTy = tt.swapaxes(tt.dot(tt.transpose(y), kT), 0, 1)
         return tt.sum(kTy, axis=(1, 2))
 
 

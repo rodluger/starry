@@ -235,10 +235,22 @@ class MapBase(object):
             # User is accessing a Ylmw index
             inds = get_ylmw_inds(self.ydeg, self.nw, idx[0], idx[1], idx[2])
             if 0 in inds[0]:
-                raise ValueError(
-                    "The Y_{0,0} coefficient cannot be set. "
-                    "Please change the map amplitude instead."
-                )
+                if np.array_equal(np.sort(inds[0]), np.arange(self.Ny)):
+                    # The user is setting *all* coefficients, so we allow
+                    # them to "set" the Y_{0,0} coefficient...
+                    if self.lazy:
+                        self._y = self.ops.set_map_vector(self._y, inds, val)
+                    else:
+                        self._y[inds] = val
+                    # ... except we scale the amplitude of the map and
+                    # force Y_{0,0} to be unity.
+                    self.amp[inds[1]] = self._y[0, inds[1]]
+                    self._y /= self._y[0]
+                else:
+                    raise ValueError(
+                        "The Y_{0,0} coefficient cannot be set. "
+                        "Please change the map amplitude instead."
+                    )
             else:
                 if self.lazy:
                     self._y = self.ops.set_map_vector(self._y, inds, val)

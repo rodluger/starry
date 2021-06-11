@@ -15,6 +15,25 @@ from scipy.sparse import csr_matrix
 from warnings import warn
 
 
+class Amplitude(object):
+    def __get__(self, instance, owner):
+        return instance._math.squeeze(instance._amp)
+
+    def __set__(self, instance, value):
+        instance._amp = instance._math.reshape(
+            instance._math.cast(np.ones(instance.nc) * value), (1, instance.nc)
+        )
+
+
+# TODO
+class Spectrum(object):
+    def __get__(self, instance, owner):
+        pass
+
+    def __set__(self, instance, value):
+        pass
+
+
 class DopplerMap:
     """
     Class representing a spectral-spatial stellar surface.
@@ -73,7 +92,7 @@ class DopplerMap:
             user-facing (:py:attr:`wav` and :py:attr:`wav0`) wavelength
             grids. Default is 1 (linear).
         interp_tol (float, optional): For splines with
-            :py:attr::`interp_order` greater than one, the interpolation
+            :py:attr:`interp_order` greater than one, the interpolation
             can be made much faster by zeroing out elements of
             the interpolation operator whose absolute value is smaller than
             some small tolerance given by :py:attr:`interp_tol`.
@@ -90,9 +109,14 @@ class DopplerMap:
             velocity quantities. Default ``m/s``.
         spectrum (matrix, optional): The spectrum of the star. This should be
             a matrix of shape (:py:attr:`nc`, :py:attr:`nw0`), i.e., one
-            spectrum per map component. Default is a single Gaussian absorption
-            line at the central wavelength of the first spectral component,
-            and unity for all other components.
+            spectrum per map component. Note that the spectrum should be
+            normalized such that the continuum is unity for all spectral
+            components. If a different weighting is desired for different
+            components, change :py:attr:`amp` instead. Default is a single
+            Gaussian absorption line at the central wavelength of the first
+            spectral component, and unity for all other components.
+        amp (scalar or vector, optional): The amplitude of each of the spectral
+            components. Default is unity for all components.
         inc (scalar, optional): Inclination of the star in units of
             :py:attr:`angle_unit`. Default is ``90.0``.
         obl (scalar, optional): Obliquity of the star in units of
@@ -101,6 +125,7 @@ class DopplerMap:
             in units of :py:attr:`velocity_unit`. Default is ``0.0``.
     """
 
+    # Constants
     _clight = 299792458.0  # m/s
     _default_vsini_max = 1e5  # m/s
     _default_wav = np.linspace(642.5, 643.5, 200)  # FeI 6430
@@ -127,6 +152,9 @@ class DopplerMap:
             ),
             axis=0,
         )
+
+    # The map amplitude
+    amp = Amplitude()
 
     def __init__(
         self,
@@ -335,35 +363,6 @@ class DopplerMap:
         # Initialize
         self.reset(**kwargs)
 
-    def reset(self, **kwargs):
-        """Reset all map coefficients and attributes.
-
-        """
-        # Units
-        self.angle_unit = kwargs.pop("angle_unit", units.degree)
-        self.velocity_unit = kwargs.pop("velocity_unit", units.m / units.s)
-
-        # Map properties
-        if self._nc == 1:
-            y = np.zeros(self._Ny)
-            y[0] = 1.0
-        else:
-            y = np.zeros((self._Ny, self._nc))
-            y[0, :] = 1.0
-        self._y = self._math.cast(y)
-        u = np.zeros(self._Nu)
-        u[0] = -1.0
-        self._u = self._math.cast(u)
-        self._map._u = self._u
-
-        # Reset the spectrum
-        self.spectrum = kwargs.pop("spectrum", self._default_spectrum())
-
-        # Basic properties
-        self.inc = kwargs.pop("inc", 0.5 * np.pi / self._angle_factor)
-        self.obl = kwargs.pop("obl", 0.0)
-        self.veq = kwargs.pop("veq", 0.0)
-
     @property
     def lazy(self):
         """Map evaluation mode -- lazy or greedy?"""
@@ -527,70 +526,6 @@ class DopplerMap:
         """
         return self._veq * self._math.sin(self._inc) / self._velocity_factor
 
-    def load(self, images, **kwargs):
-        """
-        Load a sequence of ndarrays or a series of images.
-
-        This routine performs a simple spherical harmonic transform (SHT)
-        to compute the spherical harmonic expansion corresponding to
-        a list of input image files or a sequencey of ``numpy`` ndarrays on a
-        lat-lon grid. The resulting coefficients are ingested into the map.
-
-        Args:
-            images: A list of paths to PNG files or a sequence of two-dimensional
-                ``numpy`` arrays on a latitude-longitude grid. There should be
-                as many images as map components (:py:attr:`nc`). Users may
-                provide :py:obj:`None` for any map component, which will set
-                it to a uniform surface map. If :py:attr:`nc` is unity, a
-                single item (string or ndarray) may be provided (instead of a
-                one-element list).
-            extent (tuple, optional): The lat-lon values corresponding to the
-                edges of the image in degrees, ``(lat0, lat1, lon0, lon1)``.
-                Default is ``(-180, 180, -90, 90)``.
-            smoothing (float, optional): Gaussian smoothing strength.
-                Increase this value to suppress ringing or explicitly set to
-                zero to disable smoothing. Default is ``1/self.ydeg``.
-            fac (float, optional): Factor by which to oversample the image
-                when applying the SHT. Default is ``1.0``. Increase this
-                number for higher fidelity (at the expense of increased
-                computational time).
-            eps (float, optional): Regularization strength for the spherical
-                harmonic transform. Default is ``1e-12``.
-            force_psd (bool, optional): Force the map to be positive
-                semi-definite? Default is False.
-            kwargs (optional): Any other kwargs passed directly to
-                :py:meth:`minimize` (only if ``force_psd`` is True).
-
-        """
-        # Args checks
-        assert self._ydeg > 0, "Can only load maps if ``ydeg`` > 0."
-        msg = (
-            "The map must be provided as a list of ``nc``"
-            "file names or as a numerical array of length ``nc``."
-        )
-        assert not is_tensor(images), msg
-        if self._nc > 1:
-            assert hasattr(images, "__len__"), msg
-            assert len(images) == self._nc, msg
-        else:
-            if type(images) is str or not hasattr(images, "__len__"):
-                images = [images]
-            elif type(images) is np.ndarray and images.ndim == 1:
-                images = [images]
-
-        # Load
-        for n, map_n in enumerate(images):
-            if (map_n is None) or (
-                type(map_n) is str and map_n.lower() == "none"
-            ):
-                self._map[1:, :] = 0.0
-            else:
-                self._map.load(map_n, **kwargs)
-            if self._nc == 1:
-                self[1:, :] = self._map[1:, :]
-            else:
-                self[1:, :, n] = self._math.reshape(self._map[1:, :], [-1, 1])
-
     @property
     def wav(self):
         """
@@ -693,7 +628,7 @@ class DopplerMap:
         If ``nc > 1``, index the map directly using three indices instead:
         ``map[l, m, c] = ...`` where ``c`` is the index of the map component.
         """
-        return self._y
+        return self._math.squeeze(self._y)
 
     @property
     def u(self):
@@ -706,6 +641,22 @@ class DopplerMap:
         """
         return self._u
 
+    @property
+    def spectral_map(self):
+        """
+        The spectral-spatial map vector.
+
+        This is equal to the (unrolled) outer product of the spherical harmonic
+        decompositions and their corresponding spectral components, weighted
+        by their respective amplitudes. Dot the design matrix into this
+        quantity to obtain the observed spectral timeseries (the
+        :py:meth:`flux`).
+        """
+        # Outer product with the map
+        return self._math.reshape(
+            self._math.dot(self._amp * self._y, self._spectrum), (-1,)
+        )
+
     def __getitem__(self, idx):
         if isinstance(idx, integers) or isinstance(idx, slice):
             # User is accessing a limb darkening index
@@ -714,7 +665,7 @@ class DopplerMap:
         elif isinstance(idx, tuple) and len(idx) == 2 and self.nc == 1:
             # User is accessing a Ylm index
             inds = get_ylm_inds(self.ydeg, idx[0], idx[1])
-            return self._y[inds]
+            return self._y[inds, 0]
         elif isinstance(idx, tuple) and len(idx) == 3 and self.nc > 1:
             # User is accessing a Ylmc index
             inds = get_ylmw_inds(self.ydeg, self.nc, idx[0], idx[1], idx[2])
@@ -743,25 +694,45 @@ class DopplerMap:
                     # The user is setting *all* coefficients, so we allow
                     # them to "set" the Y_{0,0} coefficient...
                     if self.lazy:
-                        self._y = self.ops.set_map_vector(self._y, inds, val)
+                        self._y = self.ops.set_map_vector(
+                            self._y[:, 0], inds, val
+                        )
                     else:
-                        self._y[inds] = val
+                        self._y[inds, 0] = val
                     # ... except we scale the amplitude of the map and
                     # force Y_{0,0} to be unity.
                     self.amp = self._y[0]
                     self._y /= self._y[0]
                 else:
-                    raise ValueError("The Y_{0,0} coefficient cannot be set.")
+                    raise ValueError(
+                        "The Y_{0,0} coefficient cannot be set. "
+                        "Please change the map amplitude instead."
+                    )
             else:
                 if self.lazy:
-                    self._y = self.ops.set_map_vector(self._y, inds, val)
+                    self._y = self.ops.set_map_vector(self._y[:, 0], inds, val)
                 else:
-                    self._y[inds] = val
+                    self._y[inds, 0] = val
         elif isinstance(idx, tuple) and len(idx) == 3 and self.nc > 1:
             # User is accessing a Ylmc index
             inds = get_ylmw_inds(self.ydeg, self.nc, idx[0], idx[1], idx[2])
             if 0 in inds[0]:
-                raise ValueError("The Y_{0,0} coefficient cannot be set.")
+                if np.array_equal(np.sort(inds[0]), np.arange(self.Ny)):
+                    # The user is setting *all* coefficients, so we allow
+                    # them to "set" the Y_{0,0} coefficient...
+                    if self.lazy:
+                        self._y = self.ops.set_map_vector(self._y, inds, val)
+                    else:
+                        self._y[inds] = val
+                    # ... except we scale the amplitude of the map and
+                    # force Y_{0,0} to be unity.
+                    self.amp[inds[1]] = self._y[0, inds[1]]
+                    self._y /= self._y[0]
+                else:
+                    raise ValueError(
+                        "The Y_{0,0} coefficient cannot be set. "
+                        "Please change the map amplitude instead."
+                    )
             else:
                 if self.lazy:
                     self._y = self.ops.set_map_vector(self._y, inds, val)
@@ -777,24 +748,101 @@ class DopplerMap:
         else:
             raise ValueError("Invalid map index.")
 
-    @property
-    def spectral_map(self):
-        """
-        The spectral-spatial map vector.
+    def reset(self, **kwargs):
+        """Reset all map coefficients and attributes.
 
-        This is equal to the (unrolled) outer product of the spherical harmonic
-        decompositions and their corresponding spectral components. Dot
-        the design matrix into this quantity to obtain the observed
-        spectral timeseries (the :py:meth:`flux`).
         """
-        # Outer product with the map
-        return self._math.reshape(
-            self._math.dot(
-                self._math.reshape(self._y, [self._Ny, self._nc]),
-                self._spectrum,
-            ),
-            (-1,),
+        # Units
+        self.angle_unit = kwargs.pop("angle_unit", units.degree)
+        self.velocity_unit = kwargs.pop("velocity_unit", units.m / units.s)
+
+        # Map properties
+        y = np.zeros((self._Ny, self._nc))
+        y[0, :] = 1.0
+        self._y = self._math.cast(y)
+        u = np.zeros(self._Nu)
+        u[0] = -1.0
+        self._u = self._math.cast(u)
+        self._map._u = self._u
+        self._amp = self._math.reshape(
+            self._math.cast(np.ones(self.nc) * kwargs.pop("amp", 1.0)),
+            (1, self.nc),
         )
+
+        # Reset the spectrum
+        self.spectrum = kwargs.pop("spectrum", self._default_spectrum())
+
+        # Basic properties
+        self.inc = kwargs.pop("inc", 0.5 * np.pi / self._angle_factor)
+        self.obl = kwargs.pop("obl", 0.0)
+        self.veq = kwargs.pop("veq", 0.0)
+
+    def load(self, images, **kwargs):
+        """
+        Load a sequence of ndarrays or a series of images.
+
+        This routine performs a simple spherical harmonic transform (SHT)
+        to compute the spherical harmonic expansion corresponding to
+        a list of input image files or a sequencey of ``numpy`` ndarrays on a
+        lat-lon grid. The resulting coefficients are ingested into the map.
+
+        Args:
+            images: A list of paths to PNG files or a sequence of two-dimensional
+                ``numpy`` arrays on a latitude-longitude grid. There should be
+                as many images as map components (:py:attr:`nc`). Users may
+                provide :py:obj:`None` for any map component, which will set
+                it to a uniform surface map. If :py:attr:`nc` is unity, a
+                single item (string or ndarray) may be provided (instead of a
+                one-element list).
+            extent (tuple, optional): The lat-lon values corresponding to the
+                edges of the image in degrees, ``(lat0, lat1, lon0, lon1)``.
+                Default is ``(-180, 180, -90, 90)``.
+            smoothing (float, optional): Gaussian smoothing strength.
+                Increase this value to suppress ringing or explicitly set to
+                zero to disable smoothing. Default is ``1/self.ydeg``.
+            fac (float, optional): Factor by which to oversample the image
+                when applying the SHT. Default is ``1.0``. Increase this
+                number for higher fidelity (at the expense of increased
+                computational time).
+            eps (float, optional): Regularization strength for the spherical
+                harmonic transform. Default is ``1e-12``.
+            force_psd (bool, optional): Force the map to be positive
+                semi-definite? Default is False.
+            kwargs (optional): Any other kwargs passed directly to
+                :py:meth:`minimize` (only if ``force_psd`` is True).
+
+        """
+        # Args checks
+        assert self._ydeg > 0, "Can only load maps if ``ydeg`` > 0."
+        msg = (
+            "The map must be provided as a list of ``nc``"
+            "file names or as a numerical array of length ``nc``."
+        )
+        assert not is_tensor(images), msg
+        if self._nc > 1:
+            assert hasattr(images, "__len__"), msg
+            assert len(images) == self._nc, msg
+        else:
+            if type(images) is str or not hasattr(images, "__len__"):
+                images = [images]
+            elif type(images) is np.ndarray and images.ndim == 1:
+                images = [images]
+
+        # Load
+        for n, map_n in enumerate(images):
+            self._map.amp = 1.0
+            if (map_n is None) or (
+                type(map_n) is str and map_n.lower() == "none"
+            ):
+                self._map[1:, :] = 0.0
+            else:
+                self._map.load(map_n, **kwargs)
+            if self._nc == 1:
+                self[:, :] = self._map[:, :]
+                self._amp[0, 0] = self._map.amp
+            else:
+                self[:, :, n] = self._math.reshape(self._map[:, :], [-1, 1])
+                self._amp[0, n] = self._map.amp
 
     def spot(self, *, component=0, **kwargs):
         r"""Add the expansion of a circular spot to the map.
@@ -922,6 +970,11 @@ class DopplerMap:
         This matrix dots into the spectral map to yield the model for the
         observed spectral timeseries (the ``flux``).
 
+        Note that if this method is used to compute the spectral timeseries,
+        the result should be reshaped into a matrix of shape
+        (:py:attr:`nt`, :py:attr:`nw`) and optionally divided by the
+        :py:meth:`baseline()` to match the return value of :py:meth:`flux()`.
+
         Args:
             theta (vector, optional): The angular phase(s) at which to compute
                 the design matrix, in units of :py:attr:`angle_unit`. This
@@ -991,7 +1044,7 @@ class DopplerMap:
 
             # Fixed map (dense)
             D = self.ops.get_D_fixed_map(
-                self._inc, theta, self._veq, self._u, self._y
+                self._inc, theta, self._veq, self._u, self._amp * self._y
             )
 
         else:
@@ -1039,11 +1092,21 @@ class DopplerMap:
         theta = self._get_default_theta(theta)
         if method == "dotconv":
             flux = self.ops.get_flux_from_dotconv(
-                self._inc, theta, self._veq, self._u, self._y, self._spectrum
+                self._inc,
+                theta,
+                self._veq,
+                self._u,
+                self._amp * self._y,
+                self._spectrum,
             )
         elif method == "convdot":
             flux = self.ops.get_flux_from_convdot(
-                self._inc, theta, self._veq, self._u, self._y, self._spectrum
+                self._inc,
+                theta,
+                self._veq,
+                self._u,
+                self._amp * self._y,
+                self._spectrum,
             )
         elif method == "conv":
             flux = self.ops.get_flux_from_conv(
@@ -1067,7 +1130,7 @@ class DopplerMap:
         if normalize:
             flux /= self._math.reshape(
                 self.ops.get_baseline(
-                    self._inc, theta, self._veq, self._u, self._y
+                    self._inc, theta, self._veq, self._u, self._amp * self._y
                 ),
                 (self.nt, 1),
             )
@@ -1086,7 +1149,7 @@ class DopplerMap:
         """
         theta = self._get_default_theta(theta)
         baseline = self.ops.get_baseline(
-            self._inc, theta, self._veq, self._u, self._y
+            self._inc, theta, self._veq, self._u, self._amp * self._y
         )
         return baseline
 
@@ -1159,8 +1222,12 @@ class DopplerMap:
         Note that if this method is used to compute the spectral timeseries
         (with ``tranpose = False``), the result should be reshaped into a
         matrix of shape (:py:attr:`nt`, :py:attr:`nw`) to match the return
-        value of :py:meth:`flux()`. This method does *not* normalize the
-        output.
+        value of :py:meth:`flux()` and optionally divided by the
+        :py:meth:`baseline()` to match the return value of :py:meth:`flux()`.
+        Importantly, if ``fix_spectrum`` is True, it is assumed that ``x``
+        is a representation of the **amplitude-weighted** spatial map; i.e.,
+        this method assumes it's the *spatial map* that carries the
+        normalization (and not the *spectrum*).
 
         """
         x = self._math.cast(x)
@@ -1186,7 +1253,12 @@ class DopplerMap:
             elif fix_map:
 
                 product = self.ops.dot_design_matrix_fixed_map_transpose_into(
-                    self._inc, theta, self._veq, self._u, self._y, x
+                    self._inc,
+                    theta,
+                    self._veq,
+                    self._u,
+                    self._amp * self._y,
+                    x,
                 )
 
             else:
@@ -1208,7 +1280,12 @@ class DopplerMap:
             elif fix_map:
 
                 product = self.ops.dot_design_matrix_fixed_map_into(
-                    self._inc, theta, self._veq, self._u, self._y, x
+                    self._inc,
+                    theta,
+                    self._veq,
+                    self._u,
+                    self._amp * self._y,
+                    x,
                 )
 
             else:
@@ -1273,9 +1350,11 @@ class DopplerMap:
             ortho = np.zeros((self.nt, res, res))
             for k in range(self.nc):
                 if self._nc == 1:
-                    self._map._y = self._math.reshape(self[:, :], (-1,))
+                    self._map[:, :] = self[:, :]
+                    self._map.amp = self._amp[0, 0]
                 else:
-                    self._map._y = self._math.reshape(self[:, :, k], (-1,))
+                    self._map[:, :] = self._math.squeeze(self[:, :, k])
+                    self._map.amp = self._amp[0, k]
                 img = get_val(self._map.render(projection="moll", res=res))
                 moll[k] = img / np.nanmax(img)
                 ortho += get_val(
@@ -1287,7 +1366,6 @@ class DopplerMap:
                 )
 
             # Get the observed spectrum at each phase (vsini = 0)
-            # We'll normalize it to the median >90th percentile flux level
             veq = self.veq
             self.veq = 0.0
             flux0 = get_val(
@@ -1306,7 +1384,7 @@ class DopplerMap:
                 get_val(self.wav),
                 moll,
                 ortho,
-                get_val(self.spectrum),
+                get_val(self._math.transpose(self._amp) * self.spectrum),
                 theta,
                 flux0,
                 flux,
@@ -1386,6 +1464,8 @@ class DopplerMap:
                     N=self.nc * (self.Ny - 1),
                     lazy=self.lazy,
                 )
+
+                # TODO: set the map
 
                 return mean, cho_cov
 
