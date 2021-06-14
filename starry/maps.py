@@ -235,11 +235,15 @@ class MapBase(object):
             # User is accessing a Ylmw index
             inds = get_ylmw_inds(self.ydeg, self.nw, idx[0], idx[1], idx[2])
             if 0 in inds[0]:
-                if np.array_equal(np.sort(inds[0]), np.arange(self.Ny)):
+                if np.array_equal(
+                    np.sort(inds[0].reshape(-1)), np.arange(self.Ny)
+                ):
                     # The user is setting *all* coefficients, so we allow
                     # them to "set" the Y_{0,0} coefficient...
                     if self.lazy:
-                        self._y = self.ops.set_vector(self._y, inds, val)
+                        self._y = self.ops.set_matrix(
+                            self._y, inds[0], inds[1], val
+                        )
                     else:
                         self._y[inds] = val
                     # ... except we scale the amplitude of the map and
@@ -255,7 +259,9 @@ class MapBase(object):
                     )
             else:
                 if self.lazy:
-                    self._y = self.ops.set_vector(self._y, inds, val)
+                    self._y = self.ops.set_matrix(
+                        self._y, inds[0], inds[1], val
+                    )
                 else:
                     old_shape = self._y[inds].shape
                     new_shape = np.atleast_2d(val).shape

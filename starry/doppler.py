@@ -657,9 +657,13 @@ class DopplerMap:
             # User is accessing a Ylm index
             inds = get_ylm_inds(self.ydeg, idx[0], idx[1])
             return self._y[inds, 0]
-        elif isinstance(idx, tuple) and len(idx) == 3 and self.nc > 1:
+        elif isinstance(idx, tuple) and len(idx) == 3:
             # User is accessing a Ylmc index
             inds = get_ylmw_inds(self.ydeg, self.nc, idx[0], idx[1], idx[2])
+            if self.nc == 1:
+                assert np.array_equal(
+                    inds[1].reshape(-1), [0]
+                ), "Invalid map component."
             return self._y[inds]
         else:
             raise ValueError("Invalid map index.")
@@ -672,10 +676,7 @@ class DopplerMap:
             inds = get_ul_inds(self.udeg, idx)
             if 0 in inds:
                 raise ValueError("The u_0 coefficient cannot be set.")
-            if self.lazy:
-                self._u = self.ops.set_vector(self._u, inds, val)
-            else:
-                self._u[inds] = val
+            self._u = self.ops.set_vector(self._u, inds, val)
             self._map._u = self._u
         elif isinstance(idx, tuple) and len(idx) == 2 and self.nc == 1:
             # User is accessing a Ylm index
@@ -684,13 +685,12 @@ class DopplerMap:
                 if np.array_equal(np.sort(inds), np.arange(self.Ny)):
                     # The user is setting *all* coefficients, so we allow
                     # them to "set" the Y_{0,0} coefficient...
-                    if self.lazy:
-                        self._y = self.ops.set_vector(self._y[:, 0], inds, val)
-                    else:
-                        self._y[inds, 0] = val
+                    self._y = self._math.reshape(
+                        self.ops.set_vector(self._y[:, 0], inds, val), (-1, 1)
+                    )
                     # ... except we scale the amplitude of the map and
                     # force Y_{0,0} to be unity.
-                    self.amp = self._y[0]
+                    self._amp = self._math.reshape(self._y[0], (1, -1))
                     self._y /= self._y[0]
                 else:
                     raise ValueError(
@@ -698,25 +698,28 @@ class DopplerMap:
                         "Please change the map amplitude instead."
                     )
             else:
-                if self.lazy:
-                    self._y = self.ops.set_vector(self._y[:, 0], inds, val)
-                else:
-                    self._y[inds, 0] = val
-        elif isinstance(idx, tuple) and len(idx) == 3 and self.nc > 1:
+                self._y = self.ops.set_vector(self._y[:, 0], inds, val)
+        elif isinstance(idx, tuple) and len(idx) == 3:
             # User is accessing a Ylmc index
-            inds = get_ylmw_inds(self.ydeg, self.nc, idx[0], idx[1], idx[2])
-            if 0 in inds[0]:
-                if np.array_equal(np.sort(inds[0]), np.arange(self.Ny)):
+            i, j = get_ylmw_inds(self.ydeg, self.nc, idx[0], idx[1], idx[2])
+            if self.nc == 1:
+                assert np.array_equal(
+                    j.reshape(-1), [0]
+                ), "Invalid map component."
+            if 0 in i:
+                if np.array_equal(np.sort(i.reshape(-1)), np.arange(self.Ny)):
                     # The user is setting *all* coefficients, so we allow
                     # them to "set" the Y_{0,0} coefficient...
-                    if self.lazy:
-                        self._y = self.ops.set_vector(self._y, inds, val)
-                    else:
-                        self._y[inds] = val
+                    self._y = self.ops.set_matrix(self._y, i, j, val)
                     # ... except we scale the amplitude of the map and
                     # force Y_{0,0} to be unity.
-                    self.amp = self.ops.set_vector(
-                        self.amp, inds[1], self._y[0, inds[1]]
+                    self._amp = self._math.reshape(
+                        self.ops.set_vector(
+                            self._math.reshape(self._amp, (self.nc,)),
+                            j,
+                            self._y[0, j],
+                        ),
+                        (1, self.nc),
                     )
                     self._y /= self._y[0]
                 else:
@@ -725,17 +728,7 @@ class DopplerMap:
                         "Please change the map amplitude instead."
                     )
             else:
-                if self.lazy:
-                    self._y = self.ops.set_vector(self._y, inds, val)
-                else:
-                    old_shape = self._y[inds].shape
-                    new_shape = np.atleast_2d(val).shape
-                    if old_shape == new_shape:
-                        self._y[inds] = val
-                    elif old_shape == new_shape[::-1]:
-                        self._y[inds] = np.atleast_2d(val).T
-                    else:
-                        self._y[inds] = val
+                self._y = self.ops.set_matrix(self._y, i, j, val)
         else:
             raise ValueError("Invalid map index.")
 
@@ -768,7 +761,7 @@ class DopplerMap:
         self.obl = kwargs.pop("obl", 0.0)
         self.veq = kwargs.pop("veq", 0.0)
 
-    def load(self, images, **kwargs):
+    def load(self, images, fix_amp=True, **kwargs):
         """
         Load a sequence of ndarrays or a series of images.
 
@@ -785,6 +778,10 @@ class DopplerMap:
                 it to a uniform surface map. If :py:attr:`nc` is unity, a
                 single item (string or ndarray) may be provided (instead of a
                 one-element list).
+            fix_amp: If True, this method will not change the amplitude of
+                any of the spectral components. If False, the amplitude of
+                each component will be proportional to the mean intensity
+                of the corresponding image. Default is True.
             extent (tuple, optional): The lat-lon values corresponding to the
                 edges of the image in degrees, ``(lat0, lat1, lon0, lon1)``.
                 Default is ``(-180, 180, -90, 90)``.
@@ -830,10 +827,26 @@ class DopplerMap:
                 self._map.load(map_n, **kwargs)
             if self._nc == 1:
                 self[:, :] = self._map[:, :]
-                self._amp = self.ops.set_matrix(self._amp, 0, 0, self._map.amp)
+                if not fix_amp:
+                    self._amp = self._math.reshape(
+                        self.ops.set_vector(
+                            self._math.reshape(self._amp, (self.nc,)),
+                            0,
+                            self._map.amp,
+                        ),
+                        (1, self.nc),
+                    )
             else:
                 self[:, :, n] = self._math.reshape(self._map[:, :], [-1, 1])
-                self._amp = self.ops.set_matrix(self._amp, 0, n, self._map.amp)
+                if not fix_amp:
+                    self._amp = self._math.reshape(
+                        self.ops.set_vector(
+                            self._math.reshape(self._amp, (self.nc,)),
+                            n,
+                            self._map.amp,
+                        ),
+                        (1, self.nc),
+                    )
 
     def spot(self, *, component=0, **kwargs):
         r"""Add the expansion of a circular spot to the map.
@@ -1407,24 +1420,80 @@ class DopplerMap:
             This method is still being developed!
 
         """
-        # Pre-process default values
-        flux = self.ops.enforce_shape(
-            self._math.cast(flux), np.array([self.nt, self.nw])
-        )
+        # Process defaults
         if flux_err is None:
             flux_err = 1e-6
-        flux_err = flux_err * self._math.ones_like(flux)
         if spatial_mean is None:
             spatial_mean = 0.0
         if spatial_cov is None and spatial_cho_cov is None:
-            spatial_cov = 1e-3
+            spatial_cov = 1e-3 * np.ones(self.Ny)
+            spatial_cov[0] = 1
+
+        # Flux should be provided as a matrix of shape (nt, nw)
+        # Internally, we unroll it into a vector
+        flux = self._math.reshape(self._math.cast(flux), [self.nt * self.nw])
+
+        # Flux error may be a scalar or a matrix
+        # Internally, we unroll it into a vector
+        flux_err = self._math.cast(flux_err)
+        if flux_err.ndim == 0:
+            flux_err = flux_err * self._math.ones([self.nt * self.nw])
+        else:
+            flux_err = self._math.reshape(flux_err, [self.nt * self.nw])
+
+        # Spatial mean may be a scalar, a vector, or a matrix
+        spatial_mean = self._math.cast(spatial_mean)
+        if spatial_mean.ndim == 0:
+            # The `solve` method accepts scalars, so we're good
+            pass
+        elif spatial_mean.ndim == 1:
+            # Assume the user provided the mean for only the first
+            # component. Copy it over to all components, then unroll
+            # into a vector
+            spatial_mean = self._math.reshape(
+                self._math.tile(
+                    self._math.reshape(spatial_mean, [self.Ny, 1]),
+                    [1, self.nc],
+                ),
+                [self.Ny * self.nc],
+            )
+        else:
+            # User specified the full (nc, Ny) matrix. Unroll it
+            # into a vector.
+            spatial_mean = self._math.reshape(
+                spatial_mean, [self.nc * self.Ny]
+            )
+
+        # Spatial cov may be a scalar, a vector, or a matrix
+        spatial_cov = self._math.cast(spatial_cov)
+        if spatial_cov is not None:
+            if spatial_cov.ndim == 0:
+                # The `solve` method accepts scalars, so we're good
+                pass
+            elif spatial_cov.ndim == 1:
+                # Assume the user provided the variance for only the first
+                # component. Copy it over to all components.
+                spatial_cov = self._math.reshape(
+                    self._math.tile(
+                        self._math.reshape(spatial_cov, [self.Ny, 1]),
+                        [1, self.nc],
+                    ),
+                    [self.Ny * self.nc],
+                )
+            else:
+                # User specified a full covariance matrix. This
+                # is either a (Ny, Ny) or (nc * Ny, nc * Ny) matrix.
+                # In the former case, we need to tile it.
+                # TODO!!!
+                # Remember that we need (nc, Ny), NOT (Ny, nc)!
+                raise NotImplementedError(
+                    "Dense covariance matrices not yet supported."
+                )
 
         if fix_spectrum:
 
             # Get the design matrix conditioned on the current spectrum
             D = self.design_matrix(theta=theta, fix_spectrum=True)
-            D0 = D[:, 0]
-            D = D[:, 1:]
 
             if (not normalized) or (baseline is not None):
 
@@ -1437,12 +1506,6 @@ class DopplerMap:
                     flux = flux * baseline
                     flux_err = flux_err * baseline
 
-                # Reshape into a vector, subtract the constant (Y_{0,0}) term
-                # (we're not fitting for it -- it's fixed at unity)
-                flux = self._math.reshape(flux, (self.nt * self.nw))
-                flux_err = self._math.reshape(flux_err, (self.nt * self.nw))
-                flux = flux - D0
-
                 # Solve the L2 problem
                 mean, cho_cov = solve(
                     D,
@@ -1452,13 +1515,18 @@ class DopplerMap:
                     mu=spatial_mean,
                     L=spatial_cov,
                     cho_L=spatial_cho_cov,
-                    N=self.nc * (self.Ny - 1),
+                    N=self.nc * self.Ny,
                     lazy=self.lazy,
                 )
 
-                # TODO: set the map
+                # Set the current map to the MAP
+                self[:, :, :] = self._math.transpose(
+                    self._math.reshape(mean, (self.nc, self.Ny))
+                )
 
-                return mean, cho_cov
+                # Return the factorized posterior covariance
+                # TODO: Reshape me?
+                return cho_cov
 
             else:
 

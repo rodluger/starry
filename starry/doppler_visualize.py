@@ -136,28 +136,30 @@ SCRIPT = lambda counter: """
         var plot_ortho = document.getElementsByClassName("plot_ortho_{counter:d}")[0];
         if ((plot != null) && (plot_ortho != null)) {{
             clearInterval(plotLoaded);
-            var help_modal = document.createElement("div");
-            help_modal.classList.add("starry-help-modal");
-            var help_modal_content = document.createElement("div");
-            help_modal_content.classList.add("starry-help-modal-content");
-            var help_close = document.createElement("span");
-            help_close.classList.add("starry-help-close");
-            help_close.innerHTML = "&times;";
-            var help_text = document.createElement("p");
-            help_text.innerHTML = "{help:s}";
-            help_modal_content.appendChild(help_close);
-            help_modal_content.appendChild(help_text);
-            help_modal.appendChild(help_modal_content);
-            plot.appendChild(help_modal);
-            var help_icon = document.createElement("div");
-            help_icon.innerHTML = '{icon:s}';
-            help_icon.classList.add("starry-help-icon");
-            plot_ortho.appendChild(help_icon);
-            help_icon.onclick = function() {{
-                help_modal.style.display = "block";
-            }}
-            help_close.onclick = function() {{
-                help_modal.style.display = "none";
+            if (document.getElementsByClassName("starry-help-icon").length == 0) {{
+                var help_modal = document.createElement("div");
+                help_modal.classList.add("starry-help-modal");
+                var help_modal_content = document.createElement("div");
+                help_modal_content.classList.add("starry-help-modal-content");
+                var help_close = document.createElement("span");
+                help_close.classList.add("starry-help-close");
+                help_close.innerHTML = "&times;";
+                var help_text = document.createElement("p");
+                help_text.innerHTML = "{help:s}";
+                help_modal_content.appendChild(help_close);
+                help_modal_content.appendChild(help_text);
+                help_modal.appendChild(help_modal_content);
+                plot.appendChild(help_modal);
+                var help_icon = document.createElement("div");
+                help_icon.innerHTML = '{icon:s}';
+                help_icon.classList.add("starry-help-icon");
+                plot_ortho.appendChild(help_icon);
+                help_icon.onclick = function() {{
+                    help_modal.style.display = "block";
+                }}
+                help_close.onclick = function() {{
+                    help_modal.style.display = "none";
+                }}
             }}
         }}
     }}, 100);

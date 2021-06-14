@@ -551,12 +551,15 @@ class OpsYlm(object):
     @autocompile
     def set_vector(self, vector, i, vals):
         """Set the elements of the theano vector."""
+        i = tt.cast(i, "int8")
         res = tt.set_subtensor(vector[i], vals * tt.ones_like(vector[i]))
         return res
 
     @autocompile
     def set_matrix(self, matrix, i, j, vals):
         """Set the elements of the theano matrix."""
+        i = tt.cast(i, "int8")
+        j = tt.cast(j, "int8")
         res = tt.set_subtensor(matrix[i, j], vals * tt.ones_like(matrix[i, j]))
         return res
 
