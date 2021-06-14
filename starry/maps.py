@@ -203,7 +203,7 @@ class MapBase(object):
             if 0 in inds:
                 raise ValueError("The u_0 coefficient cannot be set.")
             if self.lazy:
-                self._u = self.ops.set_map_vector(self._u, inds, val)
+                self._u = self.ops.set_vector(self._u, inds, val)
             else:
                 self._u[inds] = val
         elif isinstance(idx, tuple) and len(idx) == 2 and self.nw is None:
@@ -214,7 +214,7 @@ class MapBase(object):
                     # The user is setting *all* coefficients, so we allow
                     # them to "set" the Y_{0,0} coefficient...
                     if self.lazy:
-                        self._y = self.ops.set_map_vector(self._y, inds, val)
+                        self._y = self.ops.set_vector(self._y, inds, val)
                     else:
                         self._y[inds] = val
                     # ... except we scale the amplitude of the map and
@@ -228,7 +228,7 @@ class MapBase(object):
                     )
             else:
                 if self.lazy:
-                    self._y = self.ops.set_map_vector(self._y, inds, val)
+                    self._y = self.ops.set_vector(self._y, inds, val)
                 else:
                     self._y[inds] = val
         elif isinstance(idx, tuple) and len(idx) == 3 and self.nw:
@@ -239,12 +239,14 @@ class MapBase(object):
                     # The user is setting *all* coefficients, so we allow
                     # them to "set" the Y_{0,0} coefficient...
                     if self.lazy:
-                        self._y = self.ops.set_map_vector(self._y, inds, val)
+                        self._y = self.ops.set_vector(self._y, inds, val)
                     else:
                         self._y[inds] = val
                     # ... except we scale the amplitude of the map and
                     # force Y_{0,0} to be unity.
-                    self.amp[inds[1]] = self._y[0, inds[1]]
+                    self.amp = self.ops.set_vector(
+                        self.amp, inds[1], self._y[0, inds[1]]
+                    )
                     self._y /= self._y[0]
                 else:
                     raise ValueError(
@@ -253,7 +255,7 @@ class MapBase(object):
                     )
             else:
                 if self.lazy:
-                    self._y = self.ops.set_map_vector(self._y, inds, val)
+                    self._y = self.ops.set_vector(self._y, inds, val)
                 else:
                     old_shape = self._y[inds].shape
                     new_shape = np.atleast_2d(val).shape
@@ -1431,7 +1433,7 @@ class YlmBase(legacy.YlmBase):
                 fac = self._amp / (self._amp - np.pi * I)
                 if self.lazy:
                     self._y *= fac
-                    self._y = self.ops.set_map_vector(self._y, 0, 1.0)
+                    self._y = self.ops.set_vector(self._y, 0, 1.0)
                 else:
                     self._y[1:] *= fac
 

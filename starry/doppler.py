@@ -25,15 +25,6 @@ class Amplitude(object):
         )
 
 
-# TODO
-class Spectrum(object):
-    def __get__(self, instance, owner):
-        pass
-
-    def __set__(self, instance, value):
-        pass
-
-
 class DopplerMap:
     """
     Class representing a spectral-spatial stellar surface.
@@ -561,7 +552,7 @@ class DopplerMap:
         """
         The *internal* rest frame spectrum wavelength grid. *Read-only*
 
-        This is the wavelength grid on which the :py:meth:`spectrum_`
+        This is the wavelength grid on which the :py:attr:`spectrum_`
         is defined.
 
         """
@@ -618,7 +609,7 @@ class DopplerMap:
         """The spherical harmonic coefficient matrix. *Read-only*
 
         Changing the spatial representation of the map should be done by
-        directly accessing this class, as follows.
+        directly indexing the instance of this class, as follows.
 
         If ``nc = 1``, index the map directly using two indices:
         ``map[l, m] = ...`` where ``l`` is the spherical harmonic degree and
@@ -682,7 +673,7 @@ class DopplerMap:
             if 0 in inds:
                 raise ValueError("The u_0 coefficient cannot be set.")
             if self.lazy:
-                self._u = self.ops.set_map_vector(self._u, inds, val)
+                self._u = self.ops.set_vector(self._u, inds, val)
             else:
                 self._u[inds] = val
             self._map._u = self._u
@@ -694,9 +685,7 @@ class DopplerMap:
                     # The user is setting *all* coefficients, so we allow
                     # them to "set" the Y_{0,0} coefficient...
                     if self.lazy:
-                        self._y = self.ops.set_map_vector(
-                            self._y[:, 0], inds, val
-                        )
+                        self._y = self.ops.set_vector(self._y[:, 0], inds, val)
                     else:
                         self._y[inds, 0] = val
                     # ... except we scale the amplitude of the map and
@@ -710,7 +699,7 @@ class DopplerMap:
                     )
             else:
                 if self.lazy:
-                    self._y = self.ops.set_map_vector(self._y[:, 0], inds, val)
+                    self._y = self.ops.set_vector(self._y[:, 0], inds, val)
                 else:
                     self._y[inds, 0] = val
         elif isinstance(idx, tuple) and len(idx) == 3 and self.nc > 1:
@@ -721,12 +710,14 @@ class DopplerMap:
                     # The user is setting *all* coefficients, so we allow
                     # them to "set" the Y_{0,0} coefficient...
                     if self.lazy:
-                        self._y = self.ops.set_map_vector(self._y, inds, val)
+                        self._y = self.ops.set_vector(self._y, inds, val)
                     else:
                         self._y[inds] = val
                     # ... except we scale the amplitude of the map and
                     # force Y_{0,0} to be unity.
-                    self.amp[inds[1]] = self._y[0, inds[1]]
+                    self.amp = self.ops.set_vector(
+                        self.amp, inds[1], self._y[0, inds[1]]
+                    )
                     self._y /= self._y[0]
                 else:
                     raise ValueError(
@@ -735,7 +726,7 @@ class DopplerMap:
                     )
             else:
                 if self.lazy:
-                    self._y = self.ops.set_map_vector(self._y, inds, val)
+                    self._y = self.ops.set_vector(self._y, inds, val)
                 else:
                     old_shape = self._y[inds].shape
                     new_shape = np.atleast_2d(val).shape
@@ -839,10 +830,10 @@ class DopplerMap:
                 self._map.load(map_n, **kwargs)
             if self._nc == 1:
                 self[:, :] = self._map[:, :]
-                self._amp[0, 0] = self._map.amp
+                self._amp = self.ops.set_matrix(self._amp, 0, 0, self._map.amp)
             else:
                 self[:, :, n] = self._math.reshape(self._map[:, :], [-1, 1])
-                self._amp[0, n] = self._map.amp
+                self._amp = self.ops.set_matrix(self._amp, 0, n, self._map.amp)
 
     def spot(self, *, component=0, **kwargs):
         r"""Add the expansion of a circular spot to the map.
@@ -1353,7 +1344,7 @@ class DopplerMap:
                     self._map[:, :] = self[:, :]
                     self._map.amp = self._amp[0, 0]
                 else:
-                    self._map[:, :] = self._math.squeeze(self[:, :, k])
+                    self._map[:, :] = self._math.reshape(self[:, :, k], (-1,))
                     self._map.amp = self._amp[0, k]
                 img = get_val(self._map.render(projection="moll", res=res))
                 moll[k] = img / np.nanmax(img)

@@ -549,9 +549,15 @@ class OpsYlm(object):
         return tt.transpose(MT)
 
     @autocompile
-    def set_map_vector(self, vector, inds, vals):
-        """Set the elements of the theano map coefficient tensor."""
-        res = tt.set_subtensor(vector[inds], vals * tt.ones_like(vector[inds]))
+    def set_vector(self, vector, i, vals):
+        """Set the elements of the theano vector."""
+        res = tt.set_subtensor(vector[i], vals * tt.ones_like(vector[i]))
+        return res
+
+    @autocompile
+    def set_matrix(self, matrix, i, j, vals):
+        """Set the elements of the theano matrix."""
+        res = tt.set_subtensor(matrix[i, j], vals * tt.ones_like(matrix[i, j]))
         return res
 
     @autocompile
@@ -776,7 +782,7 @@ class OpsLD(object):
         return tt.reshape(intensity, (1, res, res))
 
     @autocompile
-    def set_map_vector(self, vector, inds, vals):
+    def set_vector(self, vector, inds, vals):
         """Set the elements of the theano map coefficient tensor."""
         res = tt.set_subtensor(vector[inds], vals * tt.ones_like(vector[inds]))
         return res
