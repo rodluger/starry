@@ -7,7 +7,6 @@ from ._indices import integers, get_ylm_inds, get_ylmw_inds, get_ul_inds
 from .compat import evaluator
 from .maps import YlmBase, MapBase, Map
 from .doppler_visualize import Visualize
-from .linalg import solve, lnlike
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as Spline
 from scipy.sparse import block_diag as sparse_block_diag
@@ -107,7 +106,7 @@ class DopplerMap:
             Gaussian absorption line at the central wavelength of the first
             spectral component, and unity for all other components.
         amp (scalar or vector, optional): The amplitude of each of the spectral
-            components. Default is unity for all components.
+            components. Default is ``1.0`` / :py:attr:`nc` for all components.
         inc (scalar, optional): Inclination of the star in units of
             :py:attr:`angle_unit`. Default is ``90.0``.
         obl (scalar, optional): Obliquity of the star in units of
@@ -125,9 +124,11 @@ class DopplerMap:
         """
         The default spectrum to use if the user doesn't provide one.
 
-        This consists of a single Gaussian absorption line at the central
+        This consists of a single narrow Gaussian absorption line at the central
         wavelength of the first spectral component, and unity for all
         other components.
+
+        At 643nm, this corresponds to a line with FWHM ~ 10 km/s.
         """
         return self._math.concatenate(
             (
@@ -135,7 +136,7 @@ class DopplerMap:
                     1
                     - 0.5
                     * self._math.exp(
-                        -0.5 * (self._wav0 - self._wavr) ** 2 / 0.05 ** 2
+                        -0.5 * (self._wav0 - self._wavr) ** 2 / 0.02 ** 2
                     ),
                     (1, self._nw0),
                 ),
@@ -459,6 +460,7 @@ class DopplerMap:
         assert value.physical_type == "angle"
         self._angle_unit = value
         self._angle_factor = value.in_units(units.radian)
+        self._map.angle_unit = value
 
     @property
     def velocity_unit(self):
@@ -698,7 +700,9 @@ class DopplerMap:
                         "Please change the map amplitude instead."
                     )
             else:
-                self._y = self.ops.set_vector(self._y[:, 0], inds, val)
+                self._y = self._math.reshape(
+                    self.ops.set_vector(self._y[:, 0], inds, val), (-1, 1)
+                )
         elif isinstance(idx, tuple) and len(idx) == 3:
             # User is accessing a Ylmc index
             i, j = get_ylmw_inds(self.ydeg, self.nc, idx[0], idx[1], idx[2])
@@ -749,7 +753,9 @@ class DopplerMap:
         self._u = self._math.cast(u)
         self._map._u = self._u
         self._amp = self._math.reshape(
-            self._math.cast(np.ones(self.nc) * kwargs.pop("amp", 1.0)),
+            self._math.cast(
+                np.ones(self.nc) * kwargs.pop("amp", 1.0 / self.nc)
+            ),
             (1, self.nc),
         )
 
@@ -761,7 +767,7 @@ class DopplerMap:
         self.obl = kwargs.pop("obl", 0.0)
         self.veq = kwargs.pop("veq", 0.0)
 
-    def load(self, images, fix_amp=True, **kwargs):
+    def load(self, images, fix_amp=False, **kwargs):
         """
         Load a sequence of ndarrays or a series of images.
 
@@ -781,7 +787,7 @@ class DopplerMap:
             fix_amp: If True, this method will not change the amplitude of
                 any of the spectral components. If False, the amplitude of
                 each component will be proportional to the mean intensity
-                of the corresponding image. Default is True.
+                of the corresponding image. Default is False.
             extent (tuple, optional): The lat-lon values corresponding to the
                 edges of the image in degrees, ``(lat0, lat1, lon0, lon1)``.
                 Default is ``(-180, 180, -90, 90)``.
@@ -826,8 +832,11 @@ class DopplerMap:
             else:
                 self._map.load(map_n, **kwargs)
             if self._nc == 1:
+                amp = self._amp
                 self[:, :] = self._map[:, :]
-                if not fix_amp:
+                if fix_amp:
+                    self._amp = amp
+                else:
                     self._amp = self._math.reshape(
                         self.ops.set_vector(
                             self._math.reshape(self._amp, (self.nc,)),
@@ -837,8 +846,11 @@ class DopplerMap:
                         (1, self.nc),
                     )
             else:
+                amp = self._amp
                 self[:, :, n] = self._math.reshape(self._map[:, :], [-1, 1])
-                if not fix_amp:
+                if fix_amp:
+                    self._amp = amp
+                else:
                     self._amp = self._math.reshape(
                         self.ops.set_vector(
                             self._math.reshape(self._amp, (self.nc,)),
@@ -932,9 +944,9 @@ class DopplerMap:
         """
         self._map.spot(**kwargs)
         if self.nc == 1:
-            self[:, :] = self._map[:, :]
+            self[:, :] = self._map.amp * self._map[:, :]
         else:
-            self[:, :, component] = self._map[:, :]
+            self[:, :, component] = self._map.amp * self._map[:, :]
 
     def _get_spline_operator(self, input_grid, output_grid):
         """
@@ -966,6 +978,19 @@ class DopplerMap:
                 * self._angle_factor
             )
         return theta
+
+    @property
+    def _continuum(self):
+        # TODO!!!
+        return self.spectrum[:, 0]
+
+    def baseline_matrix(self, theta=None):
+        theta = self._get_default_theta(theta) / self._angle_factor
+        B = self._map.design_matrix(theta=theta)
+        B = self._math.tile(B, [1, self.nc])
+        B *= np.repeat(self._continuum, self.Ny)
+        B = self._math.repeat(B, self.nw, axis=0)
+        return B
 
     def design_matrix(self, theta=None, fix_spectrum=False, fix_map=False):
         """
@@ -1134,7 +1159,11 @@ class DopplerMap:
         if normalize:
             flux /= self._math.reshape(
                 self.ops.get_baseline(
-                    self._inc, theta, self._veq, self._u, self._amp * self._y
+                    self._inc,
+                    theta,
+                    self._veq,
+                    self._u,
+                    self._continuum * self._amp * self._y,
                 ),
                 (self.nt, 1),
             )
@@ -1153,7 +1182,11 @@ class DopplerMap:
         """
         theta = self._get_default_theta(theta)
         baseline = self.ops.get_baseline(
-            self._inc, theta, self._veq, self._u, self._amp * self._y
+            self._inc,
+            theta,
+            self._veq,
+            self._u,
+            self._continuum * self._amp * self._y,
         )
         return baseline
 
@@ -1360,7 +1393,7 @@ class DopplerMap:
                     self._map[:, :] = self._math.reshape(self[:, :, k], (-1,))
                     self._map.amp = self._amp[0, k]
                 img = get_val(self._map.render(projection="moll", res=res))
-                moll[k] = img / np.nanmax(img)
+                moll[k] = img
                 ortho += get_val(
                     self._map.render(
                         projection="ortho",
@@ -1388,7 +1421,7 @@ class DopplerMap:
                 get_val(self.wav),
                 moll,
                 ortho,
-                get_val(self._math.transpose(self._amp) * self.spectrum),
+                get_val(self.spectrum),
                 theta,
                 flux0,
                 flux,
@@ -1405,7 +1438,9 @@ class DopplerMap:
         theta=None,
         spatial_mean=None,
         spatial_cov=None,
-        spatial_cho_cov=None,
+        spatial_inv_cov=None,
+        spectral_mean=None,
+        spectral_cov=None,
         normalized=True,
         baseline=None,
         fix_spectrum=False,
@@ -1420,96 +1455,222 @@ class DopplerMap:
             This method is still being developed!
 
         """
-        # Process defaults
+        # --------------------------
+        # ---- Process defaults ----
+        # --------------------------
+
         if flux_err is None:
             flux_err = 1e-6
         if spatial_mean is None:
             spatial_mean = 0.0
-        if spatial_cov is None and spatial_cho_cov is None:
-            spatial_cov = 1e-3 * np.ones(self.Ny)
-            spatial_cov[0] = 1
+        if spatial_cov is None and spatial_inv_cov is None:
+            spatial_cov = 1e-3
 
-        # Flux should be provided as a matrix of shape (nt, nw)
-        # Internally, we unroll it into a vector
-        flux = self._math.reshape(self._math.cast(flux), [self.nt * self.nw])
+        # ----------------------
+        # ---- Check shapes ----
+        # ----------------------
 
-        # Flux error may be a scalar or a matrix
-        # Internally, we unroll it into a vector
+        # Flux must be a matrix (nt, nw)
+        if self.nt == 1:
+            flux = self._math.reshape(
+                self._math.cast(flux), (self.nt, self.nw)
+            )
+        else:
+            flux = self.ops.enforce_shape(
+                self._math.cast(flux), np.array([self.nt, self.nw])
+            )
+
+        # Flux error may be a scalar or a matrix (nt, nw)
         flux_err = self._math.cast(flux_err)
         if flux_err.ndim == 0:
-            flux_err = flux_err * self._math.ones([self.nt * self.nw])
+            flux_err = flux_err * self._math.ones((self.nt, self.nw))
         else:
-            flux_err = self._math.reshape(flux_err, [self.nt * self.nw])
-
-        # Spatial mean may be a scalar, a vector, or a matrix
-        spatial_mean = self._math.cast(spatial_mean)
-        if spatial_mean.ndim == 0:
-            # The `solve` method accepts scalars, so we're good
-            pass
-        elif spatial_mean.ndim == 1:
-            # Assume the user provided the mean for only the first
-            # component. Copy it over to all components, then unroll
-            # into a vector
-            spatial_mean = self._math.reshape(
-                self._math.tile(
-                    self._math.reshape(spatial_mean, [self.Ny, 1]),
-                    [1, self.nc],
-                ),
-                [self.Ny * self.nc],
-            )
-        else:
-            # User specified the full (nc, Ny) matrix. Unroll it
-            # into a vector.
-            spatial_mean = self._math.reshape(
-                spatial_mean, [self.nc * self.Ny]
-            )
-
-        # Spatial cov may be a scalar, a vector, or a matrix
-        spatial_cov = self._math.cast(spatial_cov)
-        if spatial_cov is not None:
-            if spatial_cov.ndim == 0:
-                # The `solve` method accepts scalars, so we're good
-                pass
-            elif spatial_cov.ndim == 1:
-                # Assume the user provided the variance for only the first
-                # component. Copy it over to all components.
-                spatial_cov = self._math.reshape(
-                    self._math.tile(
-                        self._math.reshape(spatial_cov, [self.Ny, 1]),
-                        [1, self.nc],
-                    ),
-                    [self.Ny * self.nc],
-                )
+            if self.nt == 1:
+                flux_err = self._math.reshape(flux_err, (self.nt, self.nw))
             else:
-                # User specified a full covariance matrix. This
-                # is either a (Ny, Ny) or (nc * Ny, nc * Ny) matrix.
-                # In the former case, we need to tile it.
-                # TODO!!!
-                # Remember that we need (nc, Ny), NOT (Ny, nc)!
-                raise NotImplementedError(
-                    "Dense covariance matrices not yet supported."
+                flux_err = self.ops.enforce_shape(
+                    flux_err, np.array([self.nt, self.nw])
                 )
+
+        # Spatial mean may be a scalar, a vector (Ny), or a list of those
+        # Reshape it to a matrix of shape (Ny, nc)
+        if type(spatial_mean) not in (list, tuple):
+            # Use the same mean for all components
+            spatial_mean = [spatial_mean for n in range(self.nc)]
+        else:
+            # Check that we have one mean per component
+            assert len(spatial_mean) == self.nc
+        for n in range(self.nc):
+            spatial_mean[n] = self._math.cast(spatial_mean[n])
+            assert spatial_mean[n].ndim < 2
+            spatial_mean[n] = self._math.reshape(
+                spatial_mean[n] * self._math.ones(self.Ny), (-1, 1)
+            )
+        spatial_mean = self._math.concatenate(spatial_mean, axis=-1)
+
+        # Spatial (inv) cov may be a scalar, a vector, a matrix (Ny, Ny),
+        # or a list of those. Invert it if needed and reshape to a matrix of
+        # shape (Ny, nc) (inverse variances) or a tensor of shape
+        # (Ny, Ny, nc) (nc separate inverse covariance matrices)
+        if spatial_cov is not None:
+
+            # User provided the *covariance*
+
+            if type(spatial_cov) not in (list, tuple):
+                # Use the same covariance for all components
+                spatial_cov = [spatial_cov for n in range(self.nc)]
+            else:
+                # Check that we have one covariance per component
+                assert len(spatial_cov) == self.nc
+            spatial_inv_cov = [None for n in range(self.nc)]
+
+            for n in range(self.nc):
+                spatial_cov[n] = self._math.cast(spatial_cov[n])
+                assert spatial_cov[n].ndim == spatial_cov[0].ndim
+                if spatial_cov[n].ndim < 2:
+                    spatial_inv_cov[n] = self._math.reshape(
+                        self._math.ones(self.Ny) / spatial_cov[n], (-1, 1)
+                    )
+                else:
+                    cho = self._math.cholesky(spatial_cov[n])
+                    inv = self._linalg.cho_solve(cho, self._math.eye(self.Ny))
+                    spatial_inv_cov[n] = self._math.reshape(
+                        inv, (self.Ny, self.Ny, 1)
+                    )
+        else:
+
+            # User provided the *inverse covariance*
+
+            if type(spatial_inv_cov) not in (list, tuple):
+                # Use the same covariance for all components
+                spatial_inv_cov = [spatial_inv_cov for n in range(self.nc)]
+            else:
+                # Check that we have one covariance per component
+                assert len(spatial_inv_cov) == self.nc
+
+            for n in range(self.nc):
+                spatial_inv_cov[n] = self._math.cast(spatial_inv_cov[n])
+                assert spatial_inv_cov[n].ndim == spatial_inv_cov[0].ndim
+                if spatial_inv_cov[n].ndim < 2:
+                    spatial_inv_cov[n] = self._math.reshape(
+                        self._math.ones(self.Ny) * spatial_inv_cov[n], (-1, 1)
+                    )
+                else:
+                    spatial_inv_cov[n] = self._math.reshape(
+                        spatial_inv_cov[n], (self.Ny, self.Ny, 1)
+                    )
+
+        # Tensor of nc inverse variance vectors or covariance matrices
+        spatial_inv_cov = self._math.concatenate(spatial_inv_cov, axis=-1)
+
+        # Baseline must be a vector (nt,)
+        if baseline is not None:
+            baseline = self.ops.enforce_shape(
+                self._math.cast(baseline), np.array([self.nt])
+            )
+
+        # ----------------
+        # ---- Solve! ----
+        # ----------------
 
         if fix_spectrum:
+
+            # The spectrum is fixed. We are solving the for spatial
+            # map and the amplitude.
 
             # Get the design matrix conditioned on the current spectrum
             D = self.design_matrix(theta=theta, fix_spectrum=True)
 
             if (not normalized) or (baseline is not None):
 
-                # The problem is exactly linear.
+                # The problem is exactly linear!
 
+                # De-normalize the data w/ the given baseline?
                 if normalized:
+                    f = flux * self._math.reshape(baseline, (self.nt, 1))
+                    ferr = flux_err * self._math.reshape(
+                        baseline, (self.nt, 1)
+                    )
+                else:
+                    f = flux
+                    ferr = flux_err
 
-                    # De-normalize the data w/ the given baseline
-                    baseline = self._math.reshape(baseline, (self.nt, 1))
-                    flux = flux * baseline
-                    flux_err = flux_err * baseline
+                # Unroll the data into a vector, and reshape the priors
+                f = self._math.reshape(f, (-1,))
+                ferr = self._math.reshape(ferr, (-1,))
+                mu = self._math.reshape(
+                    self._math.transpose(spatial_mean), (-1)
+                )
+                if spatial_inv_cov.ndim == 2:
+                    invL = self._math.reshape(
+                        self._math.transpose(spatial_inv_cov), (-1)
+                    )
+                else:
+                    invL = self._math.block_diag(
+                        *[spatial_inv_cov[:, :, n] for n in range(self.nc)]
+                    )
 
                 # Solve the L2 problem
-                mean, cho_cov = solve(
-                    D,
-                    flux,
+                mean, cho_cov = self._linalg.solve(D, f, ferr, mu, invL)
+
+                # Set the current map to the MAP
+                self[:, :, :] = self._math.transpose(
+                    self._math.reshape(mean, (self.nc, self.Ny))
+                )
+
+                # Return the factorized posterior covariance
+                return cho_cov
+
+            else:
+
+                # TODO: Everything!
+
+                # The problem is approximately linear in the limit
+                # that the change in the photometric baseline over
+                # time is small, and conditioned on knowledge of
+                # the amplitude of each component.
+
+                # Get the baseline operator
+                B = self.baseline_matrix(theta=theta)
+
+                # Indices of Y_{0,0} coeffs
+                i0 = np.zeros(map.nc * map.Ny, dtype=bool)
+                i0[0 :: map.Ny] = 1
+
+                # Split the operators into l = 0 and l > 0 terms
+                # The problem is approximately linear in the l > 0 terms
+                D0 = D[:, i0]
+                D1 = D[:, ~i0]
+                B0 = B[:, i0]
+                B1 = B[:, ~i0]
+
+                # TODO: User input
+                y0 = self._math.ones(self.nc) / self.nc
+
+                dot = self._math.dot
+                reshape = self._math.reshape
+
+                # The approximate linear problem is
+                #
+                #       flux ~ A @ y1 + b
+                #
+                D0y0 = dot(D0, y0)
+                B0y0 = dot(B0, y0)
+                b = 2 * D0y0 - D0y0 * B0y0
+                A = (
+                    2 * D1
+                    - reshape(D0y0, (-1, 1)) * B1
+                    - reshape(B0y0, (-1, 1)) * D1
+                )
+
+                y1 = np.linalg.solve(
+                    A.T @ A / ferr ** 2 + I / siga ** 2,
+                    A.T @ (f - b) / ferr ** 2,
+                )
+
+                y1, _ = solve(
+                    A,
+                    flux - b,
                     C=flux_err ** 2,
                     cho_C=None,
                     mu=spatial_mean,
@@ -1519,16 +1680,17 @@ class DopplerMap:
                     lazy=self.lazy,
                 )
 
-                # Set the current map to the MAP
-                self[:, :, :] = self._math.transpose(
-                    self._math.reshape(mean, (self.nc, self.Ny))
+                # The exact linear problem (conditioned on `y`) is
+                #
+                #       flux ~ (D1 @ y1 + b) / (B0 @ y0 + B1 @ y1)
+                #
+                y1 = np.linalg.solve(
+                    D1.T @ D1 / ferr ** 2 + I / sigb ** 2,
+                    D1.T @ (f * (B @ y) - b) / ferr ** 2,
                 )
-
-                # Return the factorized posterior covariance
-                # TODO: Reshape me?
-                return cho_cov
-
-            else:
+                y = np.zeros(map.nc * map.Ny)
+                y[i0] = y0
+                y[~i0] = y1
 
                 # TODO
                 raise NotImplementedError("Not yet implemented.")

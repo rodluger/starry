@@ -255,9 +255,7 @@ class Visualize:
             data=dict(flux=self.flux[0], flux0=self.flux0[0], wavf=self.wavf)
         )
         self.source_index = ColumnDataSource(
-            data=dict(
-                l=[self.nws // 2], x=[self.wavs[self.nws // 2]], y=[-1], t=[0]
-            )
+            data=dict(l=[self.nws // 2], t=[0])
         )
         lon_lines = []
         for m in range(self.nt):
@@ -275,6 +273,13 @@ class Visualize:
             data_dict["x{:d}".format(i)] = x
             data_dict["y{:d}".format(i)] = y
         self.source_ortho_lon = ColumnDataSource(data=data_dict)
+        self.spec_vline = Span(
+            location=self.wavs[self.nws // 2],
+            dimension="height",
+            line_color=Category20[3][2],
+            line_width=3,
+            line_alpha=0.5,
+        )
 
     def add_border(self, plot, projection="ortho", pts=1000):
         if projection == "ortho":
@@ -478,6 +483,7 @@ class Visualize:
             args={
                 "source_moll": self.source_moll,
                 "source_index": self.source_index,
+                "spec_vline": self.spec_vline,
                 "moll": self.moll,
                 "spec": self.spec,
                 "wavs": self.wavs,
@@ -493,8 +499,8 @@ class Visualize:
                 if (l < 0) l = 0;
                 if (l > nws - 1) l = nws - 1;
                 source_index.data["l"][0] = l;
-                source_index.data["x"][0] = wavs[l];
                 source_index.change.emit();
+                spec_vline.location = wavs[l];
 
                 // Update the map
                 var local_moll = new Array(npix_m).fill(0).map(() => new Array(npix_m).fill(0));
@@ -546,16 +552,8 @@ class Visualize:
             line_width=1,
             color="black",
         )
-        plot_spec.ray(
-            x="x",
-            y="y",
-            length=99,
-            angle=0.5 * np.pi,
-            source=self.source_index,
-            line_width=3,
-            color=Category20[3][2],
-            alpha=0.5,
-        )
+        plot_spec.renderers.extend([self.spec_vline])
+
         plot_spec.toolbar.active_drag = None
         plot_spec.toolbar.active_scroll = None
         plot_spec.toolbar.active_tap = None
