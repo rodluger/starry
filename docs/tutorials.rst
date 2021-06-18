@@ -41,6 +41,7 @@ Spectroscopy and radial velocity
    notebooks/MultiWavelength.ipynb
    notebooks/DopplerImagingI.ipynb
    notebooks/DopplerImagingII.ipynb
+   notebooks/DopplerImagingIII.ipynb
 
 
 Custom Models

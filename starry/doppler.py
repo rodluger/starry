@@ -13,6 +13,8 @@ from scipy.interpolate import InterpolatedUnivariateSpline as Spline
 from scipy.sparse import block_diag as sparse_block_diag
 from scipy.sparse import csr_matrix
 from warnings import warn
+import os
+import matplotlib.pyplot as plt
 
 
 class DopplerMap:
@@ -149,7 +151,7 @@ class DopplerMap:
         interp_tol=1e-12,
         vsini_max=None,
         lazy=None,
-        **kwargs
+        **kwargs,
     ):
         # Check args
         ydeg = int(ydeg)
@@ -332,7 +334,7 @@ class DopplerMap:
             vsini_max,
             self._clight,
             log_wav0_int,
-            **kwargs
+            **kwargs,
         )
 
         # Support map (for certain operations like ``load``, ``show``, etc.)
@@ -687,87 +689,12 @@ class DopplerMap:
         self.obl = kwargs.pop("obl", 0.0)
         self.veq = kwargs.pop("veq", 0.0)
 
-    def load(self, cube, continuum="max", smoothing=None, fac=1.0, eps=1e-12):
-        """Load a spatial-spectral data cube.
-
-        The data cube should have shape (``nlat``, ``nlon``, :py:attr:`nw0`),
-        where ``nlat`` is the number of pixels in latitude, ``nlon`` is the
-        number of pixels in longitude, and :py:attr:`nw0` is the number of
-        wavelength bins in the rest frame spectrum.
-
-        This routine performs a simple spherical harmonic transform (SHT)
-        to compute the spherical harmonic expansion
-
-        Args:
-            cube:
-            continuum:
-            smoothing (float, optional): Gaussian smoothing strength.
-                Increase this value to suppress ringing or explicitly set to zero to
-                disable smoothing. Default is ``2/self.ydeg``.
-            fac (float, optional): Factor by which to oversample the image
-                when applying the SHT. Default is ``1.0``. Increase this
-                number for higher fidelity (at the expense of increased
-                computational time).
-            eps (float, optional): Regularization strength for the spherical
-                harmonic transform. Default is ``1e-12``.
+    def _get_SHT_matrix(self, nlat, nlon, eps=1e-12, smoothing=None):
         """
-        # Input checks
-        assert not is_tensor(cube)
-        assert cube.ndim == 3
-        assert cube.shape[2] == self.nw0
-        nlat = cube.shape[0]
-        nlon = cube.shape[1]
-        if type(continuum) is str:
-            if continuum.startswith("max"):
-                continuum = np.max(cube, axis=2)
-            elif continuum.startswith("min"):
-                continuum = np.min(cube, axis=2)
-            elif continuum.startswith("med"):
-                continuum = np.median(cube, axis=2)
-            elif continuum.startswith("mode"):
-                # Warning: quite slow!
-                values, counts = np.unique(cube, axis=2, return_counts=True)
-                continuum = values[:, :, np.argmax(counts)]
-            else:
-                raise ValueError("Invalid value for argument `continuum`.")
-        else:
-            assert not is_tensor(
-                continuum
-            ), "Argument `continuum` cannot be a tensor."
-            assert continuum.shape == (
-                nlat,
-                nlon,
-            ), "Argument `continuum` must have shape `(cube.shape[0], cube.shape[1])."
+        Return the SHT matrix for transforming a lat-lon intensity
+        grid to a vector of spherical harmonic coefficients.
 
-        # Singular value decomposition
-        M = cube.reshape(nlat * nlon, self.nw0)
-        U, s, VT = np.linalg.svd(M, full_matrices=False)
-
-        # Keep only `nc` components; absorb singular values into `U`
-        U = U[:, : self.nc]
-        VT = VT[: self.nc, :]
-        s = s[: self.nc]
-        U = U * s
-
-        # --------------------------------------
-        # The spectra are just the rows of `V^T`
-        # --------------------------------------
-
-        # Interpolate from the ``wav0`` grid to internal, padded grid
-        if self._interp:
-            self._spectrum = self._math.sparse_dot(VT, self._S0Inv)
-        else:
-            self._spectrum = VT
-
-        # -----------------------------------------------
-        # The spatial maps are just the components of `U`
-        # -----------------------------------------------
-
-        # Downsample the image to Nyquist-ish
-        factor = fac * 4 * self.ydeg / nlon
-        if factor < 1:
-            image = zoom(U, [factor, 1], mode="nearest")
-
+        """
         # Get the lat-lon grid
         lon = np.linspace(-180, 180, nlon) * np.pi / 180
         lat = np.linspace(-90, 90, nlat) * np.pi / 180
@@ -788,16 +715,283 @@ class DopplerMap:
             )
             s = np.exp(-0.5 * l * (l + 1) * smoothing ** 2)
             Q *= s[:, None]
+        return Q
 
-        # The Ylm coefficients are just a linear op on the image
-        # Note that we need to apply the starry 1/pi normalization
-        y = Q @ U / np.pi
-        self._y = self._math.reshape(self._math.cast(y), (self.Ny, self.nc))
+    def load(
+        self,
+        *,
+        images=None,
+        spectra=None,
+        cube=None,
+        continuum="max",
+        smoothing=None,
+        fac=1.0,
+        eps=1e-12,
+    ):
+        """Load a spatial and/or spectral representation of a stellar surface.
 
-        # Compute the continuum level for each component
-        self._continuum = self._math.cast(
-            np.linalg.lstsq(U, continuum.reshape(-1))[0]
-        )
+        The data cube should have shape (``nlat``, ``nlon``, :py:attr:`nw0`),
+        where ``nlat`` is the number of pixels in latitude, ``nlon`` is the
+        number of pixels in longitude, and :py:attr:`nw0` is the number of
+        wavelength bins in the rest frame spectrum.
+
+        This routine performs a simple spherical harmonic transform (SHT)
+        to compute the spherical harmonic expansion
+
+        Args:
+            images (str or ndarray, optional):
+            spectra (ndarray, optional):
+            cube (ndarray, optional):
+            continuum (ndarray, optional):
+            smoothing (float, optional): Gaussian smoothing strength.
+                Increase this value to suppress ringing or explicitly set to zero to
+                disable smoothing. Default is ``2/self.ydeg``.
+            fac (float, optional): Factor by which to oversample the image
+                when applying the SHT. Default is ``1.0``. Increase this
+                number for higher fidelity (at the expense of increased
+                computational time).
+            eps (float, optional): Regularization strength for the spherical
+                harmonic transform. Default is ``1e-12``.
+        """
+        if images is not None or spectra is not None:
+
+            # Input checks
+            assert (
+                cube is None
+            ), "Cannot specify (`images` or `spectra`) and `cube` simultaneously."
+
+            if images is not None:
+
+                # ------------------------------
+                # User is loading spatial images
+                # ------------------------------
+
+                # Input checks
+                if type(images) is str:
+                    assert self.nc == 1, "Must provide one map per component."
+                    images = [images]
+                elif type(images) in (tuple, list):
+                    images = list(images)
+                    assert (
+                        len(images) == self.nc
+                    ), "Must provide one map per component."
+                elif type(images) is np.ndarray:
+                    if self.nc == 1:
+                        if images.ndim == 2:
+                            images = np.array([images])
+                    assert (
+                        images.shape[0] == self.nc
+                    ), "Must provide one map per component."
+                else:
+                    raise TypeError("Invalid type for `images`.")
+
+                # Process each map
+                Q = np.empty((self.Ny, 0))
+                y = np.zeros((self.Ny, self.nc))
+                y[:, 0] = 1.0
+                for n, image in enumerate(images):
+
+                    # Is this a file name or an array?
+                    if type(image) is str:
+
+                        # Get the full path
+                        if not os.path.exists(image):
+                            image = os.path.join(
+                                os.path.dirname(os.path.abspath(__file__)),
+                                "img",
+                                image,
+                            )
+                            if not image.endswith(".png"):
+                                image += ".png"
+                            if not os.path.exists(image):
+                                raise ValueError("File not found: %s." % image)
+
+                        # Load the image into an ndarray
+                        image = plt.imread(image)
+
+                        # If it's an integer, normalize to [0-1]
+                        # (if it's a float, it's already normalized)
+                        if np.issubdtype(image.dtype, np.integer):
+                            image = image / 255.0
+
+                        # Convert to grayscale
+                        if len(image.shape) == 3:
+                            image = np.mean(image[:, :, :3], axis=2)
+                        elif len(image.shape) == 4:
+                            # ignore any transparency
+                            image = np.mean(image[:, :, :3], axis=(2, 3))
+
+                        # Re-orient
+                        image = np.flipud(image)
+
+                    elif type(image) is np.ndarray:
+
+                        assert (
+                            image.ndim == 2
+                        ), "Each map must be a 2-dimensional array."
+
+                    elif image is None:
+
+                        continue
+
+                    else:
+
+                        raise TypeError(
+                            "Invalid type for one of the `images`."
+                        )
+
+                    # Compute the SHT matrix if needed
+                    nlat, nlon = image.shape
+                    if Q.shape[1] != nlat * nlon:
+                        Q = self._get_SHT_matrix(
+                            nlat, nlon, eps=eps, smoothing=smoothing
+                        )
+
+                    # The Ylm coefficients are just a linear op on the image
+                    # Note that we need to apply the starry 1/pi normalization
+                    y[:, n] = Q @ image.reshape(nlat * nlon) / np.pi
+
+                # Ingest the coeffs
+                self._y = self._math.cast(y)
+
+            if spectra is not None:
+
+                # -----------------------------------
+                # User is loading spectral components
+                # -----------------------------------
+
+                # Cast & reshape
+                if self._nc == 1:
+                    spectra = self._math.reshape(
+                        self._math.cast(spectra), (1, self._nw0)
+                    )
+                else:
+                    spectra = self.ops.enforce_shape(
+                        self._math.cast(spectra),
+                        np.array([self._nc, self._nw0]),
+                    )
+
+                # Interpolate from the ``wav0`` grid to internal, padded grid
+                if self._interp:
+                    self._spectrum = self._math.sparse_dot(
+                        spectra, self._S0Inv
+                    )
+                else:
+                    self._spectrum = VT
+
+                # Compute the continuum
+                if type(continuum) is str:
+                    if continuum.startswith("max"):
+                        continuum = np.max(spectra, axis=1)
+                    elif continuum.startswith("min"):
+                        continuum = np.min(spectra, axis=1)
+                    elif continuum.startswith("med"):
+                        continuum = np.median(spectra, axis=1)
+                    elif continuum.startswith("mode"):
+                        values, counts = np.unique(
+                            spectra, axis=1, return_counts=True
+                        )
+                        continuum = values[:, np.argmax(counts)]
+                    else:
+                        raise ValueError(
+                            "Invalid value for argument `continuum`."
+                        )
+                else:
+                    assert not is_tensor(
+                        continuum
+                    ), "Argument `continuum` cannot be a tensor."
+                    continuum = np.array(continuum)
+                    assert (
+                        continuum.ndim == 1 and len(continuum) == self.nc
+                    ), "Argument `continuum` must be a vector of length `nc`."
+                self._continuum = self._math.cast(continuum)
+
+        elif cube is not None:
+
+            # --------------------------------
+            # User is loading a full data cube
+            # --------------------------------
+
+            # Input checks
+            assert not is_tensor(cube)
+            assert cube.ndim == 3
+            assert cube.shape[2] == self.nw0
+            nlat = cube.shape[0]
+            nlon = cube.shape[1]
+            if type(continuum) is str:
+                if continuum.startswith("max"):
+                    continuum = np.max(cube, axis=2)
+                elif continuum.startswith("min"):
+                    continuum = np.min(cube, axis=2)
+                elif continuum.startswith("med"):
+                    continuum = np.median(cube, axis=2)
+                elif continuum.startswith("mode"):
+                    # Warning: quite slow!
+                    values, counts = np.unique(
+                        cube, axis=2, return_counts=True
+                    )
+                    continuum = values[:, :, np.argmax(counts)]
+                else:
+                    raise ValueError("Invalid value for argument `continuum`.")
+            else:
+                assert not is_tensor(
+                    continuum
+                ), "Argument `continuum` cannot be a tensor."
+                assert continuum.shape == (
+                    nlat,
+                    nlon,
+                ), "Argument `continuum` must have shape `(cube.shape[0], cube.shape[1])."
+
+            # Singular value decomposition
+            M = cube.reshape(nlat * nlon, self.nw0)
+            U, s, VT = np.linalg.svd(M, full_matrices=False)
+
+            # Keep only `nc` components; absorb singular values into `U`
+            U = U[:, : self.nc]
+            VT = VT[: self.nc, :]
+            s = s[: self.nc]
+            U = U * s
+
+            # --------------------------------------
+            # The spectra are just the rows of `V^T`
+            # --------------------------------------
+
+            # Interpolate from the ``wav0`` grid to internal, padded grid
+            if self._interp:
+                self._spectrum = self._math.sparse_dot(VT, self._S0Inv)
+            else:
+                self._spectrum = VT
+
+            # -----------------------------------------------
+            # The spatial maps are just the components of `U`
+            # -----------------------------------------------
+
+            # Downsample the image to Nyquist-ish
+            factor = fac * 4 * self.ydeg / nlat
+            if factor < 1:
+                U = zoom(
+                    U.reshape(nlat, nlon, self.nc),
+                    [factor, factor, 1],
+                    mode="nearest",
+                )
+                continuum = zoom(continuum, [factor, factor], mode="nearest")
+                nlat, nlon = U.shape[0], U.shape[1]
+                U = U.reshape(nlat * nlon, self.nc)
+
+            # Get the lat-lon grid
+            Q = self._get_SHT_matrix(nlat, nlon, eps=eps, smoothing=smoothing)
+
+            # The Ylm coefficients are just a linear op on the image
+            # Note that we need to apply the starry 1/pi normalization
+            y = Q @ U / np.pi
+            self._y = self._math.reshape(
+                self._math.cast(y), (self.Ny, self.nc)
+            )
+
+            # Compute the continuum level for each component
+            self._continuum = self._math.cast(
+                np.linalg.lstsq(U, continuum.reshape(-1))[0]
+            )
 
     def _get_spline_operator(self, input_grid, output_grid):
         """
