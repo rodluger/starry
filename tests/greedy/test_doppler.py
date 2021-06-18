@@ -9,7 +9,7 @@ import pytest
 def map(request):
     nc = request.param
     map = starry.DopplerMap(ydeg=10, nt=3, nc=nc, veq=50000)
-    map.load(["spot", "earth"][:nc], force_psd=True)
+    map.load(images=["spot", "earth"][:nc])
     yield map
 
 
@@ -99,9 +99,7 @@ def test_D_fixed_spectrum(map, random):
     assert np.allclose(DS, DS_fast)
 
     # Check that this procedure yields the correct flux
-    flux1 = (DS_fast @ (map._amp * map.y).T.reshape(-1)).reshape(
-        map.nt, map.nw
-    )
+    flux1 = (DS_fast @ map.y.T.reshape(-1)).reshape(map.nt, map.nw)
     flux2 = (D @ map.spectral_map).reshape(map.nt, map.nw)
     assert np.allclose(flux1, flux2)
 
@@ -122,10 +120,7 @@ def test_D_fixed_map(map, random):
         y = map.y
     for k in range(map.nc):
         Y = diags(
-            [
-                np.ones(map.nw0_) * map._amp[0, k] * y[n, k]
-                for n in range(map.Ny)
-            ],
+            [np.ones(map.nw0_) * y[n, k] for n in range(map.Ny)],
             offsets=-np.arange(0, map.Ny) * map.nw0_,
             shape=(map.Ny * map.nw0_, map.nw0_),
         ).todense()
