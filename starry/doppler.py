@@ -8,20 +8,11 @@ from .compat import evaluator
 from .maps import YlmBase, MapBase, Map
 from .doppler_visualize import Visualize
 import numpy as np
+from scipy.ndimage import zoom
 from scipy.interpolate import InterpolatedUnivariateSpline as Spline
 from scipy.sparse import block_diag as sparse_block_diag
 from scipy.sparse import csr_matrix
 from warnings import warn
-
-
-class Amplitude(object):
-    def __get__(self, instance, owner):
-        return instance._math.squeeze(instance._amp)
-
-    def __set__(self, instance, value):
-        instance._amp = instance._math.reshape(
-            instance._math.cast(np.ones(instance.nc) * value), (1, instance.nc)
-        )
 
 
 class DopplerMap:
@@ -32,8 +23,15 @@ class DopplerMap:
     dependence of stellar surfaces and the spectral timeseries one would
     observe in the presence of rotation-induced Doppler shifts. This class
     is specifically suited to Doppler imaging studies. It is similar (but
-    different in important ways) to the traditional ``starry.Map`` class.
-    Currently, this class does not model occultations.
+    different in important ways; see below) to the traditional
+    ``starry.Map`` class.
+
+    Important notes:
+
+        - The spherical harmonic coefficients cannot be set directly.
+          All spatial and spectral information must be provided via the
+          :py:meth:`load` method.
+        - Currently, this class does not model occultations.
 
     Args:
         ydeg (int, optional): Degree of the spherical harmonic map.
@@ -97,22 +95,14 @@ class DopplerMap:
             angular quantities. Default ``deg``.
         velocity_unit (``astropy.units.Unit``, optional): The unit used for
             velocity quantities. Default ``m/s``.
-        spectrum (matrix, optional): The spectrum of the star. This should be
-            a matrix of shape (:py:attr:`nc`, :py:attr:`nw0`), i.e., one
-            spectrum per map component. Note that the spectrum should be
-            normalized such that the continuum is unity for all spectral
-            components. If a different weighting is desired for different
-            components, change :py:attr:`amp` instead. Default is a single
-            Gaussian absorption line at the central wavelength of the first
-            spectral component, and unity for all other components.
-        amp (scalar or vector, optional): The amplitude of each of the spectral
-            components. Default is ``1.0`` / :py:attr:`nc` for all components.
         inc (scalar, optional): Inclination of the star in units of
             :py:attr:`angle_unit`. Default is ``90.0``.
         obl (scalar, optional): Obliquity of the star in units of
             :py:attr:`angle_unit`. Default is ``0.0``.
         veq (scalar, optional): Equatorial rotational velocity of the star
             in units of :py:attr:`velocity_unit`. Default is ``0.0``.
+
+
     """
 
     # Constants
@@ -136,17 +126,14 @@ class DopplerMap:
                     1
                     - 0.5
                     * self._math.exp(
-                        -0.5 * (self._wav0 - self._wavr) ** 2 / 0.02 ** 2
+                        -0.5 * (self._wav0_int - self._wavr) ** 2 / 0.02 ** 2
                     ),
-                    (1, self._nw0),
+                    (1, self._nw0_int),
                 ),
-                self._math.ones((self._nc - 1, self._nw0)),
+                self._math.ones((self._nc - 1, self._nw0_int)),
             ),
             axis=0,
         )
-
-    # The map amplitude
-    amp = Amplitude()
 
     def __init__(
         self,
@@ -209,7 +196,12 @@ class DopplerMap:
             wav
         ), "Wavelength grids must be numerical quantities."
         if wav is None:
-            wav = self._default_wav
+            if wav0 is None:
+                wav = self._default_wav
+            else:
+                raise ValueError(
+                    "Please provide the observed spectrum wavelength grid `wav`."
+                )
         wav = np.array(wav)
         self._wav = self._math.cast(wav)
         self._nw = len(wav)
@@ -563,13 +555,9 @@ class DopplerMap:
     @property
     def spectrum(self):
         """
-        The rest frame spectrum for each component.
+        The rest frame spectrum for each component. *Read only*
 
         This quantity is defined on the wavelength grid :py:attr:`wav0`.
-
-        Shape must be (:py:attr:`nc`, :py:attr:`nw0`). If :py:attr:`nc` is
-        unity, a one-dimensional array of length :py:attr:`nw0` is also
-        accepted.
 
         """
         # Interpolate to the ``wav0`` grid
@@ -577,24 +565,6 @@ class DopplerMap:
             return self._math.sparse_dot(self._spectrum, self._S0)
         else:
             return self._spectrum
-
-    @spectrum.setter
-    def spectrum(self, spectrum):
-        # Cast & reshape
-        if self._nc == 1:
-            spectrum = self._math.reshape(
-                self._math.cast(spectrum), (1, self._nw0)
-            )
-        else:
-            spectrum = self.ops.enforce_shape(
-                self._math.cast(spectrum), np.array([self._nc, self._nw0])
-            )
-
-        # Interpolate from ``wav0`` grid to internal, padded grid
-        if self._interp:
-            self._spectrum = self._math.sparse_dot(spectrum, self._S0Inv)
-        else:
-            self._spectrum = spectrum
 
     @property
     def spectrum_(self):
@@ -607,19 +577,17 @@ class DopplerMap:
         return self._spectrum
 
     @property
+    def continuum(self):
+        """
+        The continuum level for each spectral component. *Read only*
+
+        """
+        return self._continuum
+
+    @property
     def y(self):
         """The spherical harmonic coefficient matrix. *Read-only*
 
-        Changing the spatial representation of the map should be done by
-        directly indexing the instance of this class, as follows.
-
-        If ``nc = 1``, index the map directly using two indices:
-        ``map[l, m] = ...`` where ``l`` is the spherical harmonic degree and
-        ``m`` is the spherical harmonic order. These may be integers or
-        arrays of integers. Slice notation may also be used.
-
-        If ``nc > 1``, index the map directly using three indices instead:
-        ``map[l, m, c] = ...`` where ``c`` is the index of the map component.
         """
         return self._math.squeeze(self._y)
 
@@ -637,20 +605,23 @@ class DopplerMap:
     @property
     def spectral_map(self):
         """
-        The spectral-spatial map vector.
+        The spectral-spatial map vector. *Read only*
 
         This is equal to the (unrolled) outer product of the spherical harmonic
-        decompositions and their corresponding spectral components, weighted
-        by their respective amplitudes. Dot the design matrix into this
-        quantity to obtain the observed spectral timeseries (the
-        :py:meth:`flux`).
+        decompositions and their corresponding spectral components.
+        Dot the design matrix into this quantity to obtain the observed
+        spectral timeseries (the :py:meth:`flux`).
         """
         # Outer product with the map
         return self._math.reshape(
-            self._math.dot(self._amp * self._y, self._spectrum), (-1,)
+            self._math.dot(self._y, self._spectrum), (-1,)
         )
 
     def __getitem__(self, idx):
+        """
+        Return the spherical harmonic or limb darkening coefficient(s).
+
+        """
         if isinstance(idx, integers) or isinstance(idx, slice):
             # User is accessing a limb darkening index
             inds = get_ul_inds(self.udeg, idx)
@@ -671,6 +642,13 @@ class DopplerMap:
             raise ValueError("Invalid map index.")
 
     def __setitem__(self, idx, val):
+        """
+        Set the limb darkening coefficient(s).
+
+        Note that this class does not support setting spherical harmonic
+        coefficients directly. Please use the :py:attr:`load` method instead.
+
+        """
         if not is_tensor(val):
             val = np.array(val)
         if isinstance(idx, integers) or isinstance(idx, slice):
@@ -680,59 +658,6 @@ class DopplerMap:
                 raise ValueError("The u_0 coefficient cannot be set.")
             self._u = self.ops.set_vector(self._u, inds, val)
             self._map._u = self._u
-        elif isinstance(idx, tuple) and len(idx) == 2 and self.nc == 1:
-            # User is accessing a Ylm index
-            inds = get_ylm_inds(self.ydeg, idx[0], idx[1])
-            if 0 in inds:
-                if np.array_equal(np.sort(inds), np.arange(self.Ny)):
-                    # The user is setting *all* coefficients, so we allow
-                    # them to "set" the Y_{0,0} coefficient...
-                    self._y = self._math.reshape(
-                        self.ops.set_vector(self._y[:, 0], inds, val), (-1, 1)
-                    )
-                    # ... except we scale the amplitude of the map and
-                    # force Y_{0,0} to be unity.
-                    self._amp = self._math.reshape(self._y[0], (1, -1))
-                    self._y /= self._y[0]
-                else:
-                    raise ValueError(
-                        "The Y_{0,0} coefficient cannot be set. "
-                        "Please change the map amplitude instead."
-                    )
-            else:
-                self._y = self._math.reshape(
-                    self.ops.set_vector(self._y[:, 0], inds, val), (-1, 1)
-                )
-        elif isinstance(idx, tuple) and len(idx) == 3:
-            # User is accessing a Ylmc index
-            i, j = get_ylmw_inds(self.ydeg, self.nc, idx[0], idx[1], idx[2])
-            if self.nc == 1:
-                assert np.array_equal(
-                    j.reshape(-1), [0]
-                ), "Invalid map component."
-            if 0 in i:
-                if np.array_equal(np.sort(i.reshape(-1)), np.arange(self.Ny)):
-                    # The user is setting *all* coefficients, so we allow
-                    # them to "set" the Y_{0,0} coefficient...
-                    self._y = self.ops.set_matrix(self._y, i, j, val)
-                    # ... except we scale the amplitude of the map and
-                    # force Y_{0,0} to be unity.
-                    self._amp = self._math.reshape(
-                        self.ops.set_vector(
-                            self._math.reshape(self._amp, (self.nc,)),
-                            j,
-                            self._y[0, j],
-                        ),
-                        (1, self.nc),
-                    )
-                    self._y /= self._y[0]
-                else:
-                    raise ValueError(
-                        "The Y_{0,0} coefficient cannot be set. "
-                        "Please change the map amplitude instead."
-                    )
-            else:
-                self._y = self.ops.set_matrix(self._y, i, j, val)
         else:
             raise ValueError("Invalid map index.")
 
@@ -752,201 +677,127 @@ class DopplerMap:
         u[0] = -1.0
         self._u = self._math.cast(u)
         self._map._u = self._u
-        self._amp = self._math.reshape(
-            self._math.cast(
-                np.ones(self.nc) * kwargs.pop("amp", 1.0 / self.nc)
-            ),
-            (1, self.nc),
-        )
 
         # Reset the spectrum
-        self.spectrum = kwargs.pop("spectrum", self._default_spectrum())
+        self._spectrum = self._default_spectrum()
+        self._continuum = self._math.cast(np.ones(self.nc))
 
         # Basic properties
         self.inc = kwargs.pop("inc", 0.5 * np.pi / self._angle_factor)
         self.obl = kwargs.pop("obl", 0.0)
         self.veq = kwargs.pop("veq", 0.0)
 
-    def load(self, images, fix_amp=False, **kwargs):
-        """
-        Load a sequence of ndarrays or a series of images.
+    def load(self, cube, continuum="max", smoothing=None, fac=1.0, eps=1e-12):
+        """Load a spatial-spectral data cube.
+
+        The data cube should have shape (``nlat``, ``nlon``, :py:attr:`nw0`),
+        where ``nlat`` is the number of pixels in latitude, ``nlon`` is the
+        number of pixels in longitude, and :py:attr:`nw0` is the number of
+        wavelength bins in the rest frame spectrum.
 
         This routine performs a simple spherical harmonic transform (SHT)
-        to compute the spherical harmonic expansion corresponding to
-        a list of input image files or a sequencey of ``numpy`` ndarrays on a
-        lat-lon grid. The resulting coefficients are ingested into the map.
+        to compute the spherical harmonic expansion
 
         Args:
-            images: A list of paths to PNG files or a sequence of two-dimensional
-                ``numpy`` arrays on a latitude-longitude grid. There should be
-                as many images as map components (:py:attr:`nc`). Users may
-                provide :py:obj:`None` for any map component, which will set
-                it to a uniform surface map. If :py:attr:`nc` is unity, a
-                single item (string or ndarray) may be provided (instead of a
-                one-element list).
-            fix_amp: If True, this method will not change the amplitude of
-                any of the spectral components. If False, the amplitude of
-                each component will be proportional to the mean intensity
-                of the corresponding image. Default is False.
-            extent (tuple, optional): The lat-lon values corresponding to the
-                edges of the image in degrees, ``(lat0, lat1, lon0, lon1)``.
-                Default is ``(-180, 180, -90, 90)``.
+            cube:
+            continuum:
             smoothing (float, optional): Gaussian smoothing strength.
-                Increase this value to suppress ringing or explicitly set to
-                zero to disable smoothing. Default is ``1/self.ydeg``.
+                Increase this value to suppress ringing or explicitly set to zero to
+                disable smoothing. Default is ``2/self.ydeg``.
             fac (float, optional): Factor by which to oversample the image
                 when applying the SHT. Default is ``1.0``. Increase this
                 number for higher fidelity (at the expense of increased
                 computational time).
             eps (float, optional): Regularization strength for the spherical
                 harmonic transform. Default is ``1e-12``.
-            force_psd (bool, optional): Force the map to be positive
-                semi-definite? Default is False.
-            kwargs (optional): Any other kwargs passed directly to
-                :py:meth:`minimize` (only if ``force_psd`` is True).
-
         """
-        # Args checks
-        assert self._ydeg > 0, "Can only load maps if ``ydeg`` > 0."
-        msg = (
-            "The map must be provided as a list of ``nc``"
-            "file names or as a numerical array of length ``nc``."
+        # Input checks
+        assert not is_tensor(cube)
+        assert cube.ndim == 3
+        assert cube.shape[2] == self.nw0
+        nlat = cube.shape[0]
+        nlon = cube.shape[1]
+        if type(continuum) is str:
+            if continuum.startswith("max"):
+                continuum = np.max(cube, axis=2)
+            elif continuum.startswith("min"):
+                continuum = np.min(cube, axis=2)
+            elif continuum.startswith("med"):
+                continuum = np.median(cube, axis=2)
+            elif continuum.startswith("mode"):
+                # Warning: quite slow!
+                values, counts = np.unique(cube, axis=2, return_counts=True)
+                continuum = values[:, :, np.argmax(counts)]
+            else:
+                raise ValueError("Invalid value for argument `continuum`.")
+        else:
+            assert not is_tensor(
+                continuum
+            ), "Argument `continuum` cannot be a tensor."
+            assert continuum.shape == (
+                nlat,
+                nlon,
+            ), "Argument `continuum` must have shape `(cube.shape[0], cube.shape[1])."
+
+        # Singular value decomposition
+        M = cube.reshape(nlat * nlon, self.nw0)
+        U, s, VT = np.linalg.svd(M, full_matrices=False)
+
+        # Keep only `nc` components; absorb singular values into `U`
+        U = U[:, : self.nc]
+        VT = VT[: self.nc, :]
+        s = s[: self.nc]
+        U = U * s
+
+        # --------------------------------------
+        # The spectra are just the rows of `V^T`
+        # --------------------------------------
+
+        # Interpolate from the ``wav0`` grid to internal, padded grid
+        if self._interp:
+            self._spectrum = self._math.sparse_dot(VT, self._S0Inv)
+        else:
+            self._spectrum = VT
+
+        # -----------------------------------------------
+        # The spatial maps are just the components of `U`
+        # -----------------------------------------------
+
+        # Downsample the image to Nyquist-ish
+        factor = fac * 4 * self.ydeg / nlon
+        if factor < 1:
+            image = zoom(U, [factor, 1], mode="nearest")
+
+        # Get the lat-lon grid
+        lon = np.linspace(-180, 180, nlon) * np.pi / 180
+        lat = np.linspace(-90, 90, nlat) * np.pi / 180
+        lon, lat = np.meshgrid(lon, lat)
+        lon = lon.flatten()
+        lat = lat.flatten()
+
+        # Compute the cos(lat)-weighted SHT
+        w = np.cos(lat)
+        P = self.ops.P(lat, lon)
+        PTSinv = P.T * (w ** 2)[None, :]
+        Q = np.linalg.solve(PTSinv @ P + eps * np.eye(P.shape[1]), PTSinv)
+        if smoothing is None:
+            smoothing = 2.0 / self.ydeg
+        if smoothing > 0:
+            l = np.concatenate(
+                [np.repeat(l, 2 * l + 1) for l in range(self.ydeg + 1)]
+            )
+            s = np.exp(-0.5 * l * (l + 1) * smoothing ** 2)
+            Q *= s[:, None]
+
+        # The Ylm coefficients are just a linear op on the image
+        # Note that we need to apply the starry 1/pi normalization
+        y = Q @ U / np.pi
+        self._y = self._math.reshape(self._math.cast(y), (self.Ny, self.nc))
+
+        # Compute the continuum level for each component
+        self._continuum = self._math.cast(
+            np.linalg.lstsq(U, continuum.reshape(-1))[0]
         )
-        assert not is_tensor(images), msg
-        if self._nc > 1:
-            assert hasattr(images, "__len__"), msg
-            assert len(images) == self._nc, msg
-        else:
-            if type(images) is str or not hasattr(images, "__len__"):
-                images = [images]
-            elif type(images) is np.ndarray and images.ndim == 1:
-                images = [images]
-
-        # Load
-        for n, map_n in enumerate(images):
-            self._map.amp = 1.0
-            if (map_n is None) or (
-                type(map_n) is str and map_n.lower() == "none"
-            ):
-                self._map[1:, :] = 0.0
-            else:
-                self._map.load(map_n, **kwargs)
-            if self._nc == 1:
-                amp = self._amp
-                self[:, :] = self._map[:, :]
-                if fix_amp:
-                    self._amp = amp
-                else:
-                    self._amp = self._math.reshape(
-                        self.ops.set_vector(
-                            self._math.reshape(self._amp, (self.nc,)),
-                            0,
-                            self._map.amp,
-                        ),
-                        (1, self.nc),
-                    )
-            else:
-                amp = self._amp
-                self[:, :, n] = self._math.reshape(self._map[:, :], [-1, 1])
-                if fix_amp:
-                    self._amp = amp
-                else:
-                    self._amp = self._math.reshape(
-                        self.ops.set_vector(
-                            self._math.reshape(self._amp, (self.nc,)),
-                            n,
-                            self._map.amp,
-                        ),
-                        (1, self.nc),
-                    )
-
-    def spot(self, *, component=0, **kwargs):
-        r"""Add the expansion of a circular spot to the map.
-
-        This function adds a spot whose functional form is a top
-        hat in :math:`\Delta\theta`, the
-        angular separation between the center of the spot and another
-        point on the surface. The spot intensity is controlled by the
-        parameter ``contrast``, defined as the fractional change in the
-        intensity at the center of the spot.
-
-        Args:
-            component (int, optional): Indicates which spectral component
-                to add the spot to. Default is ``0``.
-            contrast (scalar or vector, optional): The contrast of the spot.
-                This is equal to the fractional change in the intensity of the
-                map at the *center* of the spot relative to the baseline intensity
-                of an unspotted map. If the map has more than one
-                wavelength bin, this must be a vector of length equal to the
-                number of wavelength bins. Positive values of the contrast
-                result in dark spots; negative values result in bright
-                spots. Default is ``1.0``, corresponding to a spot with
-                central intensity close to zero.
-            radius (scalar, optional): The angular radius of the spot in
-                units of :py:attr:`angle_unit`. Defaults to ``20.0`` degrees.
-            lat (scalar, optional): The latitude of the spot in units of
-                :py:attr:`angle_unit`. Defaults to ``0.0``.
-            lon (scalar, optional): The longitude of the spot in units of
-                :py:attr:`angle_unit`. Defaults to ``0.0``.
-
-        .. note::
-
-            Keep in mind that things are normalized in ``starry`` such that
-            the disk-integrated *flux* (not the *intensity*!)
-            of an unspotted body is unity. The default intensity of an
-            unspotted map is ``1.0 / np.pi`` everywhere (this ensures the
-            integral over the unit disk is unity).
-            So when you instantiate a map and add a spot of contrast ``c``,
-            you'll see that the intensity at the center is actually
-            ``(1 - c) / np.pi``. This is expected behavior, since that's
-            a factor of ``1 - c`` smaller than the baseline intensity.
-
-        .. note::
-
-            This function computes the spherical harmonic expansion of a
-            circular spot with uniform contrast. At finite spherical
-            harmonic degree, this will return an *approximation* that
-            may be subject to ringing. Users can control the amount of
-            ringing and the smoothness of the spot profile (see below).
-            In general, however, at a given spherical harmonic degree
-            ``ydeg``, there is always minimum spot radius that can be
-            modeled well. For ``ydeg = 15``, for instance, that radius
-            is about ``10`` degrees. Attempting to add a spot smaller
-            than this will in general result in a large amount of ringing and
-            a smaller contrast than desired.
-
-        There are a few additional under-the-hood keywords
-        that control the behavior of the spot expansion. These are
-
-        Args:
-            spot_pts (int, optional): The number of points in the expansion
-                of the (1-dimensional) spot profile. Default is ``1000``.
-            spot_eps (float, optional): Regularization parameter in the
-                expansion. Default is ``1e-9``.
-            spot_smoothing (float, optional): Standard deviation of the
-                Gaussian smoothing applied to the spot to suppress
-                ringing (unitless). Default is ``2.0 / self.ydeg``.
-            spot_fac (float, optional): Parameter controlling the smoothness
-                of the spot profile. Increasing this parameter increases
-                the steepness of the profile (which approaches a top hat
-                as ``spot_fac -> inf``). Decreasing it results in a smoother
-                sigmoidal function. Default is ``300``. Changing this
-                parameter is not recommended; change ``spot_smoothing``
-                instead.
-
-        .. note::
-
-            These last four parameters are cached. That means that
-            changing their value in a call to ``spot`` will result in
-            all future calls to ``spot`` "remembering" those settings,
-            unless you change them back!
-
-        """
-        self._map.spot(**kwargs)
-        if self.nc == 1:
-            self[:, :] = self._map.amp * self._map[:, :]
-        else:
-            self[:, :, component] = self._map.amp * self._map[:, :]
 
     def _get_spline_operator(self, input_grid, output_grid):
         """
@@ -978,11 +829,6 @@ class DopplerMap:
                 * self._angle_factor
             )
         return theta
-
-    @property
-    def _continuum(self):
-        # TODO!!!
-        return self.spectrum[:, 0]
 
     def baseline_matrix(self, theta=None):
         theta = self._get_default_theta(theta) / self._angle_factor
@@ -1073,7 +919,7 @@ class DopplerMap:
 
             # Fixed map (dense)
             D = self.ops.get_D_fixed_map(
-                self._inc, theta, self._veq, self._u, self._amp * self._y
+                self._inc, theta, self._veq, self._u, self._y
             )
 
         else:
@@ -1121,21 +967,11 @@ class DopplerMap:
         theta = self._get_default_theta(theta)
         if method == "dotconv":
             flux = self.ops.get_flux_from_dotconv(
-                self._inc,
-                theta,
-                self._veq,
-                self._u,
-                self._amp * self._y,
-                self._spectrum,
+                self._inc, theta, self._veq, self._u, self._y, self._spectrum
             )
         elif method == "convdot":
             flux = self.ops.get_flux_from_convdot(
-                self._inc,
-                theta,
-                self._veq,
-                self._u,
-                self._amp * self._y,
-                self._spectrum,
+                self._inc, theta, self._veq, self._u, self._y, self._spectrum
             )
         elif method == "conv":
             flux = self.ops.get_flux_from_conv(
@@ -1163,7 +999,7 @@ class DopplerMap:
                     theta,
                     self._veq,
                     self._u,
-                    self._continuum * self._amp * self._y,
+                    self._continuum * self._y,
                 ),
                 (self.nt, 1),
             )
@@ -1182,11 +1018,7 @@ class DopplerMap:
         """
         theta = self._get_default_theta(theta)
         baseline = self.ops.get_baseline(
-            self._inc,
-            theta,
-            self._veq,
-            self._u,
-            self._continuum * self._amp * self._y,
+            self._inc, theta, self._veq, self._u, self._continuum * self._y
         )
         return baseline
 
@@ -1261,10 +1093,6 @@ class DopplerMap:
         matrix of shape (:py:attr:`nt`, :py:attr:`nw`) to match the return
         value of :py:meth:`flux()` and optionally divided by the
         :py:meth:`baseline()` to match the return value of :py:meth:`flux()`.
-        Importantly, if ``fix_spectrum`` is True, it is assumed that ``x``
-        is a representation of the **amplitude-weighted** spatial map; i.e.,
-        this method assumes it's the *spatial map* that carries the
-        normalization (and not the *spectrum*).
 
         """
         x = self._math.cast(x)
@@ -1290,12 +1118,7 @@ class DopplerMap:
             elif fix_map:
 
                 product = self.ops.dot_design_matrix_fixed_map_transpose_into(
-                    self._inc,
-                    theta,
-                    self._veq,
-                    self._u,
-                    self._amp * self._y,
-                    x,
+                    self._inc, theta, self._veq, self._u, self._y, x
                 )
 
             else:
@@ -1317,12 +1140,7 @@ class DopplerMap:
             elif fix_map:
 
                 product = self.ops.dot_design_matrix_fixed_map_into(
-                    self._inc,
-                    theta,
-                    self._veq,
-                    self._u,
-                    self._amp * self._y,
-                    x,
+                    self._inc, theta, self._veq, self._u, self._y, x
                 )
 
             else:
@@ -1386,16 +1204,12 @@ class DopplerMap:
             moll = np.zeros((self.nc, res, res))
             ortho = np.zeros((self.nt, res, res))
             for k in range(self.nc):
-                if self._nc == 1:
-                    self._map[:, :] = self[:, :]
-                    self._map.amp = self._amp[0, 0]
-                else:
-                    self._map[:, :] = self._math.reshape(self[:, :, k], (-1,))
-                    self._map.amp = self._amp[0, k]
+                self._map[:, :] = self._y[:, k]
                 img = get_val(self._map.render(projection="moll", res=res))
                 moll[k] = img
                 ortho += get_val(
-                    self._map.render(
+                    self._spectrum[k, 0]
+                    * self._map.render(
                         projection="ortho",
                         theta=theta / self._angle_factor,
                         res=res,
@@ -1575,8 +1389,7 @@ class DopplerMap:
 
         if fix_spectrum:
 
-            # The spectrum is fixed. We are solving the for spatial
-            # map and the amplitude.
+            # The spectrum is fixed. We are solving the for spatial map.
 
             # Get the design matrix conditioned on the current spectrum
             D = self.design_matrix(theta=theta, fix_spectrum=True)
@@ -1627,8 +1440,7 @@ class DopplerMap:
 
                 # The problem is approximately linear in the limit
                 # that the change in the photometric baseline over
-                # time is small, and conditioned on knowledge of
-                # the amplitude of each component.
+                # time is small.
 
                 # Get the baseline operator
                 B = self.baseline_matrix(theta=theta)
