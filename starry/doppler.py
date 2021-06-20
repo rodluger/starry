@@ -30,9 +30,6 @@ class DopplerMap:
 
     Important notes:
 
-        - The spherical harmonic coefficients cannot be set directly.
-          All spatial and spectral information must be provided via the
-          :py:meth:`load` method.
         - Currently, this class does not model occultations.
 
     Args:
@@ -557,9 +554,12 @@ class DopplerMap:
     @property
     def spectrum(self):
         """
-        The rest frame spectrum for each component. *Read only*
+        The rest frame spectrum for each component.
 
         This quantity is defined on the wavelength grid :py:attr:`wav0`.
+        Shape must be (:py:attr:`nc`, :py:attr:`nw0`). If :py:attr:`nc` is
+        unity, a one-dimensional array of length :py:attr:`nw0` is also
+        accepted.
 
         """
         # Interpolate to the ``wav0`` grid
@@ -567,6 +567,18 @@ class DopplerMap:
             return self._math.sparse_dot(self._spectrum, self._S0)
         else:
             return self._spectrum
+
+    @spectrum.setter
+    def spectrum(self, spectrum):
+        # Cast & reshape
+        if self._nc == 1:
+            spectrum = self._math.reshape(
+                self._math.cast(spectrum), (1, self._nw0)
+            )
+        else:
+            spectrum = self.ops.enforce_shape(
+                self._math.cast(spectrum), np.array([self._nc, self._nw0])
+            )
 
     @property
     def spectrum_(self):
@@ -581,10 +593,24 @@ class DopplerMap:
     @property
     def continuum(self):
         """
-        The continuum level for each spectral component. *Read only*
+        The continuum level for each spectral component.
+
+        This should be a vector of length :py:attr:`nc`.
 
         """
         return self._continuum
+
+    @continuum.setter
+    def continuum(self, continuum):
+        # Cast & reshape
+        if self._nc == 1:
+            self._continuum = self._math.reshape(
+                self._math.cast(continuum), (1,)
+            )
+        else:
+            self._continuum = self.ops.enforce_shape(
+                self._math.cast(continuum), np.array([self._nc])
+            )
 
     @property
     def y(self):
@@ -628,9 +654,11 @@ class DopplerMap:
             # User is accessing a limb darkening index
             inds = get_ul_inds(self.udeg, idx)
             return self._u[inds]
-        elif isinstance(idx, tuple) and len(idx) == 2 and self.nc == 1:
+        elif isinstance(idx, tuple) and len(idx) == 2:
             # User is accessing a Ylm index
-            inds = get_ylm_inds(self.ydeg, idx[0], idx[1])
+            inds = get_ylmw_inds(
+                self.ydeg, idx[0], idx[1], slice(None, None, None)
+            )
             return self._y[inds, 0]
         elif isinstance(idx, tuple) and len(idx) == 3:
             # User is accessing a Ylmc index
@@ -645,10 +673,7 @@ class DopplerMap:
 
     def __setitem__(self, idx, val):
         """
-        Set the limb darkening coefficient(s).
-
-        Note that this class does not support setting spherical harmonic
-        coefficients directly. Please use the :py:attr:`load` method instead.
+        Set the spherical harmonic or limb darkening coefficient(s).
 
         """
         if not is_tensor(val):
@@ -660,6 +685,20 @@ class DopplerMap:
                 raise ValueError("The u_0 coefficient cannot be set.")
             self._u = self.ops.set_vector(self._u, inds, val)
             self._map._u = self._u
+        elif isinstance(idx, tuple) and len(idx) == 2:
+            # User is accessing a Ylm index
+            inds = get_ylm_inds(
+                self.ydeg, idx[0], idx[1], slice(None, None, None)
+            )
+            self._y = self.ops.set_vector(self._y[:, 0], inds, val)
+        elif isinstance(idx, tuple) and len(idx) == 3:
+            # User is accessing a Ylmc index
+            i, j = get_ylmw_inds(self.ydeg, self.nc, idx[0], idx[1], idx[2])
+            if self.nc == 1:
+                assert np.array_equal(
+                    j.reshape(-1), [0]
+                ), "Invalid map component."
+            self._y = self.ops.set_matrix(self._y, i, j, val)
         else:
             raise ValueError("Invalid map index.")
 
@@ -730,19 +769,44 @@ class DopplerMap:
     ):
         """Load a spatial and/or spectral representation of a stellar surface.
 
-        The data cube should have shape (``nlat``, ``nlon``, :py:attr:`nw0`),
-        where ``nlat`` is the number of pixels in latitude, ``nlon`` is the
-        number of pixels in longitude, and :py:attr:`nw0` is the number of
-        wavelength bins in the rest frame spectrum.
+        Users may load spatial ``images`` and/or ``spectra``: one of each is
+        required per map component (:py:attr:`nc`). Alternatively, users may
+        provide a single data ``cube`` containing the full spectral-spatial
+        representation of the surface. This cube should have shape
+        (``nlat``, ``nlon``, :py:attr:`nw0`), where ``nlat`` is the number
+        of pixels in latitude, ``nlon`` is the number of pixels in longitude,
+        and :py:attr:`nw0` is the number of wavelength bins in the rest frame
+        spectrum.
 
         This routine performs a simple spherical harmonic transform (SHT)
-        to compute the spherical harmonic expansion
+        to compute the spherical harmonic expansion given images or a data
+        cube. If a data cube is provided, this routine performs singular
+        value decomposition (SVD) to compute the :py:attr:`nc` component
+        surface maps and spectra (the "eigen" components) that best approximate
+        the input.
 
         Args:
-            images (str or ndarray, optional):
-            spectra (ndarray, optional):
-            cube (ndarray, optional):
-            continuum (ndarray, optional):
+            images (str or ndarray, optional): A list or ``ndarray`` of
+                surface maps on a rectangular latitude-longitude grid. This
+                may also be a list of strings corresponding to the names of
+                PNG image files representing the surface images.
+            spectra (ndarray, optional): A list or ``ndarray`` of vectors
+                containing the spectra corresponding to each map component.
+            cube (ndarray, optional): A 3-dimensional ``ndarray`` of shape
+                (``nlat``, ``nlon``, :py:attr:`nw0`) containing the spectra
+                at each position on a latitude-longitude grid spanning the
+                entire surface.
+            continuum (str or ndarray, optional): The continuum level for
+                each of the input spectra (if ``spectra`` are provided)
+                or for each of the pixels in the cube (if ``cube`` is
+                provided). In the former case, this should be a matrix of shape
+                (``nlat``, ``nlon``); in the latter case, this should be a
+                vector of length :py:attr:`nc`. Alternatively, users may
+                provide one of "max", "min", "med", or "mode", indicating the
+                opertation to be performed on the input (``spectra`` or
+                ``cube``) to obtain the continuum for each spectrum. Defaut
+                is "max": the continuum is assumed to be equal to the highest
+                intensity in each spectrum or in each pixel of the data cube.
             smoothing (float, optional): Gaussian smoothing strength.
                 Increase this value to suppress ringing or explicitly set to zero to
                 disable smoothing. Default is ``2/self.ydeg``.
