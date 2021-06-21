@@ -2,9 +2,10 @@
 from . import config
 from ._constants import *
 from ._core import OpsDoppler, math
+from ._core.math import nadam
 from ._core.utils import is_tensor, CompileLogMessage
 from ._indices import integers, get_ylm_inds, get_ylmw_inds, get_ul_inds
-from .compat import evaluator
+from .compat import evaluator, theano, tt
 from .maps import YlmBase, MapBase, Map
 from .doppler_visualize import Visualize
 import numpy as np
@@ -15,6 +16,8 @@ from scipy.sparse import csr_matrix
 from warnings import warn
 import os
 import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
+from tqdm.auto import tqdm
 
 
 class DopplerMap:
@@ -657,9 +660,9 @@ class DopplerMap:
         elif isinstance(idx, tuple) and len(idx) == 2:
             # User is accessing a Ylm index
             inds = get_ylmw_inds(
-                self.ydeg, idx[0], idx[1], slice(None, None, None)
+                self.ydeg, self.nc, idx[0], idx[1], slice(None, None, None)
             )
-            return self._y[inds, 0]
+            return self._y[inds]
         elif isinstance(idx, tuple) and len(idx) == 3:
             # User is accessing a Ylmc index
             inds = get_ylmw_inds(self.ydeg, self.nc, idx[0], idx[1], idx[2])
@@ -687,10 +690,10 @@ class DopplerMap:
             self._map._u = self._u
         elif isinstance(idx, tuple) and len(idx) == 2:
             # User is accessing a Ylm index
-            inds = get_ylm_inds(
-                self.ydeg, idx[0], idx[1], slice(None, None, None)
+            i, j = get_ylmw_inds(
+                self.ydeg, self.nc, idx[0], idx[1], slice(None, None, None)
             )
-            self._y = self.ops.set_vector(self._y[:, 0], inds, val)
+            self._y = self.ops.set_matrix(self._y, i, j, val)
         elif isinstance(idx, tuple) and len(idx) == 3:
             # User is accessing a Ylmc index
             i, j = get_ylmw_inds(self.ydeg, self.nc, idx[0], idx[1], idx[2])
@@ -712,7 +715,7 @@ class DopplerMap:
 
         # Map properties
         y = np.zeros((self._Ny, self._nc))
-        y[0, :] = 1.0
+        y[0, :] = 1.0 / self.nc
         self._y = self._math.cast(y)
         u = np.zeros(self._Nu)
         u[0] = -1.0
@@ -852,7 +855,7 @@ class DopplerMap:
                 # Process each map
                 Q = np.empty((self.Ny, 0))
                 y = np.zeros((self.Ny, self.nc))
-                y[:, 0] = 1.0
+                y[:, 0] = 1.0 / self.nc
                 for n, image in enumerate(images):
 
                     # Is this a file name or an array?
@@ -1264,7 +1267,7 @@ class DopplerMap:
 
         return flux
 
-    def baseline(self, theta=None):
+    def baseline(self, theta=None, full=False):
         """
         Return the photometric baseline at each epoch.
 
@@ -1273,11 +1276,17 @@ class DopplerMap:
                 the design matrix, in units of :py:attr:`angle_unit`. This
                 must be a vector of size :py:attr:`nt`. Default is uniformly
                 spaced values in the range ``[0, 2 * pi)``.
+            full (bool, optional): If True, returns a matrix with the same
+                shape as :py:meth:`flux`. If False (default), returns a vector
+                of length :py:attr:`nc`.
         """
         theta = self._get_default_theta(theta)
         baseline = self.ops.get_baseline(
             self._inc, theta, self._veq, self._u, self._continuum * self._y
         )
+        if full:
+            baseline = self._math.repeat(baseline, self.nw, axis=0)
+            baseline = self._math.reshape(baseline, (self.nt, self.nw))
         return baseline
 
     def dot(
@@ -1503,6 +1512,85 @@ class DopplerMap:
         # Save or display
         viz.show(file=file)
 
+    def show_components(
+        self,
+        show_images=True,
+        show_spectra=True,
+        file=None,
+        projection="moll",
+        nmax=5,
+    ):
+        """
+        Show the individual component surface images and spectra.
+
+        """
+        # Show at most `nmax` components
+        nc = min(nmax, self.nc)
+        nrows = int(show_images) + int(show_spectra)
+        assert (
+            nrows > 0
+        ), "At least one of `show_images` or `show_spectra` must be True."
+        fig, ax = plt.subplots(nrows, nc, figsize=(4 * nc + 2, 2 * nrows))
+        ax = np.atleast_2d(ax)
+
+        # Figure out normalization
+        if show_images:
+            vmin = np.inf
+            vmax = -np.inf
+            for n in range(nc):
+                self._map[:, :] = self._y[:, n]
+                img = self._map.render(projection=projection, res=50)
+                vmin = min(np.nanmin(img), vmin)
+                vmax = max(np.nanmax(img), vmax)
+            norm = Normalize(vmin=vmin, vmax=vmax)
+        if show_spectra:
+            smin = min(np.nanmin(self.spectrum), np.nanmin(self.continuum))
+            smax = max(np.nanmax(self.spectrum), np.nanmax(self.continuum))
+            spad = 0.1 * (smax - smin)
+
+        # Plot
+        for n in range(nc):
+            i = 0
+            if show_images:
+                self._map[:, :] = self._y[:, n]
+                self._map.show(ax=ax[i, n], projection=projection, norm=norm)
+                i += 1
+            if show_spectra:
+                ax[i, n].axhline(
+                    self.continuum[n], color="k", ls="--", lw=1, alpha=0.5
+                )
+                ax[i, n].plot(self.wav0, self.spectrum[n])
+                ax[i, n].set_ylim(smin - spad, smax + spad)
+                ax[i, n].set_xlim(self.wav0[0], self.wav0[-1])
+                if n == 0:
+                    ax[i, n].set_ylabel("intensity", fontsize=10)
+                else:
+                    ax[i, n].set_yticklabels([])
+                ax[i, n].set_xlabel("wavelength [nm]", fontsize=10)
+                for tick in (
+                    ax[i, n].xaxis.get_major_ticks()
+                    + ax[i, n].yaxis.get_major_ticks()
+                ):
+                    tick.label.set_fontsize(8)
+
+        # Colorbar
+        if show_images:
+            cbar = fig.colorbar(ax[0, 0].images[0], ax=ax[0].ravel().tolist())
+            cbar.ax.tick_params(labelsize=10)
+
+            # Dummy colorbar for spacing
+            if show_spectra:
+                fig.colorbar(
+                    ax[0, 0].images[0], ax=ax[1].ravel().tolist()
+                ).ax.set_visible(False)
+
+        # Show or save
+        if file is None:
+            plt.show()
+        else:
+            fig.savefig(file, bbox_inches="tight")
+            fig.close()
+
     def solve(
         self,
         flux,
@@ -1515,8 +1603,15 @@ class DopplerMap:
         spectral_cov=None,
         normalized=True,
         baseline=None,
+        baseline_var=None,
         fix_spectrum=False,
         fix_map=False,
+        T0=None,
+        Tf=None,
+        nT=None,
+        lr=None,
+        niter=None,
+        quiet=False,
     ):
         """
         Solve the linear problem for the spatial and/or spectral map
@@ -1536,7 +1631,30 @@ class DopplerMap:
         if spatial_mean is None:
             spatial_mean = 0.0
         if spatial_cov is None and spatial_inv_cov is None:
-            spatial_cov = 1e-3
+            spatial_cov = 1e-3 * np.ones(self.Ny)
+            spatial_cov[0] = 1
+        if baseline_var is None:
+            baseline_var = 1e-2
+        if T0 is None:
+            T0 = 1e12
+        if Tf is None:
+            if self.nc == 1:
+                Tf = 1
+            else:
+                Tf = 1e4
+        if nT is None:
+            nT = 50
+        else:
+            nT = max(1, nT)
+        if lr is None:
+            lr = 2e-5
+        if niter is None:
+            niter = 0
+        else:
+            if niter != 0:
+                assert (
+                    not self.lazy
+                ), "Non-linear solver not implemented in `lazy` mode."
 
         # ----------------------
         # ---- Check shapes ----
@@ -1555,8 +1673,10 @@ class DopplerMap:
         # Flux error may be a scalar or a matrix (nt, nw)
         flux_err = self._math.cast(flux_err)
         if flux_err.ndim == 0:
+            flux_err_is_scalar = True
             flux_err = flux_err * self._math.ones((self.nt, self.nw))
         else:
+            flux_err_is_scalar = False
             if self.nt == 1:
                 flux_err = self._math.reshape(flux_err, (self.nt, self.nw))
             else:
@@ -1641,9 +1761,17 @@ class DopplerMap:
                 self._math.cast(baseline), np.array([self.nt])
             )
 
+        # Cast scalars
+        baseline_var = self._math.cast(baseline_var)
+        assert not is_tensor(T0), "Argument `T0` must be a numerical value."
+        assert not is_tensor(Tf), "Argument `Tf` must be a numerical value."
+
         # ----------------
         # ---- Solve! ----
         # ----------------
+
+        # Metadata for output
+        meta = {}
 
         if fix_spectrum:
 
@@ -1652,120 +1780,181 @@ class DopplerMap:
             # Get the design matrix conditioned on the current spectrum
             D = self.design_matrix(theta=theta, fix_spectrum=True)
 
+            # Reshape the priors
+            mu = self._math.reshape(self._math.transpose(spatial_mean), (-1))
+            if spatial_inv_cov.ndim == 2:
+                invL = self._math.reshape(
+                    self._math.transpose(spatial_inv_cov), (-1)
+                )
+            else:
+                invL = self._math.block_diag(
+                    *[spatial_inv_cov[:, :, n] for n in range(self.nc)]
+                )
+
             if (not normalized) or (baseline is not None):
 
                 # The problem is exactly linear!
 
-                # De-normalize the data w/ the given baseline?
-                if normalized:
-                    f = flux * self._math.reshape(baseline, (self.nt, 1))
-                    ferr = flux_err * self._math.reshape(
-                        baseline, (self.nt, 1)
-                    )
-                else:
-                    f = flux
-                    ferr = flux_err
+                # Get the factorized data covariance
+                if baseline is not None:
 
-                # Unroll the data into a vector, and reshape the priors
-                f = self._math.reshape(f, (-1,))
-                ferr = self._math.reshape(ferr, (-1,))
-                mu = self._math.reshape(
-                    self._math.transpose(spatial_mean), (-1)
-                )
-                if spatial_inv_cov.ndim == 2:
-                    invL = self._math.reshape(
-                        self._math.transpose(spatial_inv_cov), (-1)
-                    )
+                    # De-normalize the data w/ the given baseline
+                    flux *= self._math.reshape(baseline, (self.nt, 1))
+                    flux_err *= self._math.reshape(baseline, (self.nt, 1))
+                    cho_C = self._math.reshape(flux_err, (-1,))
+
                 else:
-                    invL = self._math.block_diag(
-                        *[spatial_inv_cov[:, :, n] for n in range(self.nc)]
-                    )
+
+                    # Easy!
+                    cho_C = self._math.reshape(flux_err, (-1,))
+
+                # Unroll the data into a vector
+                flux = self._math.reshape(flux, (-1,))
 
                 # Solve the L2 problem
-                mean, cho_cov = self._linalg.solve(D, f, ferr, mu, invL)
-
-                # Set the current map to the MAP
-                self[:, :, :] = self._math.transpose(
+                mean, cho_cov = self._linalg.solve(D, flux, cho_C, mu, invL)
+                y = self._math.transpose(
                     self._math.reshape(mean, (self.nc, self.Ny))
                 )
 
-                # Return the factorized posterior covariance
-                return cho_cov
+                # Set the current map to the MAP
+                self[:, :, :] = y
+
+                # Return all the info
+                return dict(y=y, cho_cov=cho_cov, **meta)
 
             else:
 
-                # TODO: Everything!
+                # The problem is linear conditioned on a baseline
+                # guess, which we will refine with a simple tempering scheme
 
-                # The problem is approximately linear in the limit
-                # that the change in the photometric baseline over
-                # time is small.
+                # Unroll the data into a vector
+                flux = self._math.reshape(flux, (-1,))
 
-                # Get the baseline operator
-                B = self.baseline_matrix(theta=theta)
+                # Tempering to find the baseline
+                if nT == 1:
+                    T = [Tf]
+                else:
+                    T = np.logspace(np.log10(T0), np.log10(Tf), nT)
+                baseline = np.ones(self.nt * self.nw)
+                bias = baseline_var * self._math.ones((self.nw, self.nw))
+                for i in tqdm(range(len(T)), disable=quiet):
 
-                # Indices of Y_{0,0} coeffs
-                i0 = np.zeros(map.nc * map.Ny, dtype=bool)
-                i0[0 :: map.Ny] = 1
+                    # Marginalize over the unknown baseline at each epoch
+                    # and compute the factorized data covariance
+                    if flux_err_is_scalar:
+                        cho_C = self._math.cholesky(
+                            T[i]
+                            * flux_err[0, 0] ** 2
+                            * self._math.eye(self.nw)
+                            + bias
+                        )
+                        cho_C = self._math.block_diag(
+                            *[cho_C for n in range(self.nt)]
+                        )
+                    else:
+                        cho_C = self._math.block_diag(
+                            *[
+                                self._math.cholesky(
+                                    T[i] * self._math.diag(flux_err[n] ** 2)
+                                    + bias
+                                )
+                                for n in range(self.nt)
+                            ]
+                        )
 
-                # Split the operators into l = 0 and l > 0 terms
-                # The problem is approximately linear in the l > 0 terms
-                D0 = D[:, i0]
-                D1 = D[:, ~i0]
-                B0 = B[:, i0]
-                B1 = B[:, ~i0]
+                    # Solve the L2 problem for the Ylm coeffs
+                    y, cho_cov = self._linalg.solve(
+                        D, flux * baseline, cho_C, mu, invL
+                    )
+                    y = self._math.transpose(
+                        self._math.reshape(y, (self.nc, self.Ny))
+                    )
 
-                # TODO: User input
-                y0 = self._math.ones(self.nc) / self.nc
+                    # Refine the baseline estimate
+                    baseline = self.ops.get_baseline(
+                        self._inc,
+                        self._get_default_theta(theta),
+                        self._veq,
+                        self._u,
+                        self._continuum * y,
+                    )
+                    baseline = self._math.repeat(baseline, self.nw, axis=0)
+                    baseline = self._math.reshape(
+                        baseline, (self.nt * self.nw,)
+                    )
 
-                dot = self._math.dot
-                reshape = self._math.reshape
+                # Store the value at this point
+                meta["y_temp"] = y
 
-                # The approximate linear problem is
-                #
-                #       flux ~ A @ y1 + b
-                #
-                D0y0 = dot(D0, y0)
-                B0y0 = dot(B0, y0)
-                b = 2 * D0y0 - D0y0 * B0y0
-                A = (
-                    2 * D1
-                    - reshape(D0y0, (-1, 1)) * B1
-                    - reshape(B0y0, (-1, 1)) * D1
-                )
+                # We have a pretty good guess for `y` at this point,
+                # but we can refine it with a nonlinear solver.
+                if (niter > 0) and (self.lazy is False):
 
-                y1 = np.linalg.solve(
-                    A.T @ A / ferr ** 2 + I / siga ** 2,
-                    A.T @ (f - b) / ferr ** 2,
-                )
+                    # Compute the exact model w/ normalization
+                    y_ = theano.shared(y)
+                    y_flat_ = tt.reshape(tt.transpose(y_), (-1,))
+                    baseline_ = self.ops.get_baseline(
+                        self._inc,
+                        self._get_default_theta(theta),
+                        self._veq,
+                        self._u,
+                        self._continuum * y_,
+                    )
+                    b_ = tt.repeat(baseline_, self.nw, axis=0)
+                    b_ = tt.reshape(b_, (self.nt * self.nw,))
+                    model_ = tt.dot(D, y_flat_)
+                    model_ /= b_
 
-                y1, _ = solve(
-                    A,
-                    flux - b,
-                    C=flux_err ** 2,
-                    cho_C=None,
-                    mu=spatial_mean,
-                    L=spatial_cov,
-                    cho_L=spatial_cho_cov,
-                    N=self.nc * self.Ny,
-                    lazy=self.lazy,
-                )
+                    # The loss is -0.5 * lnL (up to a constant)
+                    loss_ = tt.sum(
+                        (flux - model_) ** 2 / tt.reshape(flux_err, (-1,)) ** 2
+                    )
+                    if invL.ndim == 1:
+                        loss_ += tt.sum(y_flat_ ** 2 * invL)
+                    else:
+                        loss_ += tt.dot(
+                            tt.dot(tt.reshape(y_flat_, (1, -1)), invL),
+                            tt.reshape(y_flat_, (-1, 1)),
+                        )[0, 0]
 
-                # The exact linear problem (conditioned on `y`) is
-                #
-                #       flux ~ (D1 @ y1 + b) / (B0 @ y0 + B1 @ y1)
-                #
-                y1 = np.linalg.solve(
-                    D1.T @ D1 / ferr ** 2 + I / sigb ** 2,
-                    D1.T @ (f * (B @ y) - b) / ferr ** 2,
-                )
-                y = np.zeros(map.nc * map.Ny)
-                y[i0] = y0
-                y[~i0] = y1
+                    # Compile the NAdam optimizer and iterate
+                    best_loss = np.inf
+                    best_y = np.array(y)
+                    best_baseline = np.array(baseline)
+                    loss = np.zeros(niter)
+                    upd_ = nadam(loss_, [y_], lr=lr)
+                    train = theano.function(
+                        [], [y_, baseline_, loss_], updates=upd_
+                    )
+                    for n in tqdm(range(niter), disable=quiet):
+                        y, baseline, loss[n] = train()
+                        if loss[n] < best_loss:
+                            best_loss = loss[n]
+                            best_y = y
+                            best_baseline = baseline
+                    y = best_y
+                    baseline = best_baseline
+                    meta["loss"] = loss
+                    meta["y_nadam"] = y
 
-                # TODO
-                raise NotImplementedError("Not yet implemented.")
+                    # Final step: using our refined baseline estimate,
+                    # re-compute the MAP solution to obtain the posterior
+                    # mean and (lower limit on the) variance
+                    b = self._math.repeat(baseline, self.nw, axis=0)
+                    b = self._math.reshape(b, (self.nt * self.nw,))
+                    y, cho_cov = self._linalg.solve(
+                        D, flux * b, cho_C, mu, invL
+                    )
+                    y = self._math.transpose(
+                        self._math.reshape(y, (self.nc, self.Ny))
+                    )
 
-            return cho_C
+                # Set the current map to the MAP
+                self[:, :, :] = y
+
+                # Return the factorized posterior covariance
+                return dict(y=y, cho_cov=cho_cov, **meta)
 
         else:
 
