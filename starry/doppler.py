@@ -681,6 +681,7 @@ class DopplerMap:
         TODO: Lots of issues here! Needs unit tests for setting vectors.
 
         """
+        raise NotImplementedError("This method is buggy! Still working on it.")
         if not is_tensor(val):
             val = np.array(val)
         if isinstance(idx, integers) or isinstance(idx, slice):
@@ -1520,6 +1521,8 @@ class DopplerMap:
         show_spectra=True,
         file=None,
         projection="moll",
+        vmin=None,
+        vmax=None,
         nmax=5,
     ):
         """
@@ -1538,14 +1541,20 @@ class DopplerMap:
         ax = np.reshape(ax, (nrows, nc))
 
         # Figure out normalization
+        find_vmin = vmin is None
+        find_vmax = vmax is None
         if show_images:
-            vmin = np.inf
-            vmax = -np.inf
+            if find_vmin:
+                vmin = np.inf
+            if find_vmax:
+                vmax = -np.inf
             for n in range(nc):
                 self._map[:, :] = self._y[:, n]
                 img = self._map.render(projection=projection, res=50)
-                vmin = min(np.nanmin(img), vmin)
-                vmax = max(np.nanmax(img), vmax)
+                if find_vmin:
+                    vmin = min(np.nanmin(img), vmin)
+                if find_vmax:
+                    vmax = max(np.nanmax(img), vmax)
             norm = Normalize(vmin=vmin, vmax=vmax)
         if show_spectra:
             smin = min(np.nanmin(self.spectrum), np.nanmin(self.continuum))
@@ -1941,19 +1950,19 @@ class DopplerMap:
                     y = best_y
                     baseline = best_baseline
                     meta["loss"] = loss
-                    meta["y_nadam"] = y
 
                     # Final step: using our refined baseline estimate,
-                    # re-compute the MAP solution to obtain the posterior
-                    # mean and (lower limit on the) variance
+                    # re-compute the MAP solution to obtain an estimate
+                    # of the posterior variance
                     b = self._math.repeat(baseline, self.nw, axis=0)
                     b = self._math.reshape(b, (self.nt * self.nw,))
-                    y, cho_cov = self._linalg.solve(
+                    y_lin, cho_cov = self._linalg.solve(
                         D, flux * b, cho_C, mu, invL
                     )
-                    y = self._math.transpose(
+                    y_lin = self._math.transpose(
                         self._math.reshape(y, (self.nc, self.Ny))
                     )
+                    meta["y_lin"] = y_lin
 
                 # Set the current map to the MAP
                 self._y = y
