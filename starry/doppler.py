@@ -62,6 +62,10 @@ class DopplerMap:
             or set to :py:obj:`None`, ``starry`` will compute the required
             amount of padding automatically. See :py:attr:`vsini_max` below
             for more info.
+        wavc (scalar, optional): A wavelength at which there are no spectral
+            features in the *observed* spectrum. This is used for normalizing
+            the model at each epoch. Default is the first element of
+            :py:attr:`wav`.
         oversample (float, optional): The oversampling factor for the internal
             wavelength grid. The number of spectral bins used to perform the
             convolutions is equal to this value times the length of
@@ -145,6 +149,7 @@ class DopplerMap:
         nt=10,
         wav=None,
         wav0=None,
+        wavc=None,
         oversample=1,
         interpolate=True,
         interp_order=1,
@@ -207,6 +212,17 @@ class DopplerMap:
         wav = np.array(wav)
         self._wav = self._math.cast(wav)
         self._nw = len(wav)
+
+        # Compute the index of the continuum
+        if wavc is None:
+            # The first element of `wav`
+            self._continuum_idx = 0
+        else:
+            assert not is_tensor(
+                wavc
+            ), "The continuum wavelenght must be a numerical quantity."
+            # The closest element in `wav` to `wavc`
+            self._continuum_idx = np.argmin(np.abs(wav - wavc))
 
         # Compute the size of the internal wavelength grid
         # Note that this must be odd!
@@ -594,26 +610,17 @@ class DopplerMap:
         return self._spectrum
 
     @property
-    def continuum(self):
+    def wavc(self):
         """
-        The continuum level for each spectral component.
+        A wavelength corresponding to the continuum level. *Read only*
 
-        This should be a vector of length :py:attr:`nc`.
+        This is specified when instantiating a :py:class:`DopplerMap` and
+        should be a wavelength at which there are no spectral
+        features in the *observed* spectrum. This is used for normalizing
+        the model at each epoch.
 
         """
-        return self._continuum
-
-    @continuum.setter
-    def continuum(self, continuum):
-        # Cast & reshape
-        if self._nc == 1:
-            self._continuum = self._math.reshape(
-                self._math.cast(continuum), (1,)
-            )
-        else:
-            self._continuum = self.ops.enforce_shape(
-                self._math.cast(continuum), np.array([self._nc])
-            )
+        return self.wav[self._continuum_idx]
 
     @property
     def y(self):
@@ -727,7 +734,6 @@ class DopplerMap:
 
         # Reset the spectrum
         self._spectrum = self._default_spectrum()
-        self._continuum = self._math.cast(np.ones(self.nc))
 
         # Basic properties
         self.inc = kwargs.pop("inc", 0.5 * np.pi / self._angle_factor)
@@ -768,7 +774,6 @@ class DopplerMap:
         images=None,
         spectra=None,
         cube=None,
-        continuum="max",
         smoothing=None,
         fac=1.0,
         eps=1e-12,
@@ -802,17 +807,6 @@ class DopplerMap:
                 (``nlat``, ``nlon``, :py:attr:`nw0`) containing the spectra
                 at each position on a latitude-longitude grid spanning the
                 entire surface.
-            continuum (str or ndarray, optional): The continuum level for
-                each of the input spectra (if ``spectra`` are provided)
-                or for each of the pixels in the cube (if ``cube`` is
-                provided). In the former case, this should be a matrix of shape
-                (``nlat``, ``nlon``); in the latter case, this should be a
-                vector of length :py:attr:`nc`. Alternatively, users may
-                provide one of "max", "min", "med", or "mode", indicating the
-                opertation to be performed on the input (``spectra`` or
-                ``cube``) to obtain the continuum for each spectrum. Defaut
-                is "max": the continuum is assumed to be equal to the highest
-                intensity in each spectrum or in each pixel of the data cube.
             smoothing (float, optional): Gaussian smoothing strength.
                 Increase this value to suppress ringing or explicitly set to zero to
                 disable smoothing. Default is ``2/self.ydeg``.
@@ -949,33 +943,6 @@ class DopplerMap:
                 else:
                     self._spectrum = VT
 
-                # Compute the continuum
-                if type(continuum) is str:
-                    if continuum.startswith("max"):
-                        continuum = np.max(spectra, axis=1)
-                    elif continuum.startswith("min"):
-                        continuum = np.min(spectra, axis=1)
-                    elif continuum.startswith("med"):
-                        continuum = np.median(spectra, axis=1)
-                    elif continuum.startswith("mode"):
-                        values, counts = np.unique(
-                            spectra, axis=1, return_counts=True
-                        )
-                        continuum = values[:, np.argmax(counts)]
-                    else:
-                        raise ValueError(
-                            "Invalid value for argument `continuum`."
-                        )
-                else:
-                    assert not is_tensor(
-                        continuum
-                    ), "Argument `continuum` cannot be a tensor."
-                    continuum = np.array(continuum)
-                    assert (
-                        continuum.ndim == 1 and len(continuum) == self.nc
-                    ), "Argument `continuum` must be a vector of length `nc`."
-                self._continuum = self._math.cast(continuum)
-
         elif cube is not None:
 
             # --------------------------------
@@ -988,29 +955,6 @@ class DopplerMap:
             assert cube.shape[2] == self.nw0
             nlat = cube.shape[0]
             nlon = cube.shape[1]
-            if type(continuum) is str:
-                if continuum.startswith("max"):
-                    continuum = np.max(cube, axis=2)
-                elif continuum.startswith("min"):
-                    continuum = np.min(cube, axis=2)
-                elif continuum.startswith("med"):
-                    continuum = np.median(cube, axis=2)
-                elif continuum.startswith("mode"):
-                    # Warning: quite slow!
-                    values, counts = np.unique(
-                        cube, axis=2, return_counts=True
-                    )
-                    continuum = values[:, :, np.argmax(counts)]
-                else:
-                    raise ValueError("Invalid value for argument `continuum`.")
-            else:
-                assert not is_tensor(
-                    continuum
-                ), "Argument `continuum` cannot be a tensor."
-                assert continuum.shape == (
-                    nlat,
-                    nlon,
-                ), "Argument `continuum` must have shape `(cube.shape[0], cube.shape[1])."
 
             # Singular value decomposition
             M = cube.reshape(nlat * nlon, self.nw0)
@@ -1044,7 +988,6 @@ class DopplerMap:
                     [factor, factor, 1],
                     mode="nearest",
                 )
-                continuum = zoom(continuum, [factor, factor], mode="nearest")
                 nlat, nlon = U.shape[0], U.shape[1]
                 U = U.reshape(nlat * nlon, self.nc)
 
@@ -1056,11 +999,6 @@ class DopplerMap:
             y = Q @ U / np.pi
             self._y = self._math.reshape(
                 self._math.cast(y), (self.Ny, self.nc)
-            )
-
-            # Compute the continuum level for each component
-            self._continuum = self._math.cast(
-                np.linalg.lstsq(U, continuum.reshape(-1))[0]
             )
 
     def _get_spline_operator(self, input_grid, output_grid):
@@ -1093,14 +1031,6 @@ class DopplerMap:
                 * self._angle_factor
             )
         return theta
-
-    def baseline_matrix(self, theta=None):
-        theta = self._get_default_theta(theta) / self._angle_factor
-        B = self._map.design_matrix(theta=theta)
-        B = self._math.tile(B, [1, self.nc])
-        B *= np.repeat(self._continuum, self.Ny)
-        B = self._math.repeat(B, self.nw, axis=0)
-        return B
 
     def design_matrix(self, theta=None, fix_spectrum=False, fix_map=False):
         """
@@ -1258,14 +1188,7 @@ class DopplerMap:
         # Remove the baseline?
         if normalize:
             flux /= self._math.reshape(
-                self.ops.get_baseline(
-                    self._inc,
-                    theta,
-                    self._veq,
-                    self._u,
-                    self._continuum * self._y,
-                ),
-                (self.nt, 1),
+                flux[:, self._continuum_idx], (self.nt, 1)
             )
 
         return flux
@@ -1283,9 +1206,13 @@ class DopplerMap:
                 shape as :py:meth:`flux`. If False (default), returns a vector
                 of length :py:attr:`nc`.
         """
-        theta = self._get_default_theta(theta)
-        baseline = self.ops.get_baseline(
-            self._inc, theta, self._veq, self._u, self._continuum * self._y
+        # Get the design matrix for the continuum normalization
+        C = self._math.reshape(
+            self.design_matrix(theta=theta, fix_spectrum=True),
+            [self.nt, self.nw, -1],
+        )[:, self._continuum_idx, :]
+        baseline = self._math.dot(
+            C, self._math.reshape(self._math.transpose(self._y), [-1])
         )
         if full:
             baseline = self._math.repeat(baseline, self.nw, axis=0)
@@ -1557,8 +1484,8 @@ class DopplerMap:
                     vmax = max(np.nanmax(img), vmax)
             norm = Normalize(vmin=vmin, vmax=vmax)
         if show_spectra:
-            smin = min(np.nanmin(self.spectrum), np.nanmin(self.continuum))
-            smax = max(np.nanmax(self.spectrum), np.nanmax(self.continuum))
+            smin = np.nanmin(self.spectrum)
+            smax = np.nanmax(self.spectrum)
             spad = 0.1 * (smax - smin)
 
         # Plot
@@ -1570,9 +1497,6 @@ class DopplerMap:
                 ax[i, n].set_aspect("auto")
                 i += 1
             if show_spectra:
-                ax[i, n].axhline(
-                    self.continuum[n], color="k", ls="--", lw=1, alpha=0.5
-                )
                 ax[i, n].plot(self.wav0, self.spectrum[n])
                 ax[i, n].set_ylim(smin - spad, smax + spad)
                 ax[i, n].set_xlim(self.wav0[0], self.wav0[-1])
@@ -1794,6 +1718,11 @@ class DopplerMap:
             # Get the design matrix conditioned on the current spectrum
             D = self.design_matrix(theta=theta, fix_spectrum=True)
 
+            # Get the design matrix for the continuum normalization
+            C = self._math.reshape(D, [self.nt, self.nw, -1])[
+                :, self._continuum_idx, :
+            ]
+
             # Reshape the priors
             mu = self._math.reshape(self._math.transpose(spatial_mean), (-1))
             if spatial_inv_cov.ndim == 2:
@@ -1878,21 +1807,15 @@ class DopplerMap:
                         )
 
                     # Solve the L2 problem for the Ylm coeffs
-                    y, cho_cov = self._linalg.solve(
+                    y_flat, cho_cov = self._linalg.solve(
                         D, flux * baseline, cho_C, mu, invL
                     )
                     y = self._math.transpose(
-                        self._math.reshape(y, (self.nc, self.Ny))
+                        self._math.reshape(y_flat, (self.nc, self.Ny))
                     )
 
                     # Refine the baseline estimate
-                    baseline = self.ops.get_baseline(
-                        self._inc,
-                        self._get_default_theta(theta),
-                        self._veq,
-                        self._u,
-                        self._continuum * y,
-                    )
+                    baseline = self._math.dot(C, y_flat)
                     baseline = self._math.repeat(baseline, self.nw, axis=0)
                     baseline = self._math.reshape(
                         baseline, (self.nt * self.nw,)
@@ -1908,13 +1831,7 @@ class DopplerMap:
                     # Compute the exact model w/ normalization
                     y_ = theano.shared(y)
                     y_flat_ = tt.reshape(tt.transpose(y_), (-1,))
-                    baseline_ = self.ops.get_baseline(
-                        self._inc,
-                        self._get_default_theta(theta),
-                        self._veq,
-                        self._u,
-                        self._continuum * y_,
-                    )
+                    baseline_ = self._math.dot(C, y_flat_)
                     b_ = tt.repeat(baseline_, self.nw, axis=0)
                     b_ = tt.reshape(b_, (self.nt * self.nw,))
                     model_ = tt.dot(D, y_flat_)
