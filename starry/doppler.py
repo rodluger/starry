@@ -678,6 +678,8 @@ class DopplerMap:
         """
         Set the spherical harmonic or limb darkening coefficient(s).
 
+        TODO: Lots of issues here! Needs unit tests for setting vectors.
+
         """
         if not is_tensor(val):
             val = np.array(val)
@@ -1530,8 +1532,10 @@ class DopplerMap:
         assert (
             nrows > 0
         ), "At least one of `show_images` or `show_spectra` must be True."
-        fig, ax = plt.subplots(nrows, nc, figsize=(4 * nc + 2, 2 * nrows))
-        ax = np.atleast_2d(ax)
+        fig, ax = plt.subplots(
+            nrows, nc, figsize=(4 * nc + 0.5 + 1.5 * (nc > 1), 2 * nrows)
+        )
+        ax = np.reshape(ax, (nrows, nc))
 
         # Figure out normalization
         if show_images:
@@ -1554,6 +1558,7 @@ class DopplerMap:
             if show_images:
                 self._map[:, :] = self._y[:, n]
                 self._map.show(ax=ax[i, n], projection=projection, norm=norm)
+                ax[i, n].set_aspect("auto")
                 i += 1
             if show_spectra:
                 ax[i, n].axhline(
@@ -1818,7 +1823,7 @@ class DopplerMap:
                 )
 
                 # Set the current map to the MAP
-                self[:, :, :] = y
+                self._y = y
 
                 # Return all the info
                 return dict(y=y, cho_cov=cho_cov, **meta)
@@ -1951,7 +1956,7 @@ class DopplerMap:
                     )
 
                 # Set the current map to the MAP
-                self[:, :, :] = y
+                self._y = y
 
                 # Return the factorized posterior covariance
                 return dict(y=y, cho_cov=cho_cov, **meta)
