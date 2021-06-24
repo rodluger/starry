@@ -9,7 +9,7 @@ import pytest
 def map(request):
     nc = request.param
     map = starry.DopplerMap(ydeg=10, nt=3, nc=nc, veq=50000)
-    map.load(images=["spot", "earth"][:nc])
+    map.load(maps=["spot", "earth"][:nc])
     yield map
 
 

@@ -306,7 +306,7 @@ class DopplerMap:
 
             # Compute the flux interpolation operator (wav <-- wav_int)
             # ``S`` interpolates the flux back onto the user-facing ``wav`` grid
-            # ``SBlock`` interpolates the design matrix onto the ``wav grid``
+            # ``SBlock`` interpolates the design matrix onto the ``wav``` grid
             S = self._get_spline_operator(wav_int, wav)
             S[np.abs(S) < interp_tol] = 0
             S = csr_matrix(S)
@@ -771,7 +771,7 @@ class DopplerMap:
     def load(
         self,
         *,
-        images=None,
+        maps=None,
         spectra=None,
         cube=None,
         smoothing=None,
@@ -780,7 +780,7 @@ class DopplerMap:
     ):
         """Load a spatial and/or spectral representation of a stellar surface.
 
-        Users may load spatial ``images`` and/or ``spectra``: one of each is
+        Users may load spatial ``maps`` and/or ``spectra``: one of each is
         required per map component (:py:attr:`nc`). Alternatively, users may
         provide a single data ``cube`` containing the full spectral-spatial
         representation of the surface. This cube should have shape
@@ -790,17 +790,17 @@ class DopplerMap:
         spectrum.
 
         This routine performs a simple spherical harmonic transform (SHT)
-        to compute the spherical harmonic expansion given images or a data
+        to compute the spherical harmonic expansion given maps or a data
         cube. If a data cube is provided, this routine performs singular
         value decomposition (SVD) to compute the :py:attr:`nc` component
         surface maps and spectra (the "eigen" components) that best approximate
         the input.
 
         Args:
-            images (str or ndarray, optional): A list or ``ndarray`` of
+            maps (str or ndarray, optional): A list or ``ndarray`` of
                 surface maps on a rectangular latitude-longitude grid. This
                 may also be a list of strings corresponding to the names of
-                PNG image files representing the surface images.
+                PNG image files representing the surface maps.
             spectra (ndarray, optional): A list or ``ndarray`` of vectors
                 containing the spectra corresponding to each map component.
             cube (ndarray, optional): A 3-dimensional ``ndarray`` of shape
@@ -817,43 +817,43 @@ class DopplerMap:
             eps (float, optional): Regularization strength for the spherical
                 harmonic transform. Default is ``1e-12``.
         """
-        if images is not None or spectra is not None:
+        if maps is not None or spectra is not None:
 
             # Input checks
             assert (
                 cube is None
-            ), "Cannot specify (`images` or `spectra`) and `cube` simultaneously."
+            ), "Cannot specify (`maps` or `spectra`) and `cube` simultaneously."
 
-            if images is not None:
+            if maps is not None:
 
                 # ------------------------------
-                # User is loading spatial images
+                # User is loading spatial maps
                 # ------------------------------
 
                 # Input checks
-                if type(images) is str:
+                if type(maps) is str:
                     assert self.nc == 1, "Must provide one map per component."
-                    images = [images]
-                elif type(images) in (tuple, list):
-                    images = list(images)
+                    maps = [maps]
+                elif type(maps) in (tuple, list):
+                    maps = list(maps)
                     assert (
-                        len(images) == self.nc
+                        len(maps) == self.nc
                     ), "Must provide one map per component."
-                elif type(images) is np.ndarray:
+                elif type(maps) is np.ndarray:
                     if self.nc == 1:
-                        if images.ndim == 2:
-                            images = np.array([images])
+                        if maps.ndim == 2:
+                            maps = np.array([maps])
                     assert (
-                        images.shape[0] == self.nc
+                        maps.shape[0] == self.nc
                     ), "Must provide one map per component."
                 else:
-                    raise TypeError("Invalid type for `images`.")
+                    raise TypeError("Invalid type for `maps`.")
 
                 # Process each map
                 Q = np.empty((self.Ny, 0))
                 y = np.zeros((self.Ny, self.nc))
                 y[:, 0] = 1.0 / self.nc
-                for n, image in enumerate(images):
+                for n, image in enumerate(maps):
 
                     # Is this a file name or an array?
                     if type(image) is str:
@@ -900,9 +900,7 @@ class DopplerMap:
 
                     else:
 
-                        raise TypeError(
-                            "Invalid type for one of the `images`."
-                        )
+                        raise TypeError("Invalid type for one of the `maps`.")
 
                     # Compute the SHT matrix if needed
                     nlat, nlon = image.shape
@@ -941,7 +939,7 @@ class DopplerMap:
                         spectra, self._S0Inv
                     )
                 else:
-                    self._spectrum = VT
+                    self._spectrum = spectra
 
         elif cube is not None:
 
@@ -1444,7 +1442,7 @@ class DopplerMap:
 
     def show_components(
         self,
-        show_images=True,
+        show_maps=True,
         show_spectra=True,
         file=None,
         projection="moll",
@@ -1453,15 +1451,15 @@ class DopplerMap:
         nmax=5,
     ):
         """
-        Show the individual component surface images and spectra.
+        Show the individual component surface maps and spectra.
 
         """
         # Show at most `nmax` components
         nc = min(nmax, self.nc)
-        nrows = int(show_images) + int(show_spectra)
+        nrows = int(show_maps) + int(show_spectra)
         assert (
             nrows > 0
-        ), "At least one of `show_images` or `show_spectra` must be True."
+        ), "At least one of `show_maps` or `show_spectra` must be True."
         fig, ax = plt.subplots(
             nrows, nc, figsize=(4 * nc + 0.5 + 1.5 * (nc > 1), 2 * nrows)
         )
@@ -1470,7 +1468,7 @@ class DopplerMap:
         # Figure out normalization
         find_vmin = vmin is None
         find_vmax = vmax is None
-        if show_images:
+        if show_maps:
             if find_vmin:
                 vmin = np.inf
             if find_vmax:
@@ -1491,7 +1489,7 @@ class DopplerMap:
         # Plot
         for n in range(nc):
             i = 0
-            if show_images:
+            if show_maps:
                 self._map[:, :] = self._y[:, n]
                 self._map.show(ax=ax[i, n], projection=projection, norm=norm)
                 ax[i, n].set_aspect("auto")
@@ -1512,7 +1510,7 @@ class DopplerMap:
                     tick.label.set_fontsize(8)
 
         # Colorbar
-        if show_images:
+        if show_maps:
             cbar = fig.colorbar(ax[0, 0].images[0], ax=ax[0].ravel().tolist())
             cbar.ax.tick_params(labelsize=10)
 
@@ -1887,7 +1885,38 @@ class DopplerMap:
                 # Return the factorized posterior covariance
                 return dict(y=y, cho_cov=cho_cov, **meta)
 
+        elif fix_map:
+
+            # TODO
+            raise NotImplementedError("Not yet implemented.")
+
         else:
+
+            # We need to solve for both the map and the spectrum
+
+            # TODO
+            raise NotImplementedError("Not yet implemented.")
+
+            dcf = 10.0  # ??
+
+            # Estimate `spectrum` from the deconvolved mean spectrum
+            fmean = self._math.mean(flux, axis=0)
+            fmean -= self._math.mean(fmean)
+            diagonals = np.tile(self.kT()[0].reshape(-1, 1), self.K)
+            offsets = np.arange(self.W)
+            A = diags(diagonals, offsets, (self.K, self.Kp), format="csr")
+            LInv = (
+                dcf ** 2
+                * self.ferr ** 2
+                / self.s_sig ** 2
+                * np.eye(A.shape[1])
+            )
+            s_guess = 1.0 + np.linalg.solve(
+                A.T.dot(A).toarray() + LInv, A.T.dot(fmean)
+            )
+
+            # Save this for later
+            self.s_deconv = s_guess
 
             # TODO
             raise NotImplementedError("Not yet implemented.")

@@ -1438,7 +1438,7 @@ class OpsDoppler(OpsYlm):
 
     @autocompile
     def enforce_bounds(self, tensor, lower, upper):
-        return tensor + CheckBoundsOp(lower, upper, "vsini")([tensor])[0]
+        return CheckBoundsOp(lower, upper, "vsini")([tensor])[0]
 
     @autocompile
     def get_x(self, vsini):

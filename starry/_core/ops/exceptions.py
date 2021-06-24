@@ -45,7 +45,7 @@ class CheckBoundsOp(Op):
             )
 
     def grad(self, inputs, gradients):
-        return [inputs[0] * 0.0]
+        return [1.0 * gradients[0]]
 
 
 class RaiseValueErrorIfOp(Op):
