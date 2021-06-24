@@ -114,7 +114,7 @@ class DopplerMap:
     # Constants
     _clight = 299792458.0  # m/s
     _default_vsini_max = 1e5  # m/s
-    _default_wav = np.linspace(642.5, 643.5, 200)  # FeI 6430
+    _default_wav = np.linspace(642.75, 643.25, 200)  # FeI 6430
 
     def _default_spectrum(self):
         """
@@ -124,7 +124,16 @@ class DopplerMap:
         wavelength of the first spectral component, and unity for all
         other components.
 
-        At 643nm, this corresponds to a line with FWHM ~ 10 km/s.
+        The std. dev. of the line is 0.0085 nm, corresponding to
+
+            FWHM = 2.355 * 0.0085 nm = 0.02 nm = 0.2 A
+
+        At 643nm, this corresponds to a line with
+
+            FWHM = (0.02 nm / 643 nm) * c = 10 km/s,
+
+        the value assumed for the FeI line in Vogt et al. (1987).
+
         """
         return self._math.concatenate(
             (
@@ -132,7 +141,7 @@ class DopplerMap:
                     1
                     - 0.5
                     * self._math.exp(
-                        -0.5 * (self._wav0_int - self._wavr) ** 2 / 0.02 ** 2
+                        -0.5 * (self._wav0_int - self._wavr) ** 2 / 0.0085 ** 2
                     ),
                     (1, self._nw0_int),
                 ),
@@ -246,12 +255,11 @@ class DopplerMap:
         # end of wav_int to prevent edge effects
         dlam = log_wav[1] - log_wav[0]
         betasini_max = vsini_max / self._clight
-        # TODO: There used to be a 0.5 multiplying `hw` below, but that
-        # seemed to cause the padding to be almost exactly half of what
-        # it should be. Verify that the current expression is correct.
         hw = np.array(
             np.ceil(
-                np.abs(np.log((1 + betasini_max) / (1 - betasini_max))) / dlam
+                0.5
+                * np.abs(np.log((1 + betasini_max) / (1 - betasini_max)))
+                / dlam
             ),
             dtype="int32",
         )
@@ -1542,9 +1550,9 @@ class DopplerMap:
         baseline_var=None,
         fix_spectrum=False,
         fix_map=False,
-        T0=None,
-        Tf=None,
-        nT=None,
+        logT0=None,
+        logTf=None,
+        nlogT=None,
         lr=None,
         niter=None,
         quiet=False,
@@ -1567,21 +1575,18 @@ class DopplerMap:
         if spatial_mean is None:
             spatial_mean = 0.0
         if spatial_cov is None and spatial_inv_cov is None:
-            spatial_cov = 1e-3 * np.ones(self.Ny)
+            spatial_cov = 1e-4 * np.ones(self.Ny)
             spatial_cov[0] = 1
         if baseline_var is None:
             baseline_var = 1e-2
-        if T0 is None:
-            T0 = 1e12
-        if Tf is None:
-            if self.nc == 1:
-                Tf = 1
-            else:
-                Tf = 1e4
-        if nT is None:
-            nT = 50
+        if logT0 is None:
+            logT0 = 12
+        if logTf is None:
+            logTf = 0
+        if nlogT is None:
+            nlogT = 50
         else:
-            nT = max(1, nT)
+            nlogT = max(1, nlogT)
         if lr is None:
             lr = 2e-5
         if niter is None:
@@ -1699,8 +1704,12 @@ class DopplerMap:
 
         # Cast scalars
         baseline_var = self._math.cast(baseline_var)
-        assert not is_tensor(T0), "Argument `T0` must be a numerical value."
-        assert not is_tensor(Tf), "Argument `Tf` must be a numerical value."
+        assert not is_tensor(
+            logT0
+        ), "Argument `logT0` must be a numerical value."
+        assert not is_tensor(
+            logTf
+        ), "Argument `logTf` must be a numerical value."
 
         # ----------------
         # ---- Solve! ----
@@ -1773,10 +1782,10 @@ class DopplerMap:
                 flux = self._math.reshape(flux, (-1,))
 
                 # Tempering to find the baseline
-                if nT == 1:
-                    T = [Tf]
+                if nlogT == 1:
+                    T = [10 ** logTf]
                 else:
-                    T = np.logspace(np.log10(T0), np.log10(Tf), nT)
+                    T = np.logspace(logT0, logTf, nlogT)
                 baseline = np.ones(self.nt * self.nw)
                 bias = baseline_var * self._math.ones((self.nw, self.nw))
                 for i in tqdm(range(len(T)), disable=quiet):
