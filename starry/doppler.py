@@ -315,6 +315,8 @@ class DopplerMap:
             # Compute the flux interpolation operator (wav <-- wav_int)
             # ``S`` interpolates the flux back onto the user-facing ``wav`` grid
             # ``SBlock`` interpolates the design matrix onto the ``wav``` grid
+            # ``SInv`` interpolates a user-provided flux onto the internal
+            # ``wav_`` grid
             S = self._get_spline_operator(wav_int, wav)
             S[np.abs(S) < interp_tol] = 0
             S = csr_matrix(S)
@@ -325,6 +327,10 @@ class DopplerMap:
             self._STrBlock = self._math.sparse_cast(
                 sparse_block_diag([S.T for n in range(nt)], format="csr")
             )
+            S = self._get_spline_operator(wav, wav_int)
+            S[np.abs(S) < interp_tol] = 0
+            S = csr_matrix(S)
+            self._SInv = self._math.sparse_cast(S)
 
             # Compute the spec interpolation operator (wav0 <-- wav0_int)
             # ``S0`` interpolates the user-provided spectrum onto the internal grid
@@ -1544,7 +1550,10 @@ class DopplerMap:
         spatial_cov=None,
         spatial_inv_cov=None,
         spectral_mean=None,
-        spectral_cov=None,
+        spectral_lambda=None,
+        spectral_maxiter=None,
+        spectral_eps=None,
+        spectral_tol=None,
         normalized=True,
         baseline=None,
         baseline_var=None,
@@ -1596,6 +1605,16 @@ class DopplerMap:
                 assert (
                     not self.lazy
                 ), "Non-linear solver not implemented in `lazy` mode."
+        if spectral_mean is None:
+            spectral_mean = 1.0
+        if spectral_lambda is None:
+            spectral_lambda = 1e6
+        if spectral_maxiter is None:
+            spectral_maxiter = 100
+        if spectral_eps is None:
+            spectral_eps = 1e-12
+        if spectral_tol is None:
+            spectral_tol = 1e-8
 
         # ----------------------
         # ---- Check shapes ----
@@ -1700,6 +1719,22 @@ class DopplerMap:
         if baseline is not None:
             baseline = self.ops.enforce_shape(
                 self._math.cast(baseline), np.array([self.nt])
+            )
+
+        # Spectral mean must be a scalar, a vector, or a matrix (nc, nw0)
+        spectral_mean = self._math.cast(spectral_mean)
+        if spectral_mean.ndim == 0:
+            spectral_mean = spectral_mean * self._math.ones(
+                (self.nc, self.nw0)
+            )
+        elif spectral_mean.ndim == 1:
+            spectral_mean = self._math.reshape(
+                self._math.enforce_shape(spectral_mean, np.array([self.nc])),
+                (self.nc, 1),
+            ) * self._math.ones((self.nc, self.nw0))
+        else:
+            spectral_mean = self._math.enforce_shape(
+                spectral_mean, np.array([self.nc, self.nw0])
             )
 
         # Cast scalars
@@ -1888,6 +1923,11 @@ class DopplerMap:
                     )
                     meta["y_lin"] = y_lin
 
+                elif (niter > 0) and (self.lazy is True):
+
+                    # TODO!!!
+                    raise NotImplementedError("TODO!")
+
                 # Set the current map to the MAP
                 self._y = y
 
@@ -1903,29 +1943,25 @@ class DopplerMap:
 
             # We need to solve for both the map and the spectrum
 
-            # TODO
-            raise NotImplementedError("Not yet implemented.")
-
-            dcf = 10.0  # ??
-
-            # Estimate `spectrum` from the deconvolved mean spectrum
-            fmean = self._math.mean(flux, axis=0)
-            fmean -= self._math.mean(fmean)
-            diagonals = np.tile(self.kT()[0].reshape(-1, 1), self.K)
-            offsets = np.arange(self.W)
-            A = diags(diagonals, offsets, (self.K, self.Kp), format="csr")
-            LInv = (
-                dcf ** 2
-                * self.ferr ** 2
-                / self.s_sig ** 2
-                * np.eye(A.shape[1])
+            # First, deconvolve the flux to obtain a guess for the 1st spectrum
+            # We'll set the remaining components to unity
+            A = self.ops.get_kT0_matrix(self._veq, self._inc)
+            y = self._math.dot(self._SInv, self._math.mean(flux, axis=0))
+            mu = self._math.dot(self._SInv, spectral_mean)
+            y -= self._math.dot(A, mu)
+            spectrum = mu + self.ops.L1(
+                A,
+                y,
+                spectral_lambda,
+                flux_err,
+                spectral_maxiter,
+                spectral_eps,
+                spectral_tol,
             )
-            s_guess = 1.0 + np.linalg.solve(
-                A.T.dot(A).toarray() + LInv, A.T.dot(fmean)
+            self._spectrum = self._math.concatenate(
+                [spectrum]
+                + [self._math.ones(self.nw0_) for n in range(self.nc - 1)]
             )
-
-            # Save this for later
-            self.s_deconv = s_guess
 
             # TODO
             raise NotImplementedError("Not yet implemented.")

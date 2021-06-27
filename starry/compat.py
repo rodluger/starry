@@ -9,6 +9,11 @@ from aesara_theano_fallback.tensor import slinalg
 from aesara_theano_fallback.graph import basic, op, params_type, fg
 from inspect import getmro
 
+if USE_AESARA:
+    from aesara.scan.utils import until as scan_until
+else:
+    from theano.scan_module.scan_utils import until as scan_until
+
 __all__ = [
     "theano",
     "tt",
@@ -24,6 +29,7 @@ __all__ = [
     "change_flags",
     "floatX",
     "evaluator",
+    "scan_until",
     "USE_AESARA",
 ]
 

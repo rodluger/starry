@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from .. import config
-from ..compat import theano, tt, ts, ifelse
+from ..compat import theano, tt, ts, ifelse, scan_until
 from .._constants import *
 from .ops import (
     sTOp,
@@ -22,6 +22,7 @@ from .ops import (
 )
 from .utils import logger, autocompile, is_tensor, clear_cache
 from .math import lazy_math as math
+from .math import lazy_linalg as linalg
 from scipy.special import legendre as LegendreP
 from scipy.sparse import eye as sparse_eye
 import numpy as np
@@ -1496,6 +1497,30 @@ class OpsDoppler(OpsYlm):
         return kT0 / tt.sum(kT0[0])
 
     @autocompile
+    def get_kT0_matrix(self, veq, inc):
+        """
+        Convolution matrix for pure line broadening.
+
+        """
+        # Get the kernel
+        vsini = self.enforce_bounds(veq * tt.sin(inc), 0.0, self.vsini_max)
+        x = self.get_x(vsini)
+        rT = self.get_rT(x)
+        kT0 = self.get_kT0(rT)[0]
+
+        # Create the Toeplitz matrix
+        indptr = self.nk * np.arange(self.nw + 1, dtype="int32")
+        i0 = np.arange(self.nk).reshape(-1, 1)
+        i2 = np.arange(self.nw).reshape(1, -1)
+        indices = np.transpose(i0 + i2).reshape(-1)
+        shape = np.array([self.nw, self.nwp])
+        data = tt.tile(tt.reshape(kT0, (-1,)), self.nw)
+        A = ts.basic.CSR(data, indices, indptr, shape)
+
+        # Return a dense version
+        return ts.DenseFromSparse()(A)
+
+    @autocompile
     def get_kT(self, inc, theta, veq, u):
         """
         Get the kernels at an array of angular phases `theta`.
@@ -1811,6 +1836,44 @@ class OpsDoppler(OpsYlm):
         D = self.get_D_fixed_spectrum(inc, theta, veq, u, spectrum)
         flux = tt.dot(D, tt.reshape(tt.transpose(y), (-1,)))
         return tt.reshape(flux, (self.nt, self.nw))
+
+    @autocompile
+    def L1(self, A, y, lam, sigma, maxiter, eps, tol):
+        """
+        L1 regularized least squares via iterated ridge (L2) regression.
+        See Section 2.5 of
+
+            https://www.cs.ubc.ca/~schmidtm/Documents/2005_Notes_Lasso.pdf
+
+        The basic idea is to iteratively zero out the prior on the weights
+        until convergence.
+
+        TODO: Use `non_sequences`.
+
+        """
+        # Pre-compute some stuff
+        cho_factor = math.cholesky
+        cho_solve = linalg.cho_solve
+        AT = tt.transpose(A)
+        CInv = tt.dot(AT, A) / sigma ** 2
+        term = tt.dot(AT, y) / sigma ** 2
+        didx = (tt.arange(tt.shape(CInv)[0]), tt.arange(tt.shape(CInv)[0]))
+        w = tt.ones_like(A[0])
+
+        def step(w_prev):
+            absw = tt.abs_(w_prev)
+            absw = tt.switch(
+                tt.gt(absw, lam * eps), absw, lam * eps * tt.ones_like(absw)
+            )
+            KInv = tt.as_tensor_variable(CInv)
+            KInv = tt.inc_subtensor(KInv[didx], lam / absw)
+            choK = cho_factor(KInv)
+            w_new = cho_solve(choK, term)
+            chisq = tt.sum((w_prev - w_new) ** 2)
+            return w_new, scan_until(chisq < tol)
+
+        w, _ = theano.scan(step, outputs_info=w, n_steps=maxiter)
+        return w[-1]
 
 
 class OpsSystem(object):
