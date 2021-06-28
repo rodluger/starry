@@ -62,7 +62,6 @@ class Solve:
         self.y = None
 
         # Design matrices
-        self._M = None
         self._S = None
         self._C = None
         self._KT0 = None
@@ -79,17 +78,6 @@ class Solve:
         if self._KT0 is None:
             self._KT0 = self._get_KT0()
         return self._KT0
-
-    @property
-    def M(self):
-        """
-        Design matrix conditioned on the current map.
-
-        """
-        if self._M is None:
-            # TODO
-            raise NotImplementedError("TODO!")
-        return self._M
 
     @property
     def S(self):
@@ -359,7 +347,9 @@ class Solve:
         y = np.transpose(np.reshape(mean, (self.nc, self.Ny)))
         self.meta["y_lin"] = y
 
-        return y, cho_ycov
+        # Store
+        self.y = y
+        self.cho_ycov = cho_ycov
 
     def solve_for_map_tempered(self):
         """
@@ -416,7 +406,9 @@ class Solve:
 
         self.meta["y_temp"] = y
 
-        return y, cho_ycov
+        # Store
+        self.y = y
+        self.cho_ycov = cho_ycov
 
     def solve_for_map_nadam(self):
         """
@@ -501,7 +493,9 @@ class Solve:
         y_lin = np.transpose(np.reshape(y, (self.nc, self.Ny)))
         self.meta["y_lin"] = y_lin
 
-        return y, cho_ycov
+        # Store
+        self.y = y
+        self.cho_ycov = cho_ycov
 
     def solve(self, flux, y, spectrum_, **kwargs):
         """
@@ -519,33 +513,27 @@ class Solve:
         # Parse the inputs
         self.process_inputs(flux, **kwargs)
         self.y = y
+        self.cho_ycov = None
         self.spectrum_ = spectrum_
-        self.meta["y"] = y
-        self.meta["cho_ycov"] = None
-        self.meta["spectrum_"] = spectrum_
 
         if self.fix_spectrum:
 
-            # The spectrum is fixed. We are solving the for spatial map.
+            # The spectrum is fixed. We are solving for the spatial map.
 
             if (not self.normalized) or (self.baseline is not None):
 
                 # The problem is exactly linear!
-                y, cho_ycov = self.solve_for_map_linear()
+                self.solve_for_map_linear()
 
             else:
 
                 # The problem is linear conditioned on a baseline
                 # guess, which we refine iteratively
-                y, cho_ycov = self.solve_for_map_tempered()
+                self.solve_for_map_tempered()
 
                 # Refine the solution with gradient descent
                 if self.niter > 0:
-                    y, cho_ycov = self.solve_for_map_nadam(y)
-
-            # Store the results
-            self.meta["y"] = y
-            self.meta["cho_ycov"] = cho_ycov
+                    self.solve_for_map_nadam()
 
         elif self.fix_map:
 
@@ -564,7 +552,7 @@ class Solve:
             f = self.Se2i.dot(np.mean(self.flux, axis=0))
             mu = self.S0e2i.dot(self.spectral_mean.T)
             f -= np.mean(np.dot(self.KT0, mu), axis=1)
-            spectrum = mu.T + self.L1(
+            self.spectrum_ = mu.T + self.L1(
                 self.KT0,
                 f,
                 np.array(self.spectral_lambda),
@@ -577,4 +565,8 @@ class Solve:
             # TODO
             raise NotImplementedError("Not yet implemented.")
 
+        # Update the metadata with the results and return everything
+        self.meta["y"] = self.y
+        self.meta["cho_ycov"] = self.cho_ycov
+        self.meta["spectrum_"] = self.spectrum_
         return self.meta
