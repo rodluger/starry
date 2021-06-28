@@ -23,7 +23,7 @@ class Solve:
         self.nw0 = map.nw0
         self.nw0_ = map.nw0_
         self.nc = map.nc
-        self._continuum_idx = map._continuum_idx
+        self.continuum_idx = map._continuum_idx
 
         # Methods and matrices
         if map.lazy:
@@ -43,6 +43,9 @@ class Solve:
                 return map.design_matrix(theta=self.theta, fix_spectrum=True)
 
             self._get_S = _get_S
+
+            #
+            self.dotMT = lambda x: map.dot(x, fix_map=True, transpose=True)
 
             # Line broadening matrix
             self._get_KT0 = lambda: map.ops.get_kT0_matrix(map._veq, map._inc)
@@ -97,7 +100,7 @@ class Solve:
         """
         if self._C is None:
             self._C = np.reshape(self.S, [self.nt, self.nw, -1])[
-                :, self._continuum_idx, :
+                :, self.continuum_idx, :
             ]
         return self._C
 
@@ -110,6 +113,8 @@ class Solve:
         spatial_cov=None,
         spatial_inv_cov=None,
         spectral_mean=None,
+        spectral_cov=None,
+        spectral_inv_cov=None,
         spectral_lambda=None,
         spectral_maxiter=None,
         spectral_eps=None,
@@ -153,6 +158,8 @@ class Solve:
             niter = 0
         if spectral_mean is None:
             spectral_mean = 1.0
+        if spectral_cov is None and spectral_inv_cov is None:
+            spectral_cov = 1e-4
         if spectral_lambda is None:
             spectral_lambda = 1e6
         if spectral_maxiter is None:
@@ -285,6 +292,61 @@ class Solve:
             ), "Invalid shape for `spectral_mean`."
             self.spectral_mean = spectral_mean
 
+        # Spectral (inv) cov may be a scalar, a vector, a matrix (nw0, nw0),
+        # or a list of those. Invert it if needed and reshape to a matrix of
+        # shape (nc, nw0) (inverse variances) or a tensor of shape
+        # (nc, nw0, nw0) (nc separate inverse covariance matrices)
+        if spectral_cov is not None:
+
+            # User provided the *covariance*
+
+            if type(spectral_cov) not in (list, tuple):
+                # Use the same covariance for all components
+                spectral_cov = [spectral_cov for n in range(self.nc)]
+            else:
+                # Check that we have one covariance per component
+                assert len(spectral_cov) == self.nc
+            spectral_inv_cov = [None for n in range(self.nc)]
+
+            for n in range(self.nc):
+                spectral_cov[n] = np.array(spectral_cov[n])
+                assert spectral_cov[n].ndim == spectral_cov[0].ndim
+                if spectral_cov[n].ndim < 2:
+                    spectral_inv_cov[n] = np.reshape(
+                        np.ones(self.nw0) / spectral_cov[n], (1, -1)
+                    )
+                else:
+                    cho = cho_factor(spectral_cov[n])
+                    inv = cho_solve(cho, np.eye(self.nw0))
+                    spectral_inv_cov[n] = np.reshape(
+                        inv, (1, self.nw0, self.nw0)
+                    )
+        else:
+
+            # User provided the *inverse covariance*
+
+            if type(spectral_inv_cov) not in (list, tuple):
+                # Use the same covariance for all components
+                spectral_inv_cov = [spectral_inv_cov for n in range(self.nc)]
+            else:
+                # Check that we have one covariance per component
+                assert len(spectral_inv_cov) == self.nc
+
+            for n in range(self.nc):
+                spectral_inv_cov[n] = np.cast(spectral_inv_cov[n])
+                assert spectral_inv_cov[n].ndim == spectral_inv_cov[0].ndim
+                if spectral_inv_cov[n].ndim < 2:
+                    spectral_inv_cov[n] = np.reshape(
+                        np.ones(self.nw0) * spectral_inv_cov[n], (1, -1)
+                    )
+                else:
+                    spectral_inv_cov[n] = np.reshape(
+                        spectral_inv_cov[n], (1, self.nw0, self.nw0)
+                    )
+
+        # Tensor of nc inverse variance vectors or covariance matrices
+        self.spectral_inv_cov = np.concatenate(spectral_inv_cov, axis=0)
+
         # Tempering schedule
         if nlogT == 1:
             self.T = np.array([10 ** logTf])
@@ -330,7 +392,16 @@ class Solve:
 
             # De-normalize the data w/ the given baseline
             flux = self.flux * np.reshape(self.baseline, (self.nt, 1))
-            flux_err *= np.reshape(self.baseline, (self.nt, 1))
+            if self.flux_err.ndim == 0:
+                flux_err = (
+                    self.flux_err
+                    * np.ones((1, self.nw))
+                    * np.reshape(self.baseline, (self.nt, 1))
+                )
+            else:
+                flux_err = self.flux_err * np.reshape(
+                    self.baseline, (self.nt, 1)
+                )
             cho_C = np.reshape(flux_err, (-1,))
 
         else:
@@ -497,6 +568,66 @@ class Solve:
         self.y = y
         self.cho_ycov = cho_ycov
 
+    def solve_for_spectrum(self):
+        """
+        Solve for `spectrum_` conditioned on the current map.
+
+        """
+        # Unroll the data into a vector
+        if self.normalized:
+
+            # Un-normalize the data with the current baseline
+            baseline = np.dot(self.C, self.y.T.reshape(-1))
+            baseline = np.reshape(baseline, (self.nt, 1))
+            flux = self.flux * baseline
+            if self.flux_err.ndim == 0:
+                flux_err = self.flux_err * np.ones((1, self.nw)) * baseline
+            else:
+                flux_err = self.flux_err * baseline
+            CInv = np.diag(1.0 / flux_err.reshape(self.nt * self.nw) ** 2)
+
+        else:
+
+            flux = self.flux
+            if self.flux_err.ndim == 0:
+                CInv = (1.0 / self.flux_err ** 2) * np.eye(self.nt * self.nw)
+            else:
+                CInv = np.diag(
+                    1.0 / self.flux_err.reshape(self.nt * self.nw) ** 2
+                )
+
+        # Unroll the data into a vector
+        flux = np.reshape(flux, (-1,))
+
+        # Reshape the priors and interpolate them onto the internal grid
+        mu = self.S0e2i.dot(self.spectral_mean.T).T.reshape(-1)
+        if self.spectral_inv_cov.ndim == 2:
+            invL = self.S0e2i.dot(self.spectral_inv_cov.T).T.reshape(-1)
+            invLmu = invL * mu
+        else:
+            invL = block_diag(
+                *[self.S0e2i.dot(inv) for inv in self.spectral_inv_cov]
+            )
+            invLmu = np.dot(invL, mu)
+
+        # Compute M^T C^-1 M
+        # TODO: We can probably do this with a single convolution...
+        KInv = self.dotMT(np.transpose(self.dotMT(CInv)))
+        if invL.ndim == 1:
+            KInv[np.diag_indices_from(KInv)] += invL
+        else:
+            KInv += invL
+
+        # Solve the L2 problem
+        choK = cho_factor(KInv)
+        spectrum_ = cho_solve(
+            choK, self.dotMT(np.dot(CInv, flux)).reshape(-1) + invLmu
+        )
+
+        # Store
+        self.spectrum_ = np.reshape(spectrum_, (self.nc, self.nw0_))
+        self.cho_scov = choK
+
     def solve(self, flux, y, spectrum_, **kwargs):
         """
         Solve the linear problem for the spatial and/or spectral map
@@ -515,6 +646,7 @@ class Solve:
         self.y = y
         self.cho_ycov = None
         self.spectrum_ = spectrum_
+        self.cho_scov = None
 
         if self.fix_spectrum:
 
@@ -537,8 +669,8 @@ class Solve:
 
         elif self.fix_map:
 
-            # TODO
-            raise NotImplementedError("Not yet implemented.")
+            # The problem is exactly linear!
+            self.solve_for_spectrum()
 
         else:
 
@@ -550,6 +682,7 @@ class Solve:
             # a rough guess for all components. This is by no means optimal
             # when nc > 1, but it's a decent starting guess.
             f = self.Se2i.dot(np.mean(self.flux, axis=0))
+            f /= f[self.continuum_idx]
             mu = self.S0e2i.dot(self.spectral_mean.T)
             f -= np.mean(np.dot(self.KT0, mu), axis=1)
             self.spectrum_ = mu.T + self.L1(
@@ -569,4 +702,5 @@ class Solve:
         self.meta["y"] = self.y
         self.meta["cho_ycov"] = self.cho_ycov
         self.meta["spectrum_"] = self.spectrum_
+        self.meta["cho_scov"] = self.cho_scov
         return self.meta

@@ -1575,14 +1575,14 @@ class DopplerMap:
             get_val = evaluator(**kwargs)
             flux = get_val(flux)
             spectrum_ = get_val(self.spectrum_)
-            y = get_val(self.y)
+            y = get_val(self._y)
             for key in kwargs.keys():
                 if key not in ["point", "model"]:
                     kwargs[key] = get_val(kwargs[key])
 
         else:
 
-            y = self.y
+            y = self._y
             spectrum_ = self.spectrum_
 
         # Run the solver
