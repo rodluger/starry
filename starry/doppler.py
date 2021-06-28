@@ -2,12 +2,12 @@
 from . import config
 from ._constants import *
 from ._core import OpsDoppler, math
-from ._core.math import nadam
 from ._core.utils import is_tensor, CompileLogMessage
 from ._indices import integers, get_ylm_inds, get_ylmw_inds, get_ul_inds
 from .compat import evaluator, theano, tt
 from .maps import YlmBase, MapBase, Map
 from .doppler_visualize import Visualize
+from .doppler_solve import Solve
 import numpy as np
 from scipy.ndimage import zoom
 from scipy.interpolate import InterpolatedUnivariateSpline as Spline
@@ -17,7 +17,7 @@ from warnings import warn
 import os
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
-from tqdm.auto import tqdm
+from astropy import units
 
 
 class DopplerMap:
@@ -312,37 +312,37 @@ class DopplerMap:
         self._interp_tol = interp_tol
         if self._interp:
 
-            # Compute the flux interpolation operator (wav <-- wav_int)
-            # ``S`` interpolates the flux back onto the user-facing ``wav`` grid
-            # ``SBlock`` interpolates the design matrix onto the ``wav``` grid
-            # ``SInv`` interpolates a user-provided flux onto the internal
-            # ``wav_`` grid
+            # Interpolate from `wav_` to `wav`
+            # These are used to interpolate the model and the design
+            # matrix from the internal (i) onto the external (e) grid
             S = self._get_spline_operator(wav_int, wav)
             S[np.abs(S) < interp_tol] = 0
             S = csr_matrix(S)
-            self._S = self._math.sparse_cast(S.T)
-            self._SBlock = self._math.sparse_cast(
+            self._Si2eTr = self._math.sparse_cast(S.T)
+            self._Si2eBlk = self._math.sparse_cast(
                 sparse_block_diag([S for n in range(nt)], format="csr")
             )
-            self._STrBlock = self._math.sparse_cast(
+            self._Si2eTrBlk = self._math.sparse_cast(
                 sparse_block_diag([S.T for n in range(nt)], format="csr")
             )
-            S = self._get_spline_operator(wav, wav_int)
-            S[np.abs(S) < interp_tol] = 0
-            S = csr_matrix(S)
-            self._SInv = self._math.sparse_cast(S)
 
-            # Compute the spec interpolation operator (wav0 <-- wav0_int)
-            # ``S0`` interpolates the user-provided spectrum onto the internal grid
-            # ``S0Inv`` performs the inverse operation
+            # Interpolate from `wav0_` to `wav0`
             S = self._get_spline_operator(wav0_int, wav0)
             S[np.abs(S) < interp_tol] = 0
             S = csr_matrix(S)
-            self._S0 = self._math.sparse_cast(S.T)
+            self._S0i2e = self._math.sparse_cast(S)
+
+            # Interpolate from `wav` to `wav_`
+            S = self._get_spline_operator(wav, wav_int)
+            S[np.abs(S) < interp_tol] = 0
+            S = csr_matrix(S)
+            self._Se2i = self._math.sparse_cast(S)
+
+            # Interpolate from `wav0` to `wav0_`
             S = self._get_spline_operator(wav0, wav0_int)
             S[np.abs(S) < interp_tol] = 0
             S = csr_matrix(S)
-            self._S0Inv = self._math.sparse_cast(S.T)
+            self._S0e2i = self._math.sparse_cast(S)
 
         else:
 
@@ -375,6 +375,9 @@ class DopplerMap:
         config.quiet = True
         self._map = Map(ydeg=self.ydeg, udeg=self.udeg, lazy=self.lazy)
         config.quiet = _quiet
+
+        # Linear solver
+        self._solver = Solve(self)
 
         # Initialize
         self.reset(**kwargs)
@@ -597,7 +600,9 @@ class DopplerMap:
         """
         # Interpolate to the ``wav0`` grid
         if self._interp:
-            return self._math.sparse_dot(self._spectrum, self._S0)
+            return self._math.sparse_dot(
+                self._spectrum, self._math.transpose(self._S0i2e)
+            )
         else:
             return self._spectrum
 
@@ -785,7 +790,9 @@ class DopplerMap:
     def load(
         self,
         *,
+        map=None,
         maps=None,
+        spectrum=None,
         spectra=None,
         cube=None,
         smoothing=None,
@@ -811,12 +818,14 @@ class DopplerMap:
         the input.
 
         Args:
-            maps (str or ndarray, optional): A list or ``ndarray`` of
+            map (str or ndarray, optional): A list or ``ndarray`` of
                 surface maps on a rectangular latitude-longitude grid. This
                 may also be a list of strings corresponding to the names of
                 PNG image files representing the surface maps.
-            spectra (ndarray, optional): A list or ``ndarray`` of vectors
+            maps (str or ndarray, optional): Alias for ``map``.
+            spectrum (ndarray, optional): A list or ``ndarray`` of vectors
                 containing the spectra corresponding to each map component.
+            spectra (ndarray, optional): Aliass for ``spectrum``.
             cube (ndarray, optional): A 3-dimensional ``ndarray`` of shape
                 (``nlat``, ``nlon``, :py:attr:`nw0`) containing the spectra
                 at each position on a latitude-longitude grid spanning the
@@ -831,6 +840,12 @@ class DopplerMap:
             eps (float, optional): Regularization strength for the spherical
                 harmonic transform. Default is ``1e-12``.
         """
+        # Aliases
+        if maps is None:
+            maps = map
+        if spectra is None:
+            spectra = spectrum
+
         if maps is not None or spectra is not None:
 
             # Input checks
@@ -950,7 +965,7 @@ class DopplerMap:
                 # Interpolate from the ``wav0`` grid to internal, padded grid
                 if self._interp:
                     self._spectrum = self._math.sparse_dot(
-                        spectra, self._S0Inv
+                        spectra, self._math.transpose(self._S0e2i)
                     )
                 else:
                     self._spectrum = spectra
@@ -984,7 +999,9 @@ class DopplerMap:
 
             # Interpolate from the ``wav0`` grid to internal, padded grid
             if self._interp:
-                self._spectrum = self._math.sparse_dot(VT, self._S0Inv)
+                self._spectrum = self._math.sparse_dot(
+                    VT, self._math.transpose(self._S0e2i)
+                )
             else:
                 self._spectrum = VT
 
@@ -1135,7 +1152,7 @@ class DopplerMap:
 
         # Interpolate to the output grid
         if self._interp:
-            D = self._math.sparse_dot(self._SBlock, D)
+            D = self._math.sparse_dot(self._Si2eBlk, D)
 
         return D
 
@@ -1195,7 +1212,7 @@ class DopplerMap:
 
         # Interpolate to the output grid
         if self._interp:
-            flux = self._math.sparse_dot(flux, self._S)
+            flux = self._math.sparse_dot(flux, self._Si2eTr)
 
         # Remove the baseline?
         if normalize:
@@ -1314,7 +1331,7 @@ class DopplerMap:
 
             # Interpolate from `wav` to `wav_` at each epoch
             if self._interp:
-                x = self._math.sparse_dot(self._STrBlock, x)
+                x = self._math.sparse_dot(self._Si2eTrBlk, x)
 
             if fix_spectrum:
 
@@ -1360,7 +1377,7 @@ class DopplerMap:
 
             # Interpolate from `wav_` to `wav` at each epoch
             if self._interp:
-                product = self._math.sparse_dot(self._SBlock, product)
+                product = self._math.sparse_dot(self._Si2eBlk, product)
 
         return product
 
@@ -1541,31 +1558,7 @@ class DopplerMap:
             fig.savefig(file, bbox_inches="tight")
             fig.close()
 
-    def solve(
-        self,
-        flux,
-        flux_err=None,
-        theta=None,
-        spatial_mean=None,
-        spatial_cov=None,
-        spatial_inv_cov=None,
-        spectral_mean=None,
-        spectral_lambda=None,
-        spectral_maxiter=None,
-        spectral_eps=None,
-        spectral_tol=None,
-        normalized=True,
-        baseline=None,
-        baseline_var=None,
-        fix_spectrum=False,
-        fix_map=False,
-        logT0=None,
-        logTf=None,
-        nlogT=None,
-        lr=None,
-        niter=None,
-        quiet=False,
-    ):
+    def solve(self, flux, **kwargs):
         """
         Solve the linear problem for the spatial and/or spectral map
         given a spectral timeseries.
@@ -1575,393 +1568,23 @@ class DopplerMap:
             This method is still being developed!
 
         """
-        # --------------------------
-        # ---- Process defaults ----
-        # --------------------------
+        if self.lazy:
 
-        if flux_err is None:
-            flux_err = 1e-6
-        if spatial_mean is None:
-            spatial_mean = 0.0
-        if spatial_cov is None and spatial_inv_cov is None:
-            spatial_cov = 1e-4 * np.ones(self.Ny)
-            spatial_cov[0] = 1
-        if baseline_var is None:
-            baseline_var = 1e-2
-        if logT0 is None:
-            logT0 = 12
-        if logTf is None:
-            logTf = 0
-        if nlogT is None:
-            nlogT = 50
-        else:
-            nlogT = max(1, nlogT)
-        if lr is None:
-            lr = 2e-5
-        if niter is None:
-            niter = 0
-        else:
-            if niter != 0:
-                assert (
-                    not self.lazy
-                ), "Non-linear solver not implemented in `lazy` mode."
-        if spectral_mean is None:
-            spectral_mean = 1.0
-        if spectral_lambda is None:
-            spectral_lambda = 1e6
-        if spectral_maxiter is None:
-            spectral_maxiter = 100
-        if spectral_eps is None:
-            spectral_eps = 1e-12
-        if spectral_tol is None:
-            spectral_tol = 1e-8
+            # We need to ensure all the inputs are
+            # numerical quantities.
+            get_val = evaluator(**kwargs)
+            flux = get_val(flux)
+            for key in kwargs.keys():
+                if key not in ["point", "model"]:
+                    kwargs[key] = get_val(kwargs[key])
 
-        # ----------------------
-        # ---- Check shapes ----
-        # ----------------------
+        # Run the solver
+        soln = self._solver.solve(flux=flux, **kwargs)
 
-        # Flux must be a matrix (nt, nw)
-        if self.nt == 1:
-            flux = self._math.reshape(
-                self._math.cast(flux), (self.nt, self.nw)
-            )
-        else:
-            flux = self.ops.enforce_shape(
-                self._math.cast(flux), np.array([self.nt, self.nw])
-            )
+        # Set map props
+        if not kwargs.get("fix_map", False):
+            self._y = soln["y"]
+        if not kwargs.get("fix_spectrum", False):
+            self._spectrum = soln["spectrum"]
 
-        # Flux error may be a scalar or a matrix (nt, nw)
-        flux_err = self._math.cast(flux_err)
-        if flux_err.ndim == 0:
-            flux_err_is_scalar = True
-            flux_err = flux_err * self._math.ones((self.nt, self.nw))
-        else:
-            flux_err_is_scalar = False
-            if self.nt == 1:
-                flux_err = self._math.reshape(flux_err, (self.nt, self.nw))
-            else:
-                flux_err = self.ops.enforce_shape(
-                    flux_err, np.array([self.nt, self.nw])
-                )
-
-        # Spatial mean may be a scalar, a vector (Ny), or a list of those
-        # Reshape it to a matrix of shape (Ny, nc)
-        if type(spatial_mean) not in (list, tuple):
-            # Use the same mean for all components
-            spatial_mean = [spatial_mean for n in range(self.nc)]
-        else:
-            # Check that we have one mean per component
-            assert len(spatial_mean) == self.nc
-        for n in range(self.nc):
-            spatial_mean[n] = self._math.cast(spatial_mean[n])
-            assert spatial_mean[n].ndim < 2
-            spatial_mean[n] = self._math.reshape(
-                spatial_mean[n] * self._math.ones(self.Ny), (-1, 1)
-            )
-        spatial_mean = self._math.concatenate(spatial_mean, axis=-1)
-
-        # Spatial (inv) cov may be a scalar, a vector, a matrix (Ny, Ny),
-        # or a list of those. Invert it if needed and reshape to a matrix of
-        # shape (Ny, nc) (inverse variances) or a tensor of shape
-        # (Ny, Ny, nc) (nc separate inverse covariance matrices)
-        if spatial_cov is not None:
-
-            # User provided the *covariance*
-
-            if type(spatial_cov) not in (list, tuple):
-                # Use the same covariance for all components
-                spatial_cov = [spatial_cov for n in range(self.nc)]
-            else:
-                # Check that we have one covariance per component
-                assert len(spatial_cov) == self.nc
-            spatial_inv_cov = [None for n in range(self.nc)]
-
-            for n in range(self.nc):
-                spatial_cov[n] = self._math.cast(spatial_cov[n])
-                assert spatial_cov[n].ndim == spatial_cov[0].ndim
-                if spatial_cov[n].ndim < 2:
-                    spatial_inv_cov[n] = self._math.reshape(
-                        self._math.ones(self.Ny) / spatial_cov[n], (-1, 1)
-                    )
-                else:
-                    cho = self._math.cholesky(spatial_cov[n])
-                    inv = self._linalg.cho_solve(cho, self._math.eye(self.Ny))
-                    spatial_inv_cov[n] = self._math.reshape(
-                        inv, (self.Ny, self.Ny, 1)
-                    )
-        else:
-
-            # User provided the *inverse covariance*
-
-            if type(spatial_inv_cov) not in (list, tuple):
-                # Use the same covariance for all components
-                spatial_inv_cov = [spatial_inv_cov for n in range(self.nc)]
-            else:
-                # Check that we have one covariance per component
-                assert len(spatial_inv_cov) == self.nc
-
-            for n in range(self.nc):
-                spatial_inv_cov[n] = self._math.cast(spatial_inv_cov[n])
-                assert spatial_inv_cov[n].ndim == spatial_inv_cov[0].ndim
-                if spatial_inv_cov[n].ndim < 2:
-                    spatial_inv_cov[n] = self._math.reshape(
-                        self._math.ones(self.Ny) * spatial_inv_cov[n], (-1, 1)
-                    )
-                else:
-                    spatial_inv_cov[n] = self._math.reshape(
-                        spatial_inv_cov[n], (self.Ny, self.Ny, 1)
-                    )
-
-        # Tensor of nc inverse variance vectors or covariance matrices
-        spatial_inv_cov = self._math.concatenate(spatial_inv_cov, axis=-1)
-
-        # Baseline must be a vector (nt,)
-        if baseline is not None:
-            baseline = self.ops.enforce_shape(
-                self._math.cast(baseline), np.array([self.nt])
-            )
-
-        # Spectral mean must be a scalar, a vector, or a matrix (nc, nw0)
-        spectral_mean = self._math.cast(spectral_mean)
-        if spectral_mean.ndim == 0:
-            spectral_mean = spectral_mean * self._math.ones(
-                (self.nc, self.nw0)
-            )
-        elif spectral_mean.ndim == 1:
-            spectral_mean = self._math.reshape(
-                self._math.enforce_shape(spectral_mean, np.array([self.nc])),
-                (self.nc, 1),
-            ) * self._math.ones((self.nc, self.nw0))
-        else:
-            spectral_mean = self._math.enforce_shape(
-                spectral_mean, np.array([self.nc, self.nw0])
-            )
-
-        # Cast scalars
-        baseline_var = self._math.cast(baseline_var)
-        assert not is_tensor(
-            logT0
-        ), "Argument `logT0` must be a numerical value."
-        assert not is_tensor(
-            logTf
-        ), "Argument `logTf` must be a numerical value."
-
-        # ----------------
-        # ---- Solve! ----
-        # ----------------
-
-        # Metadata for output
-        meta = {}
-
-        if fix_spectrum:
-
-            # The spectrum is fixed. We are solving the for spatial map.
-
-            # Get the design matrix conditioned on the current spectrum
-            D = self.design_matrix(theta=theta, fix_spectrum=True)
-
-            # Get the design matrix for the continuum normalization
-            C = self._math.reshape(D, [self.nt, self.nw, -1])[
-                :, self._continuum_idx, :
-            ]
-
-            # Reshape the priors
-            mu = self._math.reshape(self._math.transpose(spatial_mean), (-1))
-            if spatial_inv_cov.ndim == 2:
-                invL = self._math.reshape(
-                    self._math.transpose(spatial_inv_cov), (-1)
-                )
-            else:
-                invL = self._math.block_diag(
-                    *[spatial_inv_cov[:, :, n] for n in range(self.nc)]
-                )
-
-            if (not normalized) or (baseline is not None):
-
-                # The problem is exactly linear!
-
-                # Get the factorized data covariance
-                if baseline is not None:
-
-                    # De-normalize the data w/ the given baseline
-                    flux *= self._math.reshape(baseline, (self.nt, 1))
-                    flux_err *= self._math.reshape(baseline, (self.nt, 1))
-                    cho_C = self._math.reshape(flux_err, (-1,))
-
-                else:
-
-                    # Easy!
-                    cho_C = self._math.reshape(flux_err, (-1,))
-
-                # Unroll the data into a vector
-                flux = self._math.reshape(flux, (-1,))
-
-                # Solve the L2 problem
-                mean, cho_cov = self._linalg.solve(D, flux, cho_C, mu, invL)
-                y = self._math.transpose(
-                    self._math.reshape(mean, (self.nc, self.Ny))
-                )
-
-                # Set the current map to the MAP
-                self._y = y
-
-                # Return all the info
-                return dict(y=y, cho_cov=cho_cov, **meta)
-
-            else:
-
-                # The problem is linear conditioned on a baseline
-                # guess, which we will refine with a simple tempering scheme
-
-                # Unroll the data into a vector
-                flux = self._math.reshape(flux, (-1,))
-
-                # Tempering to find the baseline
-                if nlogT == 1:
-                    T = [10 ** logTf]
-                else:
-                    T = np.logspace(logT0, logTf, nlogT)
-                baseline = np.ones(self.nt * self.nw)
-                bias = baseline_var * self._math.ones((self.nw, self.nw))
-                for i in tqdm(range(len(T)), disable=quiet):
-
-                    # Marginalize over the unknown baseline at each epoch
-                    # and compute the factorized data covariance
-                    if flux_err_is_scalar:
-                        cho_C = self._math.cholesky(
-                            T[i]
-                            * flux_err[0, 0] ** 2
-                            * self._math.eye(self.nw)
-                            + bias
-                        )
-                        cho_C = self._math.block_diag(
-                            *[cho_C for n in range(self.nt)]
-                        )
-                    else:
-                        cho_C = self._math.block_diag(
-                            *[
-                                self._math.cholesky(
-                                    T[i] * self._math.diag(flux_err[n] ** 2)
-                                    + bias
-                                )
-                                for n in range(self.nt)
-                            ]
-                        )
-
-                    # Solve the L2 problem for the Ylm coeffs
-                    y_flat, cho_cov = self._linalg.solve(
-                        D, flux * baseline, cho_C, mu, invL
-                    )
-                    y = self._math.transpose(
-                        self._math.reshape(y_flat, (self.nc, self.Ny))
-                    )
-
-                    # Refine the baseline estimate
-                    baseline = self._math.dot(C, y_flat)
-                    baseline = self._math.repeat(baseline, self.nw, axis=0)
-                    baseline = self._math.reshape(
-                        baseline, (self.nt * self.nw,)
-                    )
-
-                # Store the value at this point
-                meta["y_temp"] = y
-
-                # We have a pretty good guess for `y` at this point,
-                # but we can refine it with a nonlinear solver.
-                if (niter > 0) and (self.lazy is False):
-
-                    # Compute the exact model w/ normalization
-                    y_ = theano.shared(y)
-                    y_flat_ = tt.reshape(tt.transpose(y_), (-1,))
-                    baseline_ = self._math.dot(C, y_flat_)
-                    b_ = tt.repeat(baseline_, self.nw, axis=0)
-                    b_ = tt.reshape(b_, (self.nt * self.nw,))
-                    model_ = tt.dot(D, y_flat_)
-                    model_ /= b_
-
-                    # The loss is -0.5 * lnL (up to a constant)
-                    loss_ = tt.sum(
-                        (flux - model_) ** 2 / tt.reshape(flux_err, (-1,)) ** 2
-                    )
-                    if invL.ndim == 1:
-                        loss_ += tt.sum(y_flat_ ** 2 * invL)
-                    else:
-                        loss_ += tt.dot(
-                            tt.dot(tt.reshape(y_flat_, (1, -1)), invL),
-                            tt.reshape(y_flat_, (-1, 1)),
-                        )[0, 0]
-
-                    # Compile the NAdam optimizer and iterate
-                    best_loss = np.inf
-                    best_y = np.array(y)
-                    best_baseline = np.array(baseline)
-                    loss = np.zeros(niter)
-                    upd_ = nadam(loss_, [y_], lr=lr)
-                    train = theano.function(
-                        [], [y_, baseline_, loss_], updates=upd_
-                    )
-                    for n in tqdm(range(niter), disable=quiet):
-                        y, baseline, loss[n] = train()
-                        if loss[n] < best_loss:
-                            best_loss = loss[n]
-                            best_y = y
-                            best_baseline = baseline
-                    y = best_y
-                    baseline = best_baseline
-                    meta["loss"] = loss
-
-                    # Final step: using our refined baseline estimate,
-                    # re-compute the MAP solution to obtain an estimate
-                    # of the posterior variance
-                    b = self._math.repeat(baseline, self.nw, axis=0)
-                    b = self._math.reshape(b, (self.nt * self.nw,))
-                    y_lin, cho_cov = self._linalg.solve(
-                        D, flux * b, cho_C, mu, invL
-                    )
-                    y_lin = self._math.transpose(
-                        self._math.reshape(y, (self.nc, self.Ny))
-                    )
-                    meta["y_lin"] = y_lin
-
-                elif (niter > 0) and (self.lazy is True):
-
-                    # TODO!!!
-                    raise NotImplementedError("TODO!")
-
-                # Set the current map to the MAP
-                self._y = y
-
-                # Return the factorized posterior covariance
-                return dict(y=y, cho_cov=cho_cov, **meta)
-
-        elif fix_map:
-
-            # TODO
-            raise NotImplementedError("Not yet implemented.")
-
-        else:
-
-            # We need to solve for both the map and the spectrum
-
-            # First, deconvolve the flux to obtain a guess for the 1st spectrum
-            # We'll set the remaining components to unity
-            A = self.ops.get_kT0_matrix(self._veq, self._inc)
-            y = self._math.dot(self._SInv, self._math.mean(flux, axis=0))
-            mu = self._math.dot(self._SInv, spectral_mean)
-            y -= self._math.dot(A, mu)
-            spectrum = mu + self.ops.L1(
-                A,
-                y,
-                spectral_lambda,
-                flux_err,
-                spectral_maxiter,
-                spectral_eps,
-                spectral_tol,
-            )
-            self._spectrum = self._math.concatenate(
-                [spectrum]
-                + [self._math.ones(self.nw0_) for n in range(self.nc - 1)]
-            )
-
-            # TODO
-            raise NotImplementedError("Not yet implemented.")
+        return soln
