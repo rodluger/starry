@@ -15,35 +15,105 @@ cho_solve = linalg.cho_solve
 
 class Solve:
     def __init__(self, map):
+        # Dimensions and indices
         self.Ny = map.Ny
         self.nt = map.nt
         self.nw = map.nw
+        self.nw_ = map.nw_
         self.nw0 = map.nw0
+        self.nw0_ = map.nw0_
         self.nc = map.nc
         self._continuum_idx = map._continuum_idx
 
-        self.meta = {}
-
+        # Methods and matrices
         if map.lazy:
-            # TODO!
-            raise NotImplementedError("TODO: Compile methods.")
 
-            self._Se2i = map._Se2i.eval()
-            self._S0e2i = map._S0e2i.eval()
+            # TODO!
+            raise NotImplementedError("TODO: Compile methods here.")
+
+            # Interpolation matrices
+            self.Se2i = map._Se2i.eval()
+            self.S0e2i = map._S0e2i.eval()
 
         else:
-            self.design_matrix_fixed_spectrum = lambda theta: map.design_matrix(
-                theta=theta, fix_spectrum=True
-            )
-            self.kT0_matrix = lambda: map.ops.get_kT0_matrix(
-                map._veq, map._inc
-            )
+
+            # Design matrix conditioned on current spectrum
+            def _get_S():
+                map._spectrum = self.spectrum_
+                return map.design_matrix(theta=self.theta, fix_spectrum=True)
+
+            self._get_S = _get_S
+
+            # Line broadening matrix
+            self._get_KT0 = lambda: map.ops.get_kT0_matrix(map._veq, map._inc)
+
+            # LASSO solver
             self.L1 = map.ops.L1
 
-            self._Se2i = map._Se2i
-            self._S0e2i = map._S0e2i
+            # Interpolation matrices
+            self.Se2i = map._Se2i
+            self.S0e2i = map._S0e2i
 
-    def _process_inputs(
+        self.reset()
+
+    def reset(self):
+        # The spectral map
+        self.spectrum_ = None
+        self.y = None
+
+        # Design matrices
+        self._M = None
+        self._S = None
+        self._C = None
+        self._KT0 = None
+
+        # Solution metadata
+        self.meta = {}
+
+    @property
+    def KT0(self):
+        """
+        Line broadening matrix.
+
+        """
+        if self._KT0 is None:
+            self._KT0 = self._get_KT0()
+        return self._KT0
+
+    @property
+    def M(self):
+        """
+        Design matrix conditioned on the current map.
+
+        """
+        if self._M is None:
+            # TODO
+            raise NotImplementedError("TODO!")
+        return self._M
+
+    @property
+    def S(self):
+        """
+        Design matrix conditioned on the current spectrum.
+
+        """
+        if self._S is None:
+            self._S = self._get_S()
+        return self._S
+
+    @property
+    def C(self):
+        """
+        Continuum matrix conditioned on the current spectrum and map.
+
+        """
+        if self._C is None:
+            self._C = np.reshape(self.S, [self.nt, self.nw, -1])[
+                :, self._continuum_idx, :
+            ]
+        return self._C
+
+    def process_inputs(
         self,
         flux,
         flux_err=None,
@@ -247,22 +317,11 @@ class Solve:
         self.niter = niter
         self.quiet = quiet
 
-    def solve_for_map_linear(self, D=None, C=None):
+    def solve_for_map_linear(self):
         """
         Solve for `y` linearly, given a baseline or unnormalized data.
 
         """
-
-        # Get the design matrix conditioned on the current spectrum
-        if D is None:
-            D = self.design_matrix_fixed_spectrum(self.theta)
-
-        # Get the design matrix for the continuum normalization
-        if C is None:
-            C = np.reshape(D, [self.nt, self.nw, -1])[
-                :, self._continuum_idx, :
-            ]
-
         # Reshape the priors
         mu = np.reshape(np.transpose(self.spatial_mean), (-1))
         if self.spatial_inv_cov.ndim == 2:
@@ -296,28 +355,17 @@ class Solve:
         flux = np.reshape(flux, (-1,))
 
         # Solve the L2 problem
-        mean, cho_cov = linalg.solve(D, flux, cho_C, mu, invL)
+        mean, cho_ycov = linalg.solve(self.S, flux, cho_C, mu, invL)
         y = np.transpose(np.reshape(mean, (self.nc, self.Ny)))
         self.meta["y_lin"] = y
 
-        return y, cho_cov
+        return y, cho_ycov
 
-    def solve_for_map_tempered(self, D=None, C=None):
+    def solve_for_map_tempered(self):
         """
         Solve for `y` with an iterative linear, tempered solver.
 
         """
-
-        # Get the design matrix conditioned on the current spectrum
-        if D is None:
-            D = self.design_matrix_fixed_spectrum(self.theta)
-
-        # Get the design matrix for the continuum normalization
-        if C is None:
-            C = np.reshape(D, [self.nt, self.nw, -1])[
-                :, self._continuum_idx, :
-            ]
-
         # Unroll the data into a vector
         flux = np.reshape(self.flux, (-1,))
 
@@ -356,34 +404,25 @@ class Solve:
                 raise ValueError("Invalid shape for `flux_err`.")
 
             # Solve the L2 problem for the Ylm coeffs
-            y_flat, cho_cov = linalg.solve(D, flux * baseline, cho_C, mu, invL)
+            y_flat, cho_ycov = linalg.solve(
+                self.S, flux * baseline, cho_C, mu, invL
+            )
             y = np.transpose(np.reshape(y_flat, (self.nc, self.Ny)))
 
             # Refine the baseline estimate
-            baseline = np.dot(C, y_flat)
+            baseline = np.dot(self.C, y_flat)
             baseline = np.repeat(baseline, self.nw, axis=0)
             baseline = np.reshape(baseline, (self.nt * self.nw,))
 
         self.meta["y_temp"] = y
 
-        return y, cho_cov
+        return y, cho_ycov
 
-    def solve_for_map_nadam(self, y, D=None, C=None):
+    def solve_for_map_nadam(self):
         """
         Solve for `y` with gradient descent given a guess.
 
         """
-
-        # Get the design matrix conditioned on the current spectrum
-        if D is None:
-            D = self.design_matrix_fixed_spectrum(self.theta)
-
-        # Get the design matrix for the continuum normalization
-        if C is None:
-            C = np.reshape(D, [self.nt, self.nw, -1])[
-                :, self._continuum_idx, :
-            ]
-
         # Unroll the data into a vector
         flux = np.reshape(self.flux, (-1,))
         flux_err = np.reshape(
@@ -416,12 +455,13 @@ class Solve:
             )
 
         # Compute the exact model w/ normalization
+        y = np.array(self.y)
         y_ = theano.shared(y)
         y_flat_ = tt.reshape(tt.transpose(y_), (-1,))
-        baseline_ = tt.dot(C, y_flat_)
+        baseline_ = tt.dot(self.C, y_flat_)
         b_ = tt.repeat(baseline_, self.nw, axis=0)
         b_ = tt.reshape(b_, (self.nt * self.nw,))
-        model_ = tt.dot(D, y_flat_)
+        model_ = tt.dot(self.S, y_flat_)
         model_ /= b_
 
         # The loss is -0.5 * lnL (up to a constant)
@@ -437,7 +477,7 @@ class Solve:
         # Compile the NAdam optimizer and iterate
         best_loss = np.inf
         best_y = np.array(y)
-        best_baseline = np.dot(C, y.T.reshape(-1))
+        best_baseline = np.dot(self.C, y.T.reshape(-1))
         loss = np.zeros(self.niter)
         upd_ = nadam(loss_, [y_], lr=self.lr)
         train = theano.function([], [y_, baseline_, loss_], updates=upd_)
@@ -457,13 +497,13 @@ class Solve:
         # of the posterior variance
         b = np.repeat(baseline, self.nw, axis=0)
         b = np.reshape(b, (self.nt * self.nw,))
-        y_lin, cho_cov = linalg.solve(D, flux * b, cho_C, mu, invL)
+        y_lin, cho_ycov = linalg.solve(self.S, flux * b, cho_C, mu, invL)
         y_lin = np.transpose(np.reshape(y, (self.nc, self.Ny)))
         self.meta["y_lin"] = y_lin
 
-        return y, cho_cov
+        return y, cho_ycov
 
-    def solve(self, flux, **kwargs):
+    def solve(self, flux, y, spectrum_, **kwargs):
         """
         Solve the linear problem for the spatial and/or spectral map
         given a spectral timeseries.
@@ -473,11 +513,16 @@ class Solve:
             This method is still being developed!
 
         """
-        # Parse the inputs
-        self._process_inputs(flux, **kwargs)
+        # Start fresh
+        self.reset()
 
-        # Metadata for output
-        self.meta = {}
+        # Parse the inputs
+        self.process_inputs(flux, **kwargs)
+        self.y = y
+        self.spectrum_ = spectrum_
+        self.meta["y"] = y
+        self.meta["cho_ycov"] = None
+        self.meta["spectrum_"] = spectrum_
 
         if self.fix_spectrum:
 
@@ -486,20 +531,21 @@ class Solve:
             if (not self.normalized) or (self.baseline is not None):
 
                 # The problem is exactly linear!
-                y, cho_cov = self.solve_for_map_linear()
+                y, cho_ycov = self.solve_for_map_linear()
 
             else:
 
                 # The problem is linear conditioned on a baseline
                 # guess, which we refine iteratively
-                y, cho_cov = self.solve_for_map_tempered()
+                y, cho_ycov = self.solve_for_map_tempered()
 
                 # Refine the solution with gradient descent
                 if self.niter > 0:
-                    y, cho_cov = self.solve_for_map_nadam(y)
+                    y, cho_ycov = self.solve_for_map_nadam(y)
 
-            # Return the MAP and factorized posterior covariance
-            return dict(y=y, cho_cov=cho_cov, **self.meta)
+            # Store the results
+            self.meta["y"] = y
+            self.meta["cho_ycov"] = cho_ycov
 
         elif self.fix_map:
 
@@ -515,12 +561,11 @@ class Solve:
             # residuals to each of the component spectral means to obtain
             # a rough guess for all components. This is by no means optimal
             # when nc > 1, but it's a decent starting guess.
-            A = self.kT0_matrix()
-            f = self._Se2i.dot(np.mean(self.flux, axis=0))
-            mu = self._S0e2i.dot(self.spectral_mean.T)
-            f -= np.mean(np.dot(A, mu), axis=1)
+            f = self.Se2i.dot(np.mean(self.flux, axis=0))
+            mu = self.S0e2i.dot(self.spectral_mean.T)
+            f -= np.mean(np.dot(self.KT0, mu), axis=1)
             spectrum = mu.T + self.L1(
-                A,
+                self.KT0,
                 f,
                 np.array(self.spectral_lambda),
                 np.array(np.mean(self.flux_err)),
@@ -531,3 +576,5 @@ class Solve:
 
             # TODO
             raise NotImplementedError("Not yet implemented.")
+
+        return self.meta

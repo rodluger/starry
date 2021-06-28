@@ -376,11 +376,11 @@ class DopplerMap:
         self._map = Map(ydeg=self.ydeg, udeg=self.udeg, lazy=self.lazy)
         config.quiet = _quiet
 
-        # Linear solver
-        self._solver = Solve(self)
-
         # Initialize
         self.reset(**kwargs)
+
+        # Linear solver
+        self._solver = Solve(self)
 
     @property
     def lazy(self):
@@ -1574,17 +1574,22 @@ class DopplerMap:
             # numerical quantities.
             get_val = evaluator(**kwargs)
             flux = get_val(flux)
+            spectrum_ = get_val(self.spectrum_)
+            y = get_val(self.y)
             for key in kwargs.keys():
                 if key not in ["point", "model"]:
                     kwargs[key] = get_val(kwargs[key])
 
+        else:
+
+            y = self.y
+            spectrum_ = self.spectrum_
+
         # Run the solver
-        soln = self._solver.solve(flux=flux, **kwargs)
+        soln = self._solver.solve(flux, y, spectrum_, **kwargs)
 
         # Set map props
-        if not kwargs.get("fix_map", False):
-            self._y = soln["y"]
-        if not kwargs.get("fix_spectrum", False):
-            self._spectrum = soln["spectrum"]
+        self._y = soln["y"]
+        self._spectrum = soln["spectrum_"]
 
         return soln

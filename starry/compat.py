@@ -12,7 +12,10 @@ from inspect import getmro
 if USE_AESARA:
     from aesara.scan.utils import until as scan_until
 else:
-    from theano.scan_module.scan_utils import until as scan_until
+    try:
+        from theano.scan.utils import until as scan_until
+    except ModuleNotFoundError:
+        from theano.scan_module.scan_utils import until as scan_until
 
 __all__ = [
     "theano",
