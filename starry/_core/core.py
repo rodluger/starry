@@ -30,6 +30,8 @@ from astropy import units
 import os
 import exoplanet
 
+cho_factor = math.cholesky
+cho_solve = linalg.cho_solve
 
 # C extensions are not installed on RTD
 if os.getenv("READTHEDOCS") == "True":  # pragma: no cover
@@ -1838,7 +1840,7 @@ class OpsDoppler(OpsYlm):
         return tt.reshape(flux, (self.nt, self.nw))
 
     @autocompile
-    def L1(self, A, y, lam, sigma, maxiter, eps, tol):
+    def L1(self, ATA, ATy, lam, maxiter, eps, tol):
         """
         L1 regularized least squares via iterated ridge (L2) regression.
         See Section 2.5 of
@@ -1851,24 +1853,19 @@ class OpsDoppler(OpsYlm):
         TODO: Use `non_sequences`.
 
         """
-        # Pre-compute some stuff
-        cho_factor = math.cholesky
-        cho_solve = linalg.cho_solve
-        AT = tt.transpose(A)
-        CInv = tt.dot(AT, A) / sigma ** 2
-        term = tt.dot(AT, y) / sigma ** 2
-        didx = (tt.arange(tt.shape(CInv)[0]), tt.arange(tt.shape(CInv)[0]))
-        w = tt.ones_like(A[0])
+        N = tt.shape(ATA)[0]
+        didx = (tt.arange(N), tt.arange(N))
+        w = tt.ones_like(ATA[0])
 
         def step(w_prev):
             absw = tt.abs_(w_prev)
             absw = tt.switch(
                 tt.gt(absw, lam * eps), absw, lam * eps * tt.ones_like(absw)
             )
-            KInv = tt.as_tensor_variable(CInv)
+            KInv = tt.as_tensor_variable(ATA)
             KInv = tt.inc_subtensor(KInv[didx], lam / absw)
             choK = cho_factor(KInv)
-            w_new = cho_solve(choK, term)
+            w_new = cho_solve(choK, ATy)
             chisq = tt.sum((w_prev - w_new) ** 2)
             return w_new, scan_until(chisq < tol)
 

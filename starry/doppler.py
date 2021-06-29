@@ -610,11 +610,11 @@ class DopplerMap:
     def spectrum(self, spectrum):
         # Cast & reshape
         if self._nc == 1:
-            spectrum = self._math.reshape(
+            self._spectrum = self._math.reshape(
                 self._math.cast(spectrum), (1, self._nw0)
             )
         else:
-            spectrum = self.ops.enforce_shape(
+            self._spectrum = self.ops.enforce_shape(
                 self._math.cast(spectrum), np.array([self._nc, self._nw0])
             )
 
