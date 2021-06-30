@@ -1,16 +1,18 @@
 # -*- coding: utf-8 -*-
-from ._core.math import greedy_linalg as linalg
-from ._core.math import greedy_math as math
+from ._core.math import greedy_linalg, lazy_linalg
+from ._core.math import greedy_math, lazy_math
 from ._core.math import nadam
+from .compat import theano, tt, ts
 import numpy as np
 from tqdm.auto import tqdm
 from scipy.linalg import block_diag
-import theano
-import theano.tensor as tt
 
 
-cho_factor = math.cholesky
-cho_solve = linalg.cho_solve
+# Cholesky ops
+cho_factor = greedy_math.cholesky
+cho_solve = greedy_linalg.cho_solve
+tt_cho_factor = lazy_math.cholesky
+tt_cho_solve = lazy_linalg.cho_solve
 
 
 class Solve:
@@ -27,17 +29,60 @@ class Solve:
         self.wav_ = map.wav_
         self.wav0_ = map.wav0_
         self.nc = map.nc
+        self.interp = map._interp
         self.continuum_idx = map._continuum_idx
 
         # Methods and matrices
         if map.lazy:
 
-            # TODO!
-            raise NotImplementedError("TODO: Compile methods here.")
+            # TODO: Untested!
+
+            # We need to explicitly compile all tensor functions.
+
+            # Design matrix conditioned on current spectrum
+            spectrum_ = tt.dmatrix()
+            theta = tt.dvector()
+            map._spectrum = spectrum_
+            f = map.design_matrix(theta=theta, fix_spectrum=True)
+            _get_S = theano.function([theta, spectrum_], f)
+            self._get_S = lambda: _get_S(self.theta, self.spectrm_)
+
+            # Design matrix dot product conditioned on current map
+            x = tt.dmatrix()
+            y = tt.dmatrix()
+            map._y = y
+            f = map.dot(x, fix_map=True, transpose=False)
+            _dotM = theano.function([x, y], f)
+            self.dotM = lambda x: _dotM(x, self.y)
+
+            # Transpose of the the above op
+            f = map.dot(x, fix_map=True, transpose=True)
+            _dotMT = theano.function([x, y], f)
+            self.dotMT = lambda x: _dotMT(x, self.y)
+
+            # Line broadening matrix
+            veq = tt.dscalar()
+            inc = tt.dscalar()
+            f = map.ops.get_kT0_matrix(veq, inc)
+            _get_KT0 = theano.function([veq, inc], f)
+            self._get_KT0 = lambda: _get_KT0(self.veq, self.inc)
+
+            # LASSO solver
+            ATA = tt.dmatrix()
+            ATy = tt.dvector()
+            lam = tt.dscalar()
+            maxiter = tt.iscalar()
+            eps = tt.dscalar()
+            tol = tt.dscalar()
+            self.L1 = theano.function(
+                [ATA, ATy, lam, maxiter, eps, tol],
+                map.ops.L1(ATA, ATy, lam, maxiter, eps, tol),
+            )
 
             # Interpolation matrices
             self.Se2i = map._Se2i.eval()
             self.S0e2i = map._S0e2i.eval()
+            self.Si2eTr = map._Si2eTr.eval()
 
         else:
 
@@ -61,7 +106,9 @@ class Solve:
             self.dotMT = _dotMT
 
             # Line broadening matrix
-            self._get_KT0 = lambda: map.ops.get_kT0_matrix(map._veq, map._inc)
+            self._get_KT0 = lambda: map.ops.get_kT0_matrix(
+                self._veq, self._inc
+            )
 
             # LASSO solver
             self.L1 = map.ops.L1
@@ -69,8 +116,13 @@ class Solve:
             # Interpolation matrices
             self.Se2i = map._Se2i
             self.S0e2i = map._S0e2i
-            self.S0i2e = map._S0i2e
+            self.Si2eTr = map._Si2eTr
 
+        # This method is only used in lazy mode, so we
+        # don't need to compile it
+        self.get_flux_from_dotconv = map.ops.get_flux_from_dotconv
+
+        #
         self.reset()
 
     def reset(self):
@@ -122,10 +174,8 @@ class Solve:
         self,
         flux,
         flux_err=None,
-        theta=None,
         spatial_mean=None,
         spatial_cov=None,
-        spatial_inv_cov=None,
         spectral_mean=None,
         spectral_cov=None,
         spectral_lambda=None,
@@ -141,8 +191,6 @@ class Solve:
         logT0=None,
         logTf=None,
         nlogT=None,
-        lr=None,
-        niter=None,
         quiet=False,
     ):
         # --------------------------
@@ -150,10 +198,10 @@ class Solve:
         # --------------------------
 
         if flux_err is None:
-            flux_err = 1e-6
+            flux_err = 1e-4
         if spatial_mean is None:
             spatial_mean = 0.0
-        if spatial_cov is None and spatial_inv_cov is None:
+        if spatial_cov is None:
             spatial_cov = 1e-4 * np.ones(self.Ny)
             spatial_cov[0] = 1
         if baseline_var is None:
@@ -166,10 +214,6 @@ class Solve:
             nlogT = 50
         else:
             nlogT = max(1, nlogT)
-        if lr is None:
-            lr = 2e-5
-        if niter is None:
-            niter = 0
         if spectral_mean is None:
             spectral_mean = 1.0
         if spectral_cov is None:
@@ -229,57 +273,37 @@ class Solve:
             )
         self.spatial_mean = np.concatenate(spatial_mean, axis=-1)
 
-        # Spatial (inv) cov may be a scalar, a vector, a matrix (Ny, Ny),
-        # or a list of those. Invert it if needed and reshape to a matrix of
+        # Spatial cov may be a scalar, a vector, a matrix (Ny, Ny),
+        # or a list of those. Invert it and reshape to a matrix of
         # shape (Ny, nc) (inverse variances) or a tensor of shape
         # (Ny, Ny, nc) (nc separate inverse covariance matrices)
-        if spatial_cov is not None:
-
-            # User provided the *covariance*
-
-            if type(spatial_cov) not in (list, tuple):
-                # Use the same covariance for all components
-                spatial_cov = [spatial_cov for n in range(self.nc)]
-            else:
-                # Check that we have one covariance per component
-                assert len(spatial_cov) == self.nc
-            spatial_inv_cov = [None for n in range(self.nc)]
-
-            for n in range(self.nc):
-                spatial_cov[n] = np.array(spatial_cov[n])
-                assert spatial_cov[n].ndim == spatial_cov[0].ndim
-                if spatial_cov[n].ndim < 2:
-                    spatial_inv_cov[n] = np.reshape(
-                        np.ones(self.Ny) / spatial_cov[n], (-1, 1)
-                    )
-                else:
-                    cho = cho_factor(spatial_cov[n])
-                    inv = cho_solve(cho, np.eye(self.Ny))
-                    spatial_inv_cov[n] = np.reshape(inv, (self.Ny, self.Ny, 1))
+        if type(spatial_cov) not in (list, tuple):
+            # Use the same covariance for all components
+            spatial_cov = [spatial_cov for n in range(self.nc)]
         else:
-
-            # User provided the *inverse covariance*
-
-            if type(spatial_inv_cov) not in (list, tuple):
-                # Use the same covariance for all components
-                spatial_inv_cov = [spatial_inv_cov for n in range(self.nc)]
+            # Check that we have one covariance per component
+            assert len(spatial_cov) == self.nc
+        spatial_inv_cov = [None for n in range(self.nc)]
+        for n in range(self.nc):
+            spatial_cov[n] = np.array(spatial_cov[n])
+            assert spatial_cov[n].ndim == spatial_cov[0].ndim
+            if spatial_cov[n].ndim < 2:
+                spatial_inv_cov[n] = np.reshape(
+                    np.ones(self.Ny) / spatial_cov[n], (-1, 1)
+                )
+                spatial_cov[n] = np.reshape(
+                    np.ones(self.Ny) * spatial_cov[n], (-1, 1)
+                )
             else:
-                # Check that we have one covariance per component
-                assert len(spatial_inv_cov) == self.nc
+                cho = cho_factor(spatial_cov[n])
+                inv = cho_solve(cho, np.eye(self.Ny))
+                spatial_inv_cov[n] = np.reshape(inv, (self.Ny, self.Ny, 1))
+                spatial_cov[n] = np.reshape(
+                    spatial_cov[n], (self.Ny, self.Ny, 1)
+                )
 
-            for n in range(self.nc):
-                spatial_inv_cov[n] = np.cast(spatial_inv_cov[n])
-                assert spatial_inv_cov[n].ndim == spatial_inv_cov[0].ndim
-                if spatial_inv_cov[n].ndim < 2:
-                    spatial_inv_cov[n] = np.reshape(
-                        np.ones(self.Ny) * spatial_inv_cov[n], (-1, 1)
-                    )
-                else:
-                    spatial_inv_cov[n] = np.reshape(
-                        spatial_inv_cov[n], (self.Ny, self.Ny, 1)
-                    )
-
-        # Tensor of nc inverse variance vectors or covariance matrices
+        # Tensor of nc (inverse) variance vectors or covariance matrices
+        self.spatial_cov = np.concatenate(spatial_cov, axis=-1)
         self.spatial_inv_cov = np.concatenate(spatial_inv_cov, axis=-1)
 
         # Baseline must be a vector (nt,)
@@ -291,25 +315,22 @@ class Solve:
         else:
             self.baseline = None
 
-        # Spectral mean must be a scalar, a vector, or a matrix (nc, nw0)
-        # Interpolate it to the internal grid (nw0_)
-        spectral_mean = np.array(spectral_mean)
-        if spectral_mean.ndim == 0:
-            self.spectral_mean = spectral_mean * np.ones((self.nc, self.nw0_))
-        elif spectral_mean.ndim == 1:
-            assert np.array_equal(
-                np.shape(spectral_mean), np.array([self.nc])
-            ), "Invalid shape for `spectral_mean`."
-            self.spectral_mean = np.reshape(
-                spectral_mean, (self.nc, 1)
-            ) * np.ones((self.nc, self.nw0_))
+        # Spectral mean must be a scalar, a vector (nw0), or a list of those
+        # Interpolate it to the internal grid (nw0_) and reshape to (nc, nw0_)
+        if type(spectral_mean) not in (list, tuple):
+            # Use the same mean for all components
+            spectral_mean = [spectral_mean for n in range(self.nc)]
         else:
-            assert np.array_equal(
-                np.shape(spectral_mean), np.array([self.nc, self.nw0])
-            ), "Invalid shape for `spectral_mean`."
-            self.spectral_mean = np.array(
-                [self.S0e2i.dot(mu) for mu in spectral_mean]
+            # Check that we have one mean per component
+            assert len(spectral_mean) == self.nc
+        for n in range(self.nc):
+            spectral_mean[n] = np.array(spectral_mean[n])
+            assert spectral_mean[n].ndim < 2
+            spectral_mean[n] = np.reshape(
+                spectral_mean[n] * np.ones(self.nw0), (-1, 1)
             )
+            spectral_mean[n] = self.S0e2i.dot(spectral_mean[n])
+        self.spectral_mean = np.array(spectral_mean)
 
         # Spectral cov may be a scalar, a vector, a matrix (nw0, nw0),
         # or a list of those. Interpolate it to the internal grid,
@@ -330,6 +351,9 @@ class Solve:
                 spectral_inv_cov[n] = np.reshape(
                     np.ones(self.nw0_) / spectral_cov[n], (1, -1)
                 )
+                spectral_cov[n] = np.reshape(
+                    np.ones(self.nw0_) * spectral_cov[n], (1, -1)
+                )
             else:
                 cov = self.S0e2i.dot(self.S0e2i.dot(spectral_cov[n]).T).T
                 cov[np.diag_indices_from(cov)] += spectral_eps
@@ -338,7 +362,10 @@ class Solve:
                 spectral_inv_cov[n] = np.reshape(
                     inv, (1, self.nw0_, self.nw0_)
                 )
-        # Tensor of nc inverse variance vectors or covariance matrices
+                spectral_cov[n] = np.reshape(cov, (1, self.nw0_, self.nw0_))
+
+        # Tensor of nc (inverse) variance vectors or covariance matrices
+        self.spectral_cov = np.concatenate(spectral_cov, axis=0)
         self.spectral_inv_cov = np.concatenate(spectral_inv_cov, axis=0)
 
         # Tempering schedule
@@ -348,7 +375,6 @@ class Solve:
             self.T = np.logspace(logT0, logTf, nlogT)
 
         # Ingest the remaining params
-        self.theta = theta
         self.spectral_lambda = spectral_lambda  # must be scalar
         self.spectral_maxiter = spectral_maxiter
         self.spectral_eps = spectral_eps
@@ -358,11 +384,12 @@ class Solve:
         self.baseline_var = baseline_var
         self.fix_spectrum = fix_spectrum
         self.fix_map = fix_map
-        self.lr = lr
-        self.niter = niter
         self.quiet = quiet
 
-    def solve_for_map_linear(self):
+        # Are we lucky enough to do a purely linear solve for the map?
+        self.linear = (not self.normalized) or (self.baseline is not None)
+
+    def solve_for_map_linear(self, T=1, baseline_var=0):
         """
         Solve for `y` linearly, given a baseline or unnormalized data.
 
@@ -382,7 +409,7 @@ class Solve:
         else:
             flux_err = self.flux_err
 
-        # Get the factorized data covariance
+        # Baseline correction
         if self.baseline is not None:
 
             # De-normalize the data w/ the given baseline
@@ -397,19 +424,31 @@ class Solve:
                 flux_err = self.flux_err * np.reshape(
                     self.baseline, (self.nt, 1)
                 )
-            cho_C = np.reshape(flux_err, (-1,))
 
         else:
 
             # Easy!
             flux = self.flux
-            cho_C = np.reshape(flux_err, (-1,))
+
+        # Factorized data covariance
+        if baseline_var == 0:
+            cho_C = np.reshape(np.sqrt(T) * flux_err, (-1,))
+        else:
+            cho_C = block_diag(
+                *[
+                    cho_factor(
+                        T * np.diag(flux_err.reshape(self.nt, self.nw)[n] ** 2)
+                        + baseline_var
+                    )
+                    for n in range(self.nt)
+                ]
+            )
 
         # Unroll the data into a vector
         flux = np.reshape(flux, (-1,))
 
         # Solve the L2 problem
-        mean, cho_ycov = linalg.solve(self.S, flux, cho_C, mu, invL)
+        mean, cho_ycov = greedy_linalg.solve(self.S, flux, cho_C, mu, invL)
         y = np.transpose(np.reshape(mean, (self.nc, self.Ny)))
         self.meta["y_lin"] = y
 
@@ -460,7 +499,7 @@ class Solve:
                 raise ValueError("Invalid shape for `flux_err`.")
 
             # Solve the L2 problem for the Ylm coeffs
-            y_flat, cho_ycov = linalg.solve(
+            y_flat, cho_ycov = greedy_linalg.solve(
                 self.S, flux * baseline, cho_C, mu, invL
             )
             y = np.transpose(np.reshape(y_flat, (self.nc, self.Ny)))
@@ -476,122 +515,7 @@ class Solve:
         self.y = y
         self.cho_ycov = cho_ycov
 
-    def solve_for_map_nadam(self):
-        """
-        Solve for `y` with gradient descent given a guess.
-
-        """
-        # Unroll the data into a vector
-        flux = np.reshape(self.flux, (-1,))
-        flux_err = np.reshape(
-            self.flux_err * np.ones((self.nt, self.nw)), (-1,)
-        )
-        if self.flux_err.ndim == 0:
-            cho_C = cho_factor(
-                self.flux_err ** 2 * np.eye(self.nw) + self.baseline_var
-            )
-            cho_C = block_diag(*[cho_C for n in range(self.nt)])
-        elif self.flux_err.ndim == 2:
-            cho_C = block_diag(
-                *[
-                    cho_factor(
-                        np.diag(self.flux_err[n] ** 2) + self.baseline_var
-                    )
-                    for n in range(self.nt)
-                ]
-            )
-        else:
-            raise ValueError("Invalid shape for `flux_err`.")
-
-        # Reshape the priors
-        mu = np.reshape(np.transpose(self.spatial_mean), (-1))
-        if self.spatial_inv_cov.ndim == 2:
-            invL = np.reshape(np.transpose(self.spatial_inv_cov), (-1))
-        else:
-            invL = block_diag(
-                *[self.spatial_inv_cov[:, :, n] for n in range(self.nc)]
-            )
-
-        # Compute the exact model w/ normalization
-        y = np.array(self.y)
-        y_ = theano.shared(y)
-        y_flat_ = tt.reshape(tt.transpose(y_), (-1,))
-        baseline_ = tt.dot(self.C, y_flat_)
-        b_ = tt.repeat(baseline_, self.nw, axis=0)
-        b_ = tt.reshape(b_, (self.nt * self.nw,))
-        model_ = tt.dot(self.S, y_flat_)
-        model_ /= b_
-
-        # The loss is -0.5 * lnL (up to a constant)
-        loss_ = tt.sum((flux - model_) ** 2 / tt.reshape(flux_err, (-1,)) ** 2)
-        if invL.ndim == 1:
-            loss_ += tt.sum(y_flat_ ** 2 * invL)
-        else:
-            loss_ += tt.dot(
-                tt.dot(tt.reshape(y_flat_, (1, -1)), invL),
-                tt.reshape(y_flat_, (-1, 1)),
-            )[0, 0]
-
-        # Compile the NAdam optimizer and iterate
-        best_loss = np.inf
-        best_y = np.array(y)
-        best_baseline = np.dot(self.C, y.T.reshape(-1))
-        loss = np.zeros(self.niter)
-        upd_ = nadam(loss_, [y_], lr=self.lr)
-        train = theano.function([], [y_, baseline_, loss_], updates=upd_)
-        for n in tqdm(range(self.niter), disable=self.quiet):
-            y, baseline, loss[n] = train()
-            if loss[n] < best_loss:
-                best_loss = loss[n]
-                best_y = y
-                best_baseline = baseline
-        y = best_y
-        baseline = best_baseline
-        self.meta["loss"] = loss
-        self.meta["y_nadam"] = y
-
-        # Final step: using our refined baseline estimate,
-        # re-compute the MAP solution to obtain an estimate
-        # of the posterior variance
-        b = np.repeat(baseline, self.nw, axis=0)
-        b = np.reshape(b, (self.nt * self.nw,))
-        y_lin, cho_ycov = linalg.solve(self.S, flux * b, cho_C, mu, invL)
-        y_lin = np.transpose(np.reshape(y, (self.nc, self.Ny)))
-        self.meta["y_lin"] = y_lin
-
-        # Store
-        self.y = y
-        self.cho_ycov = cho_ycov
-
-    def solve_for_map(self):
-        """
-        Wrapper for various functions that solve for the map `y`
-        conditioned on the spectrum.
-
-        """
-        if (not self.normalized) or (self.baseline is not None):
-
-            # The problem is exactly linear!
-            self.solve_for_map_linear()
-
-        else:
-
-            # The problem is linear conditioned on a baseline
-            # guess, which we refine iteratively
-            self.solve_for_map_tempered()
-
-            # Refine the solution with gradient descent
-            if self.niter > 0:
-                self.solve_for_map_nadam()
-
-    def solve_for_baseline(self):
-        """
-        Trivial, conditioned on a current map.
-
-        """
-        self.baseline = np.dot(self.C, self.y.T.reshape(-1))
-
-    def solve_for_spectrum(self):
+    def solve_for_spectrum_linear(self):
         """
         Solve for `spectrum_` conditioned on the current map.
 
@@ -673,16 +597,57 @@ class Solve:
         self.spectrum_ = np.reshape(spectrum_, (self.nc, self.nw0_))
         self.cho_scov = choK
 
-    def solve(self, flux, y, spectrum_, **kwargs):
+    def solve_for_everything_bilinear(self):
+        """
+        Solve for both the map and the spectrum.
+
+        """
+        # First, deconvolve the flux to obtain a guess for the spectrum
+        # We subtract the convolved mean spectrum and add the deconvolved
+        # residuals to each of the component spectral means to obtain
+        # a rough guess for all components. This is by no means optimal.
+        f = self.Se2i.dot(np.mean(self.flux, axis=0))
+        f /= f[self.continuum_idx]
+        mu = self.spectral_mean.T
+        f -= np.mean(np.dot(self.KT0, mu), axis=1)
+        CInv = np.dot(self.KT0.T, self.KT0) / np.mean(self.flux_err) ** 2
+        term = np.dot(self.KT0.T, f) / np.mean(self.flux_err) ** 2
+        self.spectrum_ = mu.T + self.L1(
+            CInv,
+            term,
+            np.array(self.spectral_lambda),
+            self.spectral_maxiter,
+            np.array(self.spectral_eps),
+            np.array(self.spectral_tol),
+        )
+        self.meta["spectrum_guess"] = self.spectrum_
+
+        # Assume a unit baseline guess
+        self.baseline = np.ones(self.nt)
+
+        # Iterate
+        for i in tqdm(range(len(self.T)), disable=self.quiet):
+
+            # Solve for the map
+            self._S = None
+            if self.linear:
+
+                self.solve_for_map_linear(T=self.T[i])
+
+            else:
+
+                self.solve_for_map_linear(
+                    T=self.T[i], baseline_var=self.baseline_var
+                )
+                self.baseline = np.dot(self.C, self.y.T.reshape(-1))
+
+            # Solve for the spectrum
+            self.solve_for_spectrum_linear()
+
+    def solve_bilinear(self, flux, theta, y, spectrum_, veq, inc, u, **kwargs):
         """
         Solve the linear problem for the spatial and/or spectral map
         given a spectral timeseries.
-
-        .. warning::
-
-            This method is still being developed!
-
-        TODO: Renormalize the baseline.
 
         """
         # Start fresh
@@ -690,6 +655,9 @@ class Solve:
 
         # Parse the inputs
         self.process_inputs(flux, **kwargs)
+        self.theta = theta
+        self.veq = veq
+        self.inc = inc
         self.y = y
         self.cho_ycov = None
         self.spectrum_ = spectrum_
@@ -698,57 +666,137 @@ class Solve:
         if self.fix_spectrum:
 
             # Solve for the map conditioned on the spectrum
-            self.solve_for_map()
+            if self.linear:
+
+                # The problem is exactly linear!
+                self.solve_for_map_linear()
+
+            else:
+
+                # The problem is linear conditioned on a baseline
+                # guess, which we refine iteratively
+                self.solve_for_map_tempered()
 
         elif self.fix_map:
 
             # Solve for the spectrum conditioned on the map
-            self.solve_for_spectrum()
+            self.solve_for_spectrum_linear()
 
         else:
 
             # Solve for both the map and the spectrum
-
-            # First, deconvolve the flux to obtain a guess for the spectrum
-            # We subtract the convolved mean spectrum and add the deconvolved
-            # residuals to each of the component spectral means to obtain
-            # a rough guess for all components. This is by no means optimal
-            # when nc > 1, but it's a decent starting guess.
-            f = self.Se2i.dot(np.mean(self.flux, axis=0))
-            f /= f[self.continuum_idx]
-            mu = self.spectral_mean.T
-            f -= np.mean(np.dot(self.KT0, mu), axis=1)
-            CInv = np.dot(self.KT0.T, self.KT0) / np.mean(self.flux_err) ** 2
-            term = np.dot(self.KT0.T, f) / np.mean(self.flux_err) ** 2
-            self.spectrum_ = mu.T + self.L1(
-                CInv,
-                term,
-                np.array(self.spectral_lambda),
-                self.spectral_maxiter,
-                np.array(self.spectral_eps),
-                np.array(self.spectral_tol),
-            )
-            self.meta["spectrum_guess"] = self.spectrum_
-
-            # Now we iterate
-            # TODO! Need a good tempering scheme here.
-            for n in tqdm(range(0)):
-                self._S = None
-                self._C = None
-                self.solve_for_map()
-                self.solve_for_baseline()
-                self.solve_for_spectrum()
-
-            # DEBUG
-            self._S = None
-            self._C = None
-            self.solve_for_map()
-            self.solve_for_spectrum()
-            self.solve_for_map()
+            self.solve_for_everything_bilinear()
 
         # Update the metadata with the results and return everything
         self.meta["y"] = self.y
         self.meta["cho_ycov"] = self.cho_ycov
         self.meta["spectrum_"] = self.spectrum_
         self.meta["cho_scov"] = self.cho_scov
+        return self.meta
+
+    def solve_nonlinear(
+        self,
+        flux,
+        theta,
+        y,
+        spectrum_,
+        veq,
+        inc,
+        u,
+        lr=2e-5,
+        niter=1000,
+        **kwargs
+    ):
+        """
+        Solve the nonlinear problem for the spatial and/or spectral map
+        given a spectral timeseries.
+
+        """
+        # Start fresh
+        self.reset()
+
+        # Parse the inputs
+        self.process_inputs(flux, **kwargs)
+
+        # Some settings aren't supported for the nonlinear solver
+        assert self.baseline is None
+
+        # The variables we're optimizing
+        tt_y = theano.shared(y)
+        tt_spectrum_ = theano.shared(spectrum_)
+        tt_vars = []
+        if not self.fix_map:
+            tt_vars += [tt_y]
+        if not self.fix_spectrum:
+            tt_vars += [tt_spectrum_]
+
+        # Compute the exact model
+        tt_model = self.get_flux_from_dotconv(
+            inc, theta, veq, u, tt_y, tt_spectrum_
+        )
+
+        # Interpolate to the output grid
+        if self.interp:
+            tt_model = ts.dot(tt_model, self.Si2eTr)
+
+        # Remove the baseline?
+        if self.normalized:
+            tt_model /= tt.reshape(
+                tt_model[:, self.continuum_idx], (self.nt, 1)
+            )
+
+        # The likelihood term
+        tt_loss = tt.sum((self.flux - tt_model) ** 2 / self.flux_err ** 2)
+
+        # The spatial prior
+        tt_x = tt.reshape(tt.transpose(tt_y), (-1, 1))
+        mu = self.spatial_mean.T.reshape(-1, 1)
+        tt_r = tt_x - mu
+        if self.spatial_cov.ndim == 2:
+            invL = np.reshape(np.transpose(self.spatial_inv_cov), (-1, 1))
+            tt_loss += tt.dot(tt.transpose(tt_r), tt_r * invL)[0, 0]
+        else:
+            L = block_diag(
+                *[self.spatial_cov[:, :, n] for n in range(self.nc)]
+            )
+            tt_loss += tt.dot(
+                tt.transpose(tt_r), tt_cho_solve(tt_cho_factor(L), tt_r)
+            )[0, 0]
+
+        # The spectral prior
+        tt_x = tt.reshape(tt_spectrum_, (-1, 1))
+        mu = self.spectral_mean.reshape(-1, 1)
+        tt_r = tt_x - mu
+        if self.spectral_cov.ndim == 2:
+            invL = np.reshape(self.spectral_inv_cov, (-1, 1))
+            tt_loss += tt.dot(tt.transpose(tt_r), tt_r * invL)[0, 0]
+        else:
+            L = block_diag(*[cov for cov in self.spectral_cov])
+            tt_loss += tt.dot(
+                tt.transpose(tt_r), tt_cho_solve(tt_cho_factor(L), tt_r)
+            )[0, 0]
+
+        # Compile the NAdam optimizer and iterate
+        tt_updates = nadam(tt_loss, tt_vars, lr=lr)
+        train = theano.function(
+            [], [tt_y, tt_spectrum_, tt_loss], updates=tt_updates
+        )
+
+        # Iterate
+        best_loss = np.inf
+        best_y = np.array(y)
+        best_spectrum_ = np.array(spectrum_)
+        loss = np.zeros(niter)
+        for n in tqdm(range(niter), disable=self.quiet):
+            curr_y, curr_spectrum_, loss[n] = train()
+            if loss[n] < best_loss:
+                best_loss = loss[n]
+                best_y = curr_y
+                best_spectrum_ = curr_spectrum_
+
+        # Record the best values and return
+        self.meta["y"] = best_y
+        self.meta["spectrum_"] = best_spectrum_
+        self.meta["loss"] = loss
+
         return self.meta

@@ -3,8 +3,9 @@ from . import config
 from ._constants import *
 from ._core import OpsDoppler, math
 from ._core.utils import is_tensor, CompileLogMessage
+from ._core.math import nadam
 from ._indices import integers, get_ylm_inds, get_ylmw_inds, get_ul_inds
-from .compat import evaluator, theano, tt
+from .compat import evaluator
 from .maps import YlmBase, MapBase, Map
 from .doppler_visualize import Visualize
 from .doppler_solve import Solve
@@ -1558,14 +1559,127 @@ class DopplerMap:
             fig.savefig(file, bbox_inches="tight")
             fig.close()
 
-    def solve(self, flux, **kwargs):
+    def solve(self, flux, solver="bilinear", **kwargs):
         """
-        Solve the linear problem for the spatial and/or spectral map
-        given a spectral timeseries.
+        Iteratively solves the bilinear or nonlinear problem for the spatial
+        and/or spectral map given a spectral timeseries.
 
-        .. warning::
-
-            This method is still being developed!
+        Args:
+            flux (matrix): The observed spectral timeseries. Must be an ndarray
+                of shape (py:attr:`nt`, py:attr:`nw`).
+            solver (str, optional): Which solver to use. Options are "bilinear"
+                or "nonlinear". Default is "bilinear".
+            flux_err (float, vector, or matrix, optional): The data
+                uncertainty. If a scalar, the data is assumed to be
+                homoscedastic. If a vector, the data for each epoch is assumed
+                to be homoscedastic; in this case, must have length
+                py:attr:`nt`. If a matrix, must have shape
+                (py:attr:`nt`, py:attr:`nw`). Note that correlated errors
+                (i.e., non-diagonal data covariances) are not currently
+                supported. Please reach out if this is something you'd like
+                to see implemented. Default is `1e-4`.
+            theta (vector, optional): The angular phase(s) at which the spectra
+                were observed, in units of :py:attr:`angle_unit`. This
+                must be a vector of size :py:attr:`nt`. Default is uniformly
+                spaced values in the range ``[0, 2 * pi)``.
+            spatial_mean (float, vector, or list, optional): The prior mean on
+                the spherical harmonic coefficients of the map. If a scalar,
+                the same mean is assumed for all coefficients. If a vector of
+                length :py:attr:`Ny`, the same mean vector is assumed for all
+                map components. Users can also provide a list of length
+                :py:attr:`nc` containing scalars or vectors corresponding to
+                the prior mean for each component. Default is `0.0`.
+            spatial_cov (float, vector, matrix, or list, optional): The prior
+                (co)variance on the spherical harmonic coefficients of the map.
+                If a scalar, assumes the same variance for all map coefficients
+                (with no covariance across them). If a vector of length
+                :py:attr:`Ny`, sets the prior variance for each spherical
+                harmonic coefficient individually and assumes the same variance
+                vector for all map components. If a matrix of shape
+                (:py:attr:`Ny`, :py:attr:`Ny`), sets the prior covariance of
+                each map component equal to this matrix. Users can also provide
+                a list of length :py:attr:`nc` containing scalars, vectors, or
+                matrices corresponding to the prior covariance for each
+                component. Default is a vector where the first coefficient is
+                unity and the remanining :py:attr:`Ny` - 1 coefficients are
+                zero.
+            spectral_mean (float, vector, or list, optional): The prior mean
+                on the spectral components of the map. If a scalar,
+                the same mean is assumed for all spectral elements. If a vector
+                of length :py:attr:`nw0`, the same mean vector is assumed for
+                all spectral components. Users can also provide a list of
+                length :py:attr:`nc` containing scalars or vectors
+                corresponding to the prior mean for each component.
+                Default is `1.0`.
+            spectral_cov (float, vector, matrix, or list, optional): The prior
+                (co)variance on the spectra. If a scalar, assumes the same
+                variance for all spectral elements
+                (with no covariance across them). If a vector of length
+                :py:attr:`nw0`, sets the prior variance for each spectral
+                element individually and assumes the same variance
+                vector for all spectral components. If a matrix of shape
+                (:py:attr:`nw0`, :py:attr:`nw0`), sets the prior covariance of
+                each spectral component equal to this matrix. Users can also
+                provide a list of length :py:attr:`nc` containing scalars,
+                vectors, or matrices corresponding to the prior covariance for
+                each component. Default is `1e-2`.
+            spectral_lambda (float, optional): The regularization parameter for
+                the L1 solver. Increasing this value increases the sparsity of
+                the solution. Default is `1e6`.
+            spectral_maxiter (int, optional): Maximum number of iterations in
+                the L1 solver. Default is `100`.
+            spectral_eps (float, optional): Small parameter added to the
+                diagonal of the spectral covariance matrix for stability.
+                Default is `1e-12`.
+            spectral_tol (float, optional): Tolerance for termination of the
+                L1 iterative solver. Default is `1e-8`.
+            spectral_method (str, optional): Regularization method when solving
+                for the spectrum. Options are "L1" or "L2" (default). When
+                solving for both the spectrum and the map, the L1 solver is
+                used to obtain an initial guess for the spectrum, regardless
+                of this setting.
+            normalized (bool, optional): Whether the ``flux`` dataset is
+                continuum-normalized. Default is True. If it is normalized, the
+                solution for the map is non-linear, but typically converges
+                with an iterative tempered solver. See the ``nlogT`` tempering
+                parameter below.
+            baseline (vector, optional): If ``normalized`` is True, users may
+                provide a vector of length :py:attr:`nt` corresponding to the
+                photometric baseline at each epoch. This is used to
+                un-normalize the data, restoring the linearity of the problem.
+                If this quantity is not known exactly (as is almost always
+                the case), do not provide a value for it; instead, set the
+                ``baseline_var`` parameter, which controls the variance of the
+                prior on the baseline; the code will then marginalize over it.
+                Default is None.
+            baseline_var (float, optional): Variance of the prior on the
+                baseline, when ``baseline`` is not provided and the data is
+                normalized. Default is `1e-2`.
+            fix_spectrum (bool, optional): If True, fixes the spectrum at the
+                current value and solves only for the map. Default is False.
+            fix_map (bool, optional): If True, fixes the map at the
+                current value and solves only for the spectrum. Default is
+                False.
+            logT0 (float, optional): Initial log temperature for the tempering
+                scheme. Default is `12.0`. See the ``nlogT`` tempering
+                parameter below for more details.
+            logTf (float, optional): Final log temperature for the tempering
+                scheme. Default is `0.0` (untempered). See the ``nlogT``
+                tempering parameter below for more details.
+            nlogT (int, optional): Number of steps in the tempering scheme.
+                Default is `50`. The tempering scheme is used to solve for the
+                map when the baseline is not known, or to solve for both the
+                map and the specturm when neither are known. At each step,
+                the square of the flux uncertainty (i.e., the variance) is
+                multiplied by the current value of the "temperature", which
+                is slowly decreased from an initial large number controlled
+                by ``logT0`` to a small number, controlled by ``logTf``. In
+                practice, the correct tempering schedule can greatly improve
+                the odds that the solver converges to the global minimum.
+                Different problems in general require different settings for
+                these parameters, so fine tuning is usually required.
+            quiet (bool, optional): Suppress messages and progress bars?
+                Default is False.
 
         """
         if self.lazy:
@@ -1576,6 +1690,10 @@ class DopplerMap:
             flux = get_val(flux)
             spectrum_ = get_val(self.spectrum_)
             y = get_val(self._y)
+            u = get_val(self._u)
+            veq = get_val(self._veq)
+            inc = get_val(self._inc)
+            theta = get_val(self._get_default_theta(kwargs.pop("theta", None)))
             for key in kwargs.keys():
                 if key not in ["point", "model"]:
                     kwargs[key] = get_val(kwargs[key])
@@ -1583,10 +1701,23 @@ class DopplerMap:
         else:
 
             y = self._y
+            u = self._u
             spectrum_ = self.spectrum_
+            veq = self._veq
+            inc = self._inc
+            theta = self._get_default_theta(kwargs.get("theta", None))
 
         # Run the solver
-        soln = self._solver.solve(flux, y, spectrum_, **kwargs)
+        if solver.lower().startswith("bi"):
+            soln = self._solver.solve_bilinear(
+                flux, theta, y, spectrum_, veq, inc, u, **kwargs
+            )
+        elif solver.lower().startswith("non"):
+            soln = self._solver.solve_nonlinear(
+                flux, theta, y, spectrum_, veq, inc, u, **kwargs
+            )
+        else:
+            raise ValueError("Invalid `solver`.")
 
         # Set map props
         self._y = soln["y"]
