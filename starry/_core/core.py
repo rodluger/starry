@@ -1410,7 +1410,10 @@ class OpsSystem(object):
         )
         # Position of the primary
         if len(self.secondaries) > 1:
-            x_pri, y_pri, z_pri = tt.sum(orbit.get_star_position(t), axis=-1)
+            xyz = tt.sum(orbit.get_star_position(t), axis=-1)
+            x_pri = tt.reshape(xyz[0], (-1, 1))
+            y_pri = tt.reshape(xyz[1], (-1, 1))
+            z_pri = tt.reshape(xyz[2], (-1, 1))
         else:
             x_pri, y_pri, z_pri = orbit.get_star_position(t)
 
