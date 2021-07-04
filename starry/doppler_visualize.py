@@ -125,7 +125,8 @@ SCRIPT = lambda counter: """
     // hovering over one of the plots
     var DISABLE_WHEEL = false;
     var disable_wheel = function (e) {{
-        if (DISABLE_WHEEL) e.preventDefault();
+        var plot = document.getElementsByClassName("plot_{counter:d}")[0];
+        if (DISABLE_WHEEL && (plot != null)) e.preventDefault();
     }};
     window.addEventListener("wheel", disable_wheel, {{ passive:false }});
 
@@ -218,22 +219,22 @@ class Visualize:
         ).flatten()
         mx = np.nanmax(values)
         mn = np.nanmin(values)
-        rg = mx - mn
+        rg = max(1e-3, mx - mn)
         self.vmax_m = mx + 0.1 * rg
         self.vmin_m = mn - 0.1 * rg
         mx = np.nanmax(self.ortho)
         mn = np.nanmin(self.ortho)
-        rg = mx - mn
+        rg = max(1e-3, mx - mn)
         self.vmax_o = mx + 0.1 * rg
         self.vmin_o = mn - 0.1 * rg
         mx = np.nanmax(self.flux)
         mn = np.nanmin(self.flux)
-        rg = mx - mn
+        rg = max(1e-3, mx - mn)
         self.vmax_f = mx + 0.1 * rg
         self.vmin_f = mn - 0.1 * rg
         mx = np.nanmax(self.flux0)
         mn = np.nanmin(self.flux0)
-        rg = mx - mn
+        rg = max(1e-3, mx - mn)
         self.vmax_f0 = mx + 0.1 * rg
         self.vmin_f0 = mn - 0.1 * rg
 

@@ -35,45 +35,71 @@ class Solve:
         # Methods and matrices
         if map.lazy:
 
+            # We need to explicitly compile all tensor functions.
             # TODO: Untested!
 
-            # We need to explicitly compile all tensor functions.
+            # Temporarily disable test values
+            compute_test_value = theano.config.compute_test_value
+            theano.config.compute_test_value = "off"
 
-            # Design matrix conditioned on current spectrum
-            spectrum_ = tt.dmatrix()
-            theta = tt.dvector()
-            map._spectrum = spectrum_
-            f = map.design_matrix(theta=theta, fix_spectrum=True)
-            _get_S = theano.function([theta, spectrum_], f)
-            self._get_S = lambda: _get_S(self.theta, self.spectrm_)
-
-            # Design matrix dot product conditioned on current map
-            x = tt.dmatrix()
-            y = tt.dmatrix()
-            map._y = y
-            f = map.dot(x, fix_map=True, transpose=False)
-            _dotM = theano.function([x, y], f)
-            self.dotM = lambda x: _dotM(x, self.y)
-
-            # Transpose of the the above op
-            f = map.dot(x, fix_map=True, transpose=True)
-            _dotMT = theano.function([x, y], f)
-            self.dotMT = lambda x: _dotMT(x, self.y)
-
-            # Line broadening matrix
+            # Dummy variables for compiling
             veq = tt.dscalar()
             inc = tt.dscalar()
-            f = map.ops.get_kT0_matrix(veq, inc)
-            _get_KT0 = theano.function([veq, inc], f)
-            self._get_KT0 = lambda: _get_KT0(self.veq, self.inc)
-
-            # LASSO solver
+            spectrum_ = tt.dmatrix()
+            theta = tt.dvector()
+            x = tt.dmatrix()
+            y = tt.dmatrix()
+            u = tt.dvector()
             ATA = tt.dmatrix()
             ATy = tt.dvector()
             lam = tt.dscalar()
             maxiter = tt.iscalar()
             eps = tt.dscalar()
             tol = tt.dscalar()
+
+            # Design matrix conditioned on current spectrum
+            f = map.ops.get_D_fixed_spectrum(inc, theta, veq, u, spectrum_)
+            if map._interp:
+                f = ts.dot(map._Si2eBlk, f)
+            _get_S = theano.function(
+                [inc, theta, veq, u, spectrum_], f, on_unused_input="ignore"
+            )
+            self._get_S = lambda: _get_S(
+                self.inc, self.theta, self.veq, self.u, self.spectrum_
+            )
+
+            # Design matrix dot product conditioned on current map
+            f = map.ops.dot_design_matrix_fixed_map_into(
+                inc, theta, veq, u, y, x
+            )
+            if map._interp:
+                f = ts.dot(map._Si2eBlk, f)
+            _dotM = theano.function(
+                [inc, theta, veq, u, y, x], f, on_unused_input="ignore"
+            )
+            self.dotM = lambda x: _dotM(
+                self.inc, self.theta, self.veq, self.u, self.y, x
+            )
+
+            # Transpose of the the above op
+            f = map.ops.dot_design_matrix_fixed_map_transpose_into(
+                inc, theta, veq, u, y, x
+            )
+            if map._interp:
+                f = ts.dot(map._Si2eBlk, f)
+            _dotMT = theano.function(
+                [inc, theta, veq, u, y, x], f, on_unused_input="ignore"
+            )
+            self.dotMT = lambda x: _dotMT(
+                self.inc, self.theta, self.veq, self.u, self.y, x
+            )
+
+            # Line broadening matrix
+            f = map.ops.get_kT0_matrix(veq, inc)
+            _get_KT0 = theano.function([veq, inc], f)
+            self._get_KT0 = lambda: _get_KT0(self.veq, self.inc)
+
+            # LASSO solver
             self.L1 = theano.function(
                 [ATA, ATy, lam, maxiter, eps, tol],
                 map.ops.L1(ATA, ATy, lam, maxiter, eps, tol),
@@ -84,31 +110,44 @@ class Solve:
             self.S0e2i = map._S0e2i.eval()
             self.Si2eTr = map._Si2eTr.eval()
 
+            # Restore test value config
+            theano.config.compute_test_value = compute_test_value
+
         else:
 
             # Design matrix conditioned on current spectrum
             def _get_S():
                 map._spectrum = self.spectrum_
-                return map.design_matrix(theta=self.theta, fix_spectrum=True)
+                return map.design_matrix(
+                    theta=self.theta / map._angle_factor, fix_spectrum=True
+                )
 
             self._get_S = _get_S
 
             # Design matrix dot product conditioned on current map
             def _dotM(x):
                 map._y = self.y
-                return map.dot(x, fix_map=True, transpose=False)
+                return map.dot(
+                    x,
+                    theta=self.theta / map._angle_factor,
+                    fix_map=True,
+                    transpose=False,
+                )
 
             def _dotMT(x):
                 map._y = self.y
-                return map.dot(x, fix_map=True, transpose=True)
+                return map.dot(
+                    x,
+                    theta=self.theta / map._angle_factor,
+                    fix_map=True,
+                    transpose=True,
+                )
 
             self.dotM = _dotM
             self.dotMT = _dotMT
 
             # Line broadening matrix
-            self._get_KT0 = lambda: map.ops.get_kT0_matrix(
-                self._veq, self._inc
-            )
+            self._get_KT0 = lambda: map.ops.get_kT0_matrix(self.veq, self.inc)
 
             # LASSO solver
             self.L1 = map.ops.L1
@@ -207,7 +246,7 @@ class Solve:
         if baseline_var is None:
             baseline_var = 1e-2
         if logT0 is None:
-            logT0 = 12
+            logT0 = 2
         if logTf is None:
             logTf = 0
         if nlogT is None:
@@ -284,9 +323,10 @@ class Solve:
             # Check that we have one covariance per component
             assert len(spatial_cov) == self.nc
         spatial_inv_cov = [None for n in range(self.nc)]
+        ndim = np.array(spatial_cov[0]).ndim
         for n in range(self.nc):
             spatial_cov[n] = np.array(spatial_cov[n])
-            assert spatial_cov[n].ndim == spatial_cov[0].ndim
+            assert spatial_cov[n].ndim == ndim
             if spatial_cov[n].ndim < 2:
                 spatial_inv_cov[n] = np.reshape(
                     np.ones(self.Ny) / spatial_cov[n], (-1, 1)
@@ -329,8 +369,8 @@ class Solve:
             spectral_mean[n] = np.reshape(
                 spectral_mean[n] * np.ones(self.nw0), (-1, 1)
             )
-            spectral_mean[n] = self.S0e2i.dot(spectral_mean[n])
-        self.spectral_mean = np.array(spectral_mean)
+            spectral_mean[n] = self.S0e2i.dot(spectral_mean[n]).T
+        self.spectral_mean = np.concatenate(spectral_mean, axis=0)
 
         # Spectral cov may be a scalar, a vector, a matrix (nw0, nw0),
         # or a list of those. Interpolate it to the internal grid,
@@ -344,16 +384,18 @@ class Solve:
             # Check that we have one covariance per component
             assert len(spectral_cov) == self.nc
         spectral_inv_cov = [None for n in range(self.nc)]
+        ndim = np.array(spectral_cov[0]).ndim
         for n in range(self.nc):
             spectral_cov[n] = np.array(spectral_cov[n])
-            assert spectral_cov[n].ndim == spectral_cov[0].ndim
+            assert spectral_cov[n].ndim == ndim
             if spectral_cov[n].ndim < 2:
-                spectral_inv_cov[n] = np.reshape(
-                    np.ones(self.nw0_) / spectral_cov[n], (1, -1)
-                )
-                spectral_cov[n] = np.reshape(
-                    np.ones(self.nw0_) * spectral_cov[n], (1, -1)
-                )
+                if spectral_cov[n].ndim == 0:
+                    cov = np.ones(self.nw0_) * spectral_cov[n]
+                else:
+                    cov = self.S0e2i.dot(spectral_cov[n])
+                inv = 1.0 / cov
+                spectral_inv_cov[n] = np.reshape(inv, (1, -1))
+                spectral_cov[n] = np.reshape(cov, (1, -1))
             else:
                 cov = self.S0e2i.dot(self.S0e2i.dot(spectral_cov[n]).T).T
                 cov[np.diag_indices_from(cov)] += spectral_eps
@@ -524,8 +566,11 @@ class Solve:
         if self.normalized:
 
             # Un-normalize the data with the current baseline
-            baseline = np.dot(self.C, self.y.T.reshape(-1))
-            baseline = np.reshape(baseline, (self.nt, 1))
+            if self.baseline is None:
+                baseline = np.dot(self.C, self.y.T.reshape(-1))
+                baseline = np.reshape(baseline, (self.nt, 1))
+            else:
+                baseline = np.reshape(self.baseline, (self.nt, 1))
             flux = self.flux * baseline
             if self.flux_err.ndim == 0:
                 flux_err = self.flux_err * np.ones((1, self.nw)) * baseline
@@ -659,6 +704,7 @@ class Solve:
         self.veq = veq
         self.inc = inc
         self.y = y
+        self.u = u
         self.cho_ycov = None
         self.spectrum_ = spectrum_
         self.cho_scov = None
@@ -711,15 +757,14 @@ class Solve:
         Solve the nonlinear problem for the spatial and/or spectral map
         given a spectral timeseries.
 
+        NOTE: Experimental, not well tested.
+
         """
         # Start fresh
         self.reset()
 
         # Parse the inputs
         self.process_inputs(flux, **kwargs)
-
-        # Some settings aren't supported for the nonlinear solver
-        assert self.baseline is None
 
         # The variables we're optimizing
         tt_y = theano.shared(y)
@@ -741,9 +786,12 @@ class Solve:
 
         # Remove the baseline?
         if self.normalized:
-            tt_model /= tt.reshape(
-                tt_model[:, self.continuum_idx], (self.nt, 1)
-            )
+            if self.baseline is None:
+                tt_model /= tt.reshape(
+                    tt_model[:, self.continuum_idx], (self.nt, 1)
+                )
+            else:
+                tt_model /= tt.reshape(self.baseline, (self.nt, 1))
 
         # The likelihood term
         tt_loss = tt.sum((self.flux - tt_model) ** 2 / self.flux_err ** 2)

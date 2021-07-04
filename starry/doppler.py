@@ -19,6 +19,7 @@ import os
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 from astropy import units
+from tqdm.auto import tqdm
 
 
 class DopplerMap:
@@ -117,40 +118,6 @@ class DopplerMap:
     _default_vsini_max = 1e5  # m/s
     _default_wav = np.linspace(642.75, 643.25, 200)  # FeI 6430
 
-    def _default_spectrum(self):
-        """
-        The default spectrum to use if the user doesn't provide one.
-
-        This consists of a single narrow Gaussian absorption line at the central
-        wavelength of the first spectral component, and unity for all
-        other components.
-
-        The std. dev. of the line is 0.0085 nm, corresponding to
-
-            FWHM = 2.355 * 0.0085 nm = 0.02 nm = 0.2 A
-
-        At 643nm, this corresponds to a line with
-
-            FWHM = (0.02 nm / 643 nm) * c = 10 km/s,
-
-        the value assumed for the FeI line in Vogt et al. (1987).
-
-        """
-        return self._math.concatenate(
-            (
-                self._math.reshape(
-                    1
-                    - 0.5
-                    * self._math.exp(
-                        -0.5 * (self._wav0_int - self._wavr) ** 2 / 0.0085 ** 2
-                    ),
-                    (1, self._nw0_int),
-                ),
-                self._math.ones((self._nc - 1, self._nw0_int)),
-            ),
-            axis=0,
-        )
-
     def __init__(
         self,
         ydeg=1,
@@ -223,7 +190,7 @@ class DopplerMap:
         self._wav = self._math.cast(wav)
         self._nw = len(wav)
 
-        # Compute the index of the continuum
+        # Compute the index of the continuum (`wav` grid)
         if wavc is None:
             # The first element of `wav`
             self._continuum_idx = 0
@@ -297,9 +264,14 @@ class DopplerMap:
                 "Edge effects may occur. See the documentation for mode details."
             )
 
+        # Index of the continuum (`wav0` grid)
+        self._continuum_idx0 = np.argmin(
+            np.abs(wav0 - wav[self._continuum_idx])
+        )
+
         # Interpolation between internal grid and user grid
 
-        # TODO: Integrate over each wavelength bin in the output!
+        # TODO: Integrate over each wavelength bin in the output?
         # Currently we're assuming the spectra are measured in delta
         # function bins, but it should really be an integral. This
         # should be easy to bake into the interpolation matrix:
@@ -332,6 +304,7 @@ class DopplerMap:
             S[np.abs(S) < interp_tol] = 0
             S = csr_matrix(S)
             self._S0i2e = self._math.sparse_cast(S)
+            self._S0i2eTr = self._math.sparse_cast(S.T)
 
             # Interpolate from `wav` to `wav_`
             S = self._get_spline_operator(wav, wav_int)
@@ -344,6 +317,7 @@ class DopplerMap:
             S[np.abs(S) < interp_tol] = 0
             S = csr_matrix(S)
             self._S0e2i = self._math.sparse_cast(S)
+            self._S0e2iTr = self._math.sparse_cast(S.T)
 
         else:
 
@@ -601,9 +575,7 @@ class DopplerMap:
         """
         # Interpolate to the ``wav0`` grid
         if self._interp:
-            return self._math.sparse_dot(
-                self._spectrum, self._math.transpose(self._S0i2e)
-            )
+            return self._math.sparse_dot(self._spectrum, self._S0i2eTr)
         else:
             return self._spectrum
 
@@ -611,13 +583,19 @@ class DopplerMap:
     def spectrum(self, spectrum):
         # Cast & reshape
         if self._nc == 1:
-            self._spectrum = self._math.reshape(
+            spectrum = self._math.reshape(
                 self._math.cast(spectrum), (1, self._nw0)
             )
         else:
-            self._spectrum = self.ops.enforce_shape(
+            spectrum = self.ops.enforce_shape(
                 self._math.cast(spectrum), np.array([self._nc, self._nw0])
             )
+
+        # Interpolate from the ``wav0`` grid to internal, padded grid
+        if self._interp:
+            self._spectrum = self._math.sparse_dot(spectrum, self._S0e2iTr)
+        else:
+            self._spectrum = spectrum
 
     @property
     def spectrum_(self):
@@ -753,7 +731,7 @@ class DopplerMap:
         self._map._u = self._u
 
         # Reset the spectrum
-        self._spectrum = self._default_spectrum()
+        self._spectrum = self._math.cast(np.ones((self.nc, self.nw0_)))
 
         # Basic properties
         self.inc = kwargs.pop("inc", 0.5 * np.pi / self._angle_factor)
@@ -764,6 +742,9 @@ class DopplerMap:
         """
         Return the SHT matrix for transforming a lat-lon intensity
         grid to a vector of spherical harmonic coefficients.
+
+        This method is only used internally to load images on rectangular
+        lat-lon grids in the ``load`` method.
 
         """
         # Get the lat-lon grid
@@ -966,7 +947,7 @@ class DopplerMap:
                 # Interpolate from the ``wav0`` grid to internal, padded grid
                 if self._interp:
                     self._spectrum = self._math.sparse_dot(
-                        spectra, self._math.transpose(self._S0e2i)
+                        spectra, self._S0e2iTr
                     )
                 else:
                     self._spectrum = spectra
@@ -1000,9 +981,7 @@ class DopplerMap:
 
             # Interpolate from the ``wav0`` grid to internal, padded grid
             if self._interp:
-                self._spectrum = self._math.sparse_dot(
-                    VT, self._math.transpose(self._S0e2i)
-                )
+                self._spectrum = self._math.sparse_dot(VT, self._S0e2iTr)
             else:
                 self._spectrum = VT
 
@@ -1061,6 +1040,102 @@ class DopplerMap:
                 * self._angle_factor
             )
         return theta
+
+    def sht_matrix(
+        self,
+        inverse=False,
+        return_grid=False,
+        smoothing=None,
+        oversample=2,
+        lam=1e-6,
+    ):
+        """
+        Return the Spherical Harmonic Transform (SHT) matrix.
+
+        This matrix dots into a vector of pixel intensities defined on
+        a set of latitude-longitude points, resulting in a vector of spherical
+        harmonic coefficients that best approximates the image.
+
+        This can be useful for transforming between the spherical harmonic and
+        pixel representations of the surface map, such as when specifying
+        priors during inference or optimization. A common prior in Doppler
+        imaging problems is the assumption of sparsity, often in the form of
+        maximum entropy regularization, where the likelihood penalty has the
+        form (e.g., Vogt et al. 1987)
+
+            .. code-block::python
+
+                S = -np.sum(np.log(p) * p)
+
+        In this case, the prior must be applied to the vector ``p`` of
+        *pixel intensities*, not the vector of spherical harmonic coefficients.
+        The former is obtained from the latter as follows:
+
+            .. code-block::python
+
+                A = map.sht_matrix(inverse=True)
+                p = np.dot(A, map.y)
+
+        (Note, importantly, that ``p`` is not guaranteed to be positive, so
+        one should be careful when taking the log in the expression above!)
+
+        An alternative way to approach the problem is to sample in pixels ``p``
+        directly; in this case, one must compute ``y`` from ``p`` so that
+        ``starry`` can compute the model for the flux:
+
+            .. code-block::python
+
+                A = map.sht_matrix()
+                y = np.dot(A, p)
+                map[:, :] = y
+
+        Args:
+            inverse (bool, optional). If True, returns the inverse transform,
+                which transforms from spherical harmonic coefficients to
+                pixels. Default is False.
+            return_grid (bool, optional). If True, also returns an array of
+                shape ``(npix, 2)`` corresponding to the latitude-longitude
+                points (in units of :py:attr:`angle_unit`) on which the SHT is
+                evaluated. Default is False.
+            smoothing (float, optional): Gaussian smoothing strength.
+                Increase this value to suppress ringing (forward SHT only) or
+                explicitly set to zero to disable smoothing. Default is
+                ``2/self.ydeg``.
+            oversample (int, optional): Factor by which to oversample the
+                pixelization grid. Default `2`.
+            lam (float, optional): Regularization parameter for the inverse
+                pixel transform. Default `1e-6`.
+
+        Returns:
+            A matrix of shape (:py:attr:`Ny`, ``npix``) or
+            (:py:attr:`npix`, ``Ny``) (if ``inverse`` is True), where ``npix``
+            is the number of pixels on the grid. This number is determined
+            from the degree of the map and the ``oversample`` keyword. If
+            ``return_grid`` is True, also returns the latitude-longitude points
+            (in units of :py:attr:`angle_unit`) on which the SHT is
+            evaluated, a matrix of shape ``(npix, 2)``.
+
+        """
+        lat, lon, ISHT, SHT, _, _ = self._map.get_pixel_transforms(
+            oversample=oversample, lam=lam
+        )
+        if inverse:
+            matrix = ISHT
+        else:
+            matrix = SHT
+            if smoothing is None:
+                smoothing = 2.0 / self.ydeg
+            if smoothing > 0:
+                l = np.concatenate(
+                    [np.repeat(l, 2 * l + 1) for l in range(self.ydeg + 1)]
+                )
+                s = np.exp(-0.5 * l * (l + 1) * smoothing ** 2)
+                matrix *= s[:, None]
+        if return_grid:
+            grid = np.vstack((lat, lon)).T
+            return matrix, grid
+        else:
+            return matrix
 
     def design_matrix(self, theta=None, fix_spectrum=False, fix_map=False):
         """
@@ -1435,7 +1510,8 @@ class DopplerMap:
                 img = get_val(self._map.render(projection="moll", res=res))
                 moll[k] = img
                 ortho += get_val(
-                    self._spectrum[k, 0]
+                    # Evaluate the ortho maps at the *continuum*
+                    self._spectrum[k, self._continuum_idx0]
                     * self._map.render(
                         projection="ortho",
                         theta=theta / self._angle_factor,
@@ -1481,11 +1557,15 @@ class DopplerMap:
         vmin=None,
         vmax=None,
         nmax=5,
+        **kwargs,
     ):
         """
         Show the individual component surface maps and spectra.
 
         """
+        # If we're in lazy mode, we need to evaluate stuff
+        get_val = evaluator(**kwargs)
+
         # Show at most `nmax` components
         nc = min(nmax, self.nc)
         nrows = int(show_maps) + int(show_spectra)
@@ -1501,35 +1581,43 @@ class DopplerMap:
         find_vmin = vmin is None
         find_vmax = vmax is None
         if show_maps:
-            if find_vmin:
-                vmin = np.inf
-            if find_vmax:
-                vmax = -np.inf
-            for n in range(nc):
-                self._map[:, :] = self._y[:, n]
-                img = self._map.render(projection=projection, res=50)
+            if find_vmin or find_vmax:
                 if find_vmin:
-                    vmin = min(np.nanmin(img), vmin)
+                    vmin = np.inf
                 if find_vmax:
-                    vmax = max(np.nanmax(img), vmax)
+                    vmax = -np.inf
+                for n in range(nc):
+                    self._map[:, :] = self._y[:, n]
+                    img = get_val(
+                        self._map.render(projection=projection, res=50)
+                    )
+                    if find_vmin:
+                        vmin = min(np.nanmin(img), vmin)
+                    if find_vmax:
+                        vmax = max(np.nanmax(img), vmax)
             norm = Normalize(vmin=vmin, vmax=vmax)
         if show_spectra:
-            smin = np.nanmin(self.spectrum)
-            smax = np.nanmax(self.spectrum)
-            spad = 0.1 * (smax - smin)
+            wav0 = get_val(self.wav0)
+            spectrum = get_val(self.spectrum)
+            smin = np.nanmin(spectrum)
+            smax = np.nanmax(spectrum)
+            rng = max(1e-3, smax - smin)
+            spad = 0.1 * rng
 
         # Plot
         for n in range(nc):
             i = 0
             if show_maps:
                 self._map[:, :] = self._y[:, n]
-                self._map.show(ax=ax[i, n], projection=projection, norm=norm)
+                self._map.show(
+                    ax=ax[i, n], projection=projection, norm=norm, **kwargs
+                )
                 ax[i, n].set_aspect("auto")
                 i += 1
             if show_spectra:
-                ax[i, n].plot(self.wav0, self.spectrum[n])
+                ax[i, n].plot(wav0, spectrum[n])
                 ax[i, n].set_ylim(smin - spad, smax + spad)
-                ax[i, n].set_xlim(self.wav0[0], self.wav0[-1])
+                ax[i, n].set_xlim(wav0[0], wav0[-1])
                 if n == 0:
                     ax[i, n].set_ylabel("intensity", fontsize=10)
                 else:
@@ -1602,7 +1690,7 @@ class DopplerMap:
                 matrices corresponding to the prior covariance for each
                 component. Default is a vector where the first coefficient is
                 unity and the remanining :py:attr:`Ny` - 1 coefficients are
-                zero.
+                `1e-4`.
             spectral_mean (float, vector, or list, optional): The prior mean
                 on the spectral components of the map. If a scalar,
                 the same mean is assumed for all spectral elements. If a vector
@@ -1692,8 +1780,10 @@ class DopplerMap:
             y = get_val(self._y)
             u = get_val(self._u)
             veq = get_val(self._veq)
-            inc = get_val(self._inc)
-            theta = get_val(self._get_default_theta(kwargs.pop("theta", None)))
+            inc = get_val(self._inc)  # rad
+            theta = get_val(
+                self._get_default_theta(kwargs.pop("theta", None))
+            )  # rad
             for key in kwargs.keys():
                 if key not in ["point", "model"]:
                     kwargs[key] = get_val(kwargs[key])
@@ -1704,8 +1794,8 @@ class DopplerMap:
             u = self._u
             spectrum_ = self.spectrum_
             veq = self._veq
-            inc = self._inc
-            theta = self._get_default_theta(kwargs.get("theta", None))
+            inc = self._inc  # rad
+            theta = self._get_default_theta(kwargs.pop("theta", None))  # rad
 
         # Run the solver
         if solver.lower().startswith("bi"):
@@ -1724,3 +1814,112 @@ class DopplerMap:
         self._spectrum = soln["spectrum_"]
 
         return soln
+
+    def optimize(
+        self,
+        model=None,
+        start=None,
+        niter=10000,
+        lr=1e-4,
+        quiet=False,
+        **kwargs,
+    ):
+        """
+        Optimizes the log likelihood function within a `pymc3` model context
+        using the ``Adam`` solver.
+
+        Args:
+            model (optional): The `pymc3` model to optimize. Default is None,
+                in which case the current model context is used.
+            start (optional): The starting point for the optimization. Default
+                is ``model.test_point``.
+            niter (int, optional): The number of iterations. Default is
+                ``10000``.
+            lr (float, optional): The learning rate. Default is ``1e-4``.
+            quiet (bool, optional): If True, disables the progress bar. Default
+                is False.
+            kwargs: Additional kwargs passed directly to
+                ``pymc3_ext.optim.Adam``.
+
+        Below is an example of how to use this method.
+
+        .. code-block:: python
+
+            import pymc3 as pm
+            import starry
+
+            # Define a `pymc3` model
+            with pm.Model() as model:
+
+                # Instantiate a Doppler map
+                # Assuming ``nt=16`` spectral epochs
+                map = starry.DopplerMap(ydeg=15, nt=16)
+
+                # SHT matrix: converts from pixels to Ylms
+                A = map.sht_matrix(smoothing=0.075)
+                npix = A.shape[1]
+
+                # Prior on the map: intensity uniform in [0, 1]
+                p = pm.Uniform("pixels", lower=0.0, upper=1.0, shape=(npix,))
+                amp = pm.Uniform("amp", lower=0.0, upper=1.0)
+                map[:, :] = amp * tt.dot(A, p)
+
+                # Prior on the spectrum: Gaussian about unity
+                map.spectrum = pm.Normal(
+                    "spectrum", mu=1.0, sigma=1e-1, shape=(map.nw0,)
+                )
+
+                # Compute the model
+                # Assuming `theta` is a vector of 16 rotational phases at
+                # which each of the spectra were observed
+                flux_model = map.flux(theta=theta)
+
+                # Likelihood term
+                # Assuming `flux` is the data and `flux_err` is the
+                # (scalar) uncertainty
+                pm.Normal(
+                    "obs",
+                    mu=tt.reshape(flux_model, (-1,)),
+                    sd=flux_err,
+                    observed=flux.reshape(-1,)
+                )
+
+                # Optimize (this function)
+                map.optimize()
+
+        """
+        import pymc3 as pm
+        import pymc3_ext as pmx
+
+        # Get the model
+        try:
+            if model is None:
+                model = pm.Model.get_context()
+        except TypeError:
+            raise ValueError(
+                "This method must be run within a `pymc3` model context."
+            )
+
+        # Get the starting point
+        if start is None:
+            start = model.test_point
+
+        # Iterate
+        loss = []
+        best_loss = np.inf
+        for obj, point in tqdm(
+            pmx.optim.optimize_iterator(
+                pmx.optim.Adam(lr=lr, **kwargs),
+                niter,
+                start=start,
+                model=model,
+            ),
+            total=niter,
+            disable=quiet,
+        ):
+            loss.append(obj)
+            if obj < best_loss:
+                best_loss = obj
+                map_soln = point
+
+        return map_soln, np.array(loss)
