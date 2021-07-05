@@ -683,10 +683,7 @@ class DopplerMap:
         """
         Set the spherical harmonic or limb darkening coefficient(s).
 
-        TODO: Lots of issues here! Needs unit tests for setting vectors.
-
         """
-        raise NotImplementedError("This method is buggy! Still working on it.")
         if not is_tensor(val):
             val = np.array(val)
         if isinstance(idx, integers) or isinstance(idx, slice):
@@ -723,7 +720,7 @@ class DopplerMap:
 
         # Map properties
         y = np.zeros((self._Ny, self._nc))
-        y[0, :] = 1.0 / self.nc
+        y[0, :] = 1.0
         self._y = self._math.cast(y)
         u = np.zeros(self._Nu)
         u[0] = -1.0
@@ -863,7 +860,7 @@ class DopplerMap:
                 # Process each map
                 Q = np.empty((self.Ny, 0))
                 y = np.zeros((self.Ny, self.nc))
-                y[:, 0] = 1.0 / self.nc
+                y[:, 0] = 1.0
                 for n, image in enumerate(maps):
 
                     # Is this a file name or an array?
@@ -1885,7 +1882,7 @@ class DopplerMap:
                 )
 
                 # Optimize (this function)
-                map.optimize()
+                map_soln, loss = map.optimize()
 
         """
         import pymc3 as pm
