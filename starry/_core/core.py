@@ -561,8 +561,8 @@ class OpsYlm(object):
     @autocompile
     def set_matrix(self, matrix, i, j, vals):
         """Set the elements of the theano matrix."""
-        i = tt.cast(i, "int8")
-        j = tt.cast(j, "int8")
+        i = tt.cast(tt.addbroadcast(i, 1), "int8")
+        j = tt.cast(tt.addbroadcast(j, 0), "int8")
         if vals.ndim == 0:
             res = tt.set_subtensor(
                 matrix[i, j], vals * tt.ones_like(matrix[i, j])

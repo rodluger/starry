@@ -11,7 +11,9 @@ logger = logging.getLogger("starry.ops")
 __all__ = ["logger", "autocompile", "is_tensor", "clear_cache"]
 
 
+booleans = (np.array(True).dtype,)
 integers = (int, np.int16, np.int32, np.int64)
+floats = (float, np.float16, np.float32, np.float64)
 
 
 class CompileLogMessage:
@@ -54,27 +56,59 @@ def _get_type(arg):
         - a numpy boolean (`np.array(True)`, `np.array(False)`)
         - a numpy float array with ndim equal to 0, 1, 2, or 3
 
-    # TODO: Cast lists to arrays and floats to np.array(float)
-
     """
     ttype = type(arg)
     if is_tensor(arg):
+
+        # Trivial
         return ttype
+
     else:
+
+        # Cast lists to arrays
+        if ttype in (list, tuple):
+            if is_tensor(*arg):
+                return type(arg[0])
+            else:
+                arg = np.array(arg)
+                ttype = type(arg)
+
+        # Determine the type
+        if ttype in booleans:
+            return tt.bscalar
         if ttype in integers:
-            return tt.iscalar
+            return tt.lscalar
+        elif ttype in floats:
+            return tt.dscalar
         elif hasattr(arg, "ndim"):
             if arg.ndim == 0:
-                if arg.dtype is np.array(True).dtype:
+                if arg.dtype in booleans:
                     return tt.bscalar
+                elif arg.dtype in integers:
+                    return tt.lscalar
                 else:
                     return tt.dscalar
             elif arg.ndim == 1:
-                return tt.dvector
+                if arg.dtype in booleans:
+                    return tt.bvector
+                elif arg.dtype in integers:
+                    return tt.lvector
+                else:
+                    return tt.dvector
             elif arg.ndim == 2:
-                return tt.dmatrix
+                if arg.dtype in booleans:
+                    return tt.bmatrix
+                elif arg.dtype in integers:
+                    return tt.lmatrix
+                else:
+                    return tt.dmatrix
             elif arg.ndim == 3:
-                return tt.dtensor3
+                if arg.dtype in booleans:
+                    return tt.btensor3
+                elif arg.dtype in integers:
+                    return tt.ltensor3
+                else:
+                    return tt.dtensor3
             else:
                 raise NotImplementedError(
                     "Invalid array dimension passed to @autocompile: {}.".format(
