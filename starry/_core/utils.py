@@ -56,6 +56,8 @@ def _get_type(arg):
         - a numpy boolean (`np.array(True)`, `np.array(False)`)
         - a numpy float array with ndim equal to 0, 1, 2, or 3
 
+    TODO: We could just do `tt.as_tensor_variable(arg).type` and then upcast...
+
     """
     ttype = type(arg)
     if is_tensor(arg):
