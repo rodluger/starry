@@ -250,7 +250,7 @@ class sTOblateGradientOp(Op):
 
     def perform(self, node, inputs, outputs):
         f, theta, bo, ro, bsT = inputs
-        bf, btheta, bbo, bro = self.func(f, theta, bo, ro)
+        bf, btheta, bbo, bro = self.func(f, theta, bo, ro, bsT)
         outputs[0][0] = np.reshape(bf, np.shape(f))
         outputs[1][0] = np.reshape(btheta, np.shape(theta))
         outputs[2][0] = np.reshape(bbo, np.shape(bo))
