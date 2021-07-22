@@ -478,3 +478,19 @@ def test_sT_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             n_tests=1,
             rng=np.random,
         )
+def test_sT_oblate(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    with change_flags(compute_test_value="off"):
+        map = starry.Map(gdeg=4, oblate=True)
+        f = 0.2
+        theta = np.array([0.5, 0.5])
+        bo = np.array([0.75,0.75])
+        ro = 0.5
+        theano.gradient.verify_grad(
+            map.ops.sT,
+            (f, theta, bo, ro),
+            abs_tol=abs_tol,
+            rel_tol=rel_tol,
+            eps=eps,
+            n_tests=1,
+            rng=np.random,
+        )

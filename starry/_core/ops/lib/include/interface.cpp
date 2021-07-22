@@ -334,8 +334,8 @@ PYBIND11_MODULE(_c_ops, m) {
 
     // Chain rule
     double bf = bsT.cwiseProduct(ddf).sum();
-    Vector<double> btheta = bsT.cwiseProduct(ddtheta).colwise().sum();
-    Vector<double> bbo = bsT.cwiseProduct(ddbo).colwise().sum();
+    Vector<double> btheta = bsT.cwiseProduct(ddtheta).rowwise().sum();
+    Vector<double> bbo = bsT.cwiseProduct(ddbo).rowwise().sum();
     double bro = bsT.cwiseProduct(ddro).sum();
 
     // Return the backprop grads
