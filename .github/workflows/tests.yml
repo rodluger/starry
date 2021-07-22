@@ -29,7 +29,7 @@ jobs:
             pymc-version: "pymc3==3.11"
             arviz-version: ""
           - python-version: "3.8"
-            pymc-version: "https://github.com/pymc-devs/pymc3/archive/master.zip"
+            pymc-version: "https://github.com/pymc-devs/pymc3/archive/main.zip"
             arviz-version: ""
 
     steps:
