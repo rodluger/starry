@@ -284,12 +284,11 @@ class MapBase(object):
         if norm is None:
             vmin = np.nanmin(image_arr)
             vmax = np.nanmax(image_arr)
-            if np.abs(vmin - vmax) < 1e-12:
-                vmin -= 1e-12
-                vmax += 1e-12
+            if np.abs(vmin - vmax) < 1e-9:
+                vmin -= 1e-9
+                vmax += 1e-9
             norm = colors.Normalize(vmin=vmin, vmax=vmax)
-        else:
-            return norm
+        return norm
 
     def _get_projection(self, **kwargs):
         return get_projection(kwargs.get("projection", "ortho"))
@@ -1894,9 +1893,9 @@ class RVBase(object):
         if norm is None:
             vmin = np.nanmin(image)
             vmax = np.nanmax(image)
-            if np.abs(vmin - vmax) < 1e-12:
-                vmin -= 1e-12
-                vmax += 1e-12
+            if np.abs(vmin - vmax) < 1e-9:
+                vmin -= 1e-9
+                vmax += 1e-9
             try:
                 norm = colors.TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
             except AttributeError:  # pragma: no cover
@@ -2724,7 +2723,7 @@ class OblateBase(object):
     def reset(self, **kwargs):
         self._fobl = self._math.cast(kwargs.get("f", 0.0))
         self._omega = self._math.cast(kwargs.get("omega", 0.0))
-        self._tpole = self._math.cast(kwargs.get("tpole", 0.0))
+        self._tpole = self._math.cast(kwargs.get("tpole", 5800.0))
         self._beta = self._math.cast(kwargs.get("beta", 0.23))
         super(OblateBase, self).reset(**kwargs)
         self._set_grav_dark_filter()
