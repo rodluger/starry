@@ -106,9 +106,14 @@ class Solve:
             )
 
             # Interpolation matrices
-            self.Se2i = map._Se2i.eval()
-            self.S0e2i = map._S0e2i.eval()
-            self.Si2eTr = map._Si2eTr.eval()
+            if map._interp:
+                self.Se2i = map._Se2i.eval()
+                self.S0e2i = map._S0e2i.eval()
+                self.Si2eTr = map._Si2eTr.eval()
+            else:
+                self.Se2i = np.eye(map.nw)
+                self.S0e2i = np.eye(map.nw0)
+                self.Si2eTr = np.eye(map.nw)
 
             # Restore test value config
             theano.config.compute_test_value = compute_test_value
@@ -153,9 +158,14 @@ class Solve:
             self.L1 = map.ops.L1
 
             # Interpolation matrices
-            self.Se2i = map._Se2i
-            self.S0e2i = map._S0e2i
-            self.Si2eTr = map._Si2eTr
+            if map._interp:
+                self.Se2i = map._Se2i
+                self.S0e2i = map._S0e2i
+                self.Si2eTr = map._Si2eTr
+            else:
+                self.Se2i = np.eye(map.nw)
+                self.S0e2i = np.eye(map.nw0)
+                self.Si2eTr = np.eye(map.nw)
 
         # This method is only used in lazy mode, so we
         # don't need to compile it
