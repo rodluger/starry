@@ -622,9 +622,7 @@ class DopplerMap:
 
     @property
     def y(self):
-        """The spherical harmonic coefficient matrix. *Read-only*
-
-        """
+        """The spherical harmonic coefficient matrix. *Read-only*"""
         return self._math.squeeze(self._y)
 
     @property
@@ -696,13 +694,19 @@ class DopplerMap:
             self._u = self.ops.set_vector(self._u, inds, val)
             self._map._u = self._u
         elif isinstance(idx, tuple) and len(idx) == 2:
-            if idx[0] == slice(None, None, None) and idx[1] == slice(None, None, None):
+            if idx[0] == slice(None, None, None) and idx[1] == slice(
+                None, None, None
+            ):
                 # User is explicitly setting all coefficients
-                self._y = self._math.repeat(self._math.reshape(val, (-1, 1)), self.nc, axis=1)
+                self._y = self._math.repeat(
+                    self._math.reshape(val, (-1, 1)), self.nc, axis=1
+                )
             else:
 
                 # TODO! Fix me! Unreliable output
-                raise NotImplementedError("This method is buggy, and will be fixed soon!")
+                raise NotImplementedError(
+                    "This method is buggy, and will be fixed soon!"
+                )
 
                 # User is accessing a Ylm index
                 i, j = get_ylmw_inds(
@@ -710,16 +714,26 @@ class DopplerMap:
                 )
                 self._y = self.ops.set_matrix(self._y, i, j, val)
         elif isinstance(idx, tuple) and len(idx) == 3:
-            if idx[0] == slice(None, None, None) and idx[1] == slice(None, None, None) and idx[2] == slice(None, None, None):
+            if (
+                idx[0] == slice(None, None, None)
+                and idx[1] == slice(None, None, None)
+                and idx[2] == slice(None, None, None)
+            ):
                 # User is explicitly setting all coefficients
-                self._y = self._math.repeat(self._math.reshape(val, (-1, 1)), self.nc, axis=1)
+                self._y = self._math.repeat(
+                    self._math.reshape(val, (-1, 1)), self.nc, axis=1
+                )
             else:
 
                 # TODO! Fix me! Unreliable output
-                raise NotImplementedError("This method is buggy, and will be fixed soon!")
+                raise NotImplementedError(
+                    "This method is buggy, and will be fixed soon!"
+                )
 
                 # User is accessing a Ylmc index
-                i, j = get_ylmw_inds(self.ydeg, self.nc, idx[0], idx[1], idx[2])
+                i, j = get_ylmw_inds(
+                    self.ydeg, self.nc, idx[0], idx[1], idx[2]
+                )
                 if self.nc == 1:
                     assert np.array_equal(
                         j.reshape(-1), [0]
@@ -729,9 +743,7 @@ class DopplerMap:
             raise ValueError("Invalid map index.")
 
     def reset(self, **kwargs):
-        """Reset all map coefficients and attributes.
-
-        """
+        """Reset all map coefficients and attributes."""
         # Units
         self.angle_unit = kwargs.pop("angle_unit", units.degree)
         self.velocity_unit = kwargs.pop("velocity_unit", units.m / units.s)
@@ -1026,9 +1038,7 @@ class DopplerMap:
             )
 
     def _get_spline_operator(self, input_grid, output_grid):
-        """
-
-        """
+        """ """
         assert not is_tensor(
             input_grid, output_grid
         ), "Wavelength grids must be numerical quantities."
@@ -1040,9 +1050,7 @@ class DopplerMap:
         return S
 
     def _get_default_theta(self, theta):
-        """
-
-        """
+        """ """
         if theta is None:
             theta = self._math.cast(
                 np.linspace(0, 2 * np.pi, self._nt, endpoint=False)
@@ -1472,39 +1480,9 @@ class DopplerMap:
 
         return product
 
-    def show(self, theta=None, res=150, file=None, **kwargs):
+    def _visualize_bokeh(self, theta=None, res=150, file=None, **kwargs):
         """
-        Display (or save) an interactive visualization of the star.
-
-        This method uses the ``bokeh`` package to render an interactive
-        visualization of the spectro-spatial stellar surface and the
-        model for the spectral timeseries. The output is an HTML page that
-        is either saved to disk (if ``file`` is provided) or displayed in
-        a browser window or inline (if calling this method from within a
-        Jupyter notebook).
-
-        Users can interact with the visualization by moving the mouse over
-        the map to show the emergent, rest frame spectrum at different points
-        on the surface. Users can also scroll (with the mouse wheel or track
-        pad) to change the wavelength at which the map is visualized (in the
-        left panel) or to rotate the orthographic projection of the map (in
-        the right panel).
-
-        Args:
-            theta (vector, optional): The angular phase(s) at which to compute
-                the design matrix, in units of :py:attr:`angle_unit`. This
-                must be a vector of size :py:attr:`nt`. Default is uniformly
-                spaced values in the range ``[0, 2 * pi)``.
-            res (int, optional): Resolution of the map image in pixels on a
-                side. Default is ``150``.
-            file (str, optional): Path to an HTML file to which the
-                visualization will be saved. Default is None, in which case
-                the visualization is displayed.
-
-        .. note::
-
-            The visualization can be somewhat memory-intensive! Try decreasing
-            the map resolution if you experience issues.
+        Visualize the map using bokeh.
 
         """
         with CompileLogMessage("show", custom_message="Rendering the map..."):
@@ -1563,7 +1541,7 @@ class DopplerMap:
         # Save or display
         viz.show(file=file)
 
-    def show_components(
+    def _visualize_matplotlib(
         self,
         show_maps=True,
         show_spectra=True,
@@ -1572,6 +1550,7 @@ class DopplerMap:
         vmin=None,
         vmax=None,
         nmax=5,
+        theta=0.0,
         **kwargs,
     ):
         """
@@ -1604,7 +1583,9 @@ class DopplerMap:
                 for n in range(nc):
                     self._map[:, :] = self._y[:, n]
                     img = get_val(
-                        self._map.render(projection=projection, res=50)
+                        self._map.render(
+                            theta=theta, projection=projection, res=50
+                        )
                     )
                     if find_vmin:
                         vmin = min(np.nanmin(img), vmin)
@@ -1625,7 +1606,11 @@ class DopplerMap:
             if show_maps:
                 self._map[:, :] = self._y[:, n]
                 self._map.show(
-                    ax=ax[i, n], projection=projection, norm=norm, **kwargs
+                    ax=ax[i, n],
+                    theta=theta,
+                    projection=projection,
+                    norm=norm,
+                    **kwargs,
                 )
                 ax[i, n].set_aspect("auto")
                 i += 1
@@ -1660,7 +1645,120 @@ class DopplerMap:
             plt.show()
         else:
             fig.savefig(file, bbox_inches="tight")
-            fig.close()
+            plt.close()
+
+    def visualize(self, backend="bokeh", **kwargs):
+        """
+        Display or save a visualization of the star with optional interactivity.
+
+        If ``backend`` is set to ``bokeh``, this method uses the ``bokeh``
+        package to render an interactive visualization of the
+        spectro-spatial stellar surface and the model for
+        the spectral timeseries. The output is an HTML page that
+        is either saved to disk (if ``file`` is provided) or displayed in
+        a browser window or inline (if calling this method from within a
+        Jupyter notebook).
+
+        Users can interact with the visualization by moving the mouse over
+        the map to show the emergent, rest frame spectrum at different points
+        on the surface. Users can also scroll (with the mouse wheel or track
+        pad) to change the wavelength at which the map is visualized (in the
+        left panel) or to rotate the orthographic projection of the map (in
+        the right panel).
+
+        If instead ``backend`` is set to ``matplotlib``, this method shows
+        static plots of the component surface maps and/or spectra.
+
+        Args:
+            backend (str, optional): The visualization backend. Options are
+                ``bokeh`` or ``matplotlib``. Default is ``bokeh``.
+            theta (vector, optional): The angular phase(s) at which to compute
+                the design matrix, in units of :py:attr:`angle_unit`. If
+                ``backend`` is ``bokeh``, this must be a vector of size
+                :py:attr:`nt`. If ``backend` is ``matplotlib``, this may be
+                a scalar. Default is uniformly spaced values in the range
+                ``[0, 2 * pi)`` (``bokeh``) or ``0.0`` (``matplotlib``).
+            res (int, optional): Resolution of the map image in pixels on a
+                side. Default is ``150``.
+            file (str, optional): Path to an HTML file (``bokeh`` backend) or
+                PDF, JPG, PNG, etc. figure file (``matplotlib`` backend) to
+                which the visualization will be saved. Default is None, in
+                which case the visualization is displayed.
+
+        If the backend is set to ``matplotlib``, additional keyword arguments
+        are allowed:
+
+        Args:
+            show_maps (bool, optional): Show the component surface maps?
+                Default is True.
+            show_spectra (bool, optional): Show the component spectra? Default
+                is True.
+            projection (str, optional): Cartographic projection to plot.
+                Options are ``rect`` (equirectangular), ``moll`` (Mollweide),
+                and ``ortho`` (orthographic). Default is ``moll``.
+            vmin (float, optional): Minimum value in the color scale. Default
+                is None.
+            vmax (float, optional): Maximum value in the color scale. Default
+                is None.
+            nmax (int, optional): Maximum number of components to show. Default
+                is 5.
+
+        Any other keywords accepted by the ``show`` method are also allowed.
+
+        .. note::
+
+            The ``bokeh`` visualization can be somewhat memory-intensive!
+            Try decreasing the map resolution or switch to the ``matplotlib``
+            backend if you experience issues.
+
+        """
+        if backend == "bokeh":
+            return self._visualize_bokeh(**kwargs)
+        elif backend == "matplotlib":
+            return self._visualize_matplotlib(**kwargs)
+        else:
+            raise ValueError(
+                "Invalid backend. Options are ``bokeh`` or ``matplotlib``."
+            )
+
+    def show(self, n=0, **kwargs):
+        """
+        Show a component surface map. See the documentation for
+        ``starry.Map().show()`` for details.
+
+        Args:
+            n (int, optional): The index of the surface map component. Default
+                is ``0``.
+
+        """
+        self._map[:, :] = self._y[:, n]
+        return self._map.show(**kwargs)
+
+    def render(self, n=0, **kwargs):
+        """
+        Render a component surface map. See the documentation for
+        ``starry.Map().render()`` for details.
+
+        Args:
+            n (int, optional): The index of the surface map component. Default
+                is ``0``.
+
+        """
+        self._map[:, :] = self._y[:, n]
+        return self._map.render(**kwargs)
+
+    def intensity(self, n=0, **kwargs):
+        """
+        Return the intensity of a surface map component. See the documentation
+        for ``starry.Map().intensity()`` for details.
+
+        Args:
+            n (int, optional): The index of the surface map component. Default
+                is ``0``.
+
+        """
+        self._map[:, :] = self._y[:, n]
+        return self._map.intensity(**kwargs)
 
     def solve(self, flux, solver="bilinear", **kwargs):
         """
