@@ -1876,8 +1876,18 @@ class OpsSystem(object):
 
         # Compute all the phase curves
         if self._oblate:
-            # TODO!
-            raise NotImplementedError("Oblate core not yet implemented.")
+            phase_pri = pri_amp * self.primary.map.ops.X(
+                theta_pri,
+                tt.zeros_like(t),
+                tt.zeros_like(t),
+                tt.zeros_like(t),
+                math.to_tensor(0.0),
+                pri_inc,
+                pri_obl,
+                pri_fproj,
+                pri_u,
+                pri_f,
+            )
         else:
             phase_pri = pri_amp * self.primary.map.ops.X(
                 theta_pri,
@@ -1953,8 +1963,24 @@ class OpsSystem(object):
             )
             idx = tt.arange(b.shape[0])[b_occ]
             if self._oblate:
-                # TODO!
-                raise NotImplementedError("Oblate core not yet implemented.")
+                occ_pri = tt.set_subtensor(
+                    occ_pri[idx],
+                    occ_pri[idx]
+                    + pri_amp
+                    * self.primary.map.ops.X(
+                        theta_pri[idx],
+                        xo[idx],
+                        yo[idx],
+                        zo[idx],
+                        ro,
+                        pri_inc,
+                        pri_obl,
+                        pri_fproj,
+                        pri_u,
+                        pri_f,
+                    )
+                    - phase_pri[idx],
+                )
             else:
                 occ_pri = tt.set_subtensor(
                     occ_pri[idx],
@@ -1987,8 +2013,27 @@ class OpsSystem(object):
             )
             idx = tt.arange(b.shape[0])[b_occ]
             if self._oblate:
-                # TODO!
-                raise NotImplementedError("Oblate core not yet implemented.")
+                # TODO: Occultations *by* an oblate occultor are not
+                # currently supported. The following code ignores any
+                # oblateness and instead treats the body as a spherical
+                # occultor with radius equal to its equatorial radius.
+                occ_sec[i] = tt.set_subtensor(
+                    occ_sec[i][idx],
+                    occ_sec[i][idx]
+                    + sec_amp[i]
+                    * sec.map.ops.X(
+                        theta_sec[i, idx],
+                        xo[idx],
+                        yo[idx],
+                        zo[idx],
+                        ro,
+                        sec_inc[i],
+                        sec_obl[i],
+                        sec_u[i],
+                        sec_f[i],
+                    )
+                    - phase_sec[i][idx],
+                )
             elif self._reflected:
                 occ_sec[i] = tt.set_subtensor(
                     occ_sec[i][idx],
@@ -2360,8 +2405,17 @@ class OpsSystem(object):
 
         # Compute all the maps
         if self._oblate:
-            # TODO!
-            raise NotImplementedError("Oblate core not yet implemented.")
+            img_pri = self.primary.map.ops.render(
+                res,
+                STARRY_ORTHOGRAPHIC_PROJECTION,
+                theta_pri,
+                pri_inc,
+                pri_obl,
+                pri_fproj,
+                pri_y,
+                pri_u,
+                pri_f,
+            )
         else:
             img_pri = self.primary.map.ops.render(
                 res,

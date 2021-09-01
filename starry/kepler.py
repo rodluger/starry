@@ -9,6 +9,7 @@ from astropy import units
 from inspect import getmro
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from matplotlib.patches import Ellipse
 from IPython.display import HTML
 import os
 import logging
@@ -656,9 +657,7 @@ class System(object):
                 self._primary._map, "_obl", self._math.to_array_or_tensor(0.0)
             ),
             getattr(
-                self._primary._map,
-                "_fproj",
-                self._math.to_array_or_tensor(0.0),
+                self._primary._map, "fproj", self._math.to_array_or_tensor(0.0)
             ),
             self._primary._map._y,
             self._primary._map._u,
@@ -728,7 +727,7 @@ class System(object):
             ),
         )
 
-        # Convert to units of the primary radiu
+        # Convert to units of the primary radius
         x, y, z = (
             x / self._primary._r,
             y / self._primary._r,
@@ -782,9 +781,21 @@ class System(object):
             animated=animated,
             zorder=0.0,
         )
-        circ[0] = plt.Circle(
-            (0, 0), 1, color="k", fill=False, zorder=1e-3, lw=2
-        )
+        if hasattr(self._primary._map, "fproj"):
+            circ[0] = Ellipse(
+                (0, 0),
+                2,
+                2 * (1 - get_val(self._primary._map.fproj)),
+                angle=180 / np.pi * get_val(self._primary._map._obl),
+                color="k",
+                fill=False,
+                zorder=1e-3,
+                lw=2,
+            )
+        else:
+            circ[0] = plt.Circle(
+                (0, 0), 1, color="k", fill=False, zorder=1e-3, lw=2
+            )
         ax.add_artist(circ[0])
         for i, _ in enumerate(self._secondaries):
             extent = np.array([x[i, 0], x[i, 0], y[i, 0], y[i, 0]]) + (
