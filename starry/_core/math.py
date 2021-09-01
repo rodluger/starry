@@ -11,8 +11,14 @@ __all__ = ["lazy_math", "greedy_math", "lazy_linalg", "greedy_linalg"]
 
 
 # Cholesky solve
-_solve_lower = slinalg.Solve(A_structure="lower_triangular", lower=True)
-_solve_upper = slinalg.Solve(A_structure="upper_triangular", lower=False)
+try:
+    # theano
+    _solve_lower = slinalg.Solve(A_structure="lower_triangular", lower=True)
+    _solve_upper = slinalg.Solve(A_structure="upper_triangular", lower=False)
+except TypeError:
+    # aesara (TODO: Check me)
+    _solve_lower = slinalg.Solve(assume_a="sym", lower=True)
+    _solve_upper = slinalg.Solve(assume_a="sym", lower=False)
 
 
 def _cho_solve(cho_A, b):
