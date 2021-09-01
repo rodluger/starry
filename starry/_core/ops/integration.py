@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ...compat import Apply, Op, tt
+from ...compat import Apply, Op, tt, floatX
 import numpy as np
 
 
@@ -241,7 +241,9 @@ class sTOblateGradientOp(Op):
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
-        outputs = [i.type() for i in inputs[:4]]
+        outputs = [
+            i.astype(floatX).type() for i in inputs[:4]
+        ]  # TODO: Investigate why this is necessary sometimes
         return Apply(self, inputs, outputs)
 
     def infer_shape(self, *args):

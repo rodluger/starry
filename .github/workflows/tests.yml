@@ -82,7 +82,7 @@ jobs:
         if: always()
         with:
           files: junit/test-*.xml
-          comment_mode: update_last
+          comment_mode: off
 
       - name: Coveralls
         uses: AndreMiras/coveralls-python-action@develop

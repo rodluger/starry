@@ -919,7 +919,9 @@ class System(object):
             self._primary._prot,
             self._primary._t0,
             self._primary._theta0,
-            self._math.to_array_or_tensor(1.0),
+            self._math.to_array_or_tensor(
+                1.0
+            ),  # we treat `amp` seprately in `flux()`
             getattr(
                 self._primary._map,
                 "_inc",
@@ -929,9 +931,7 @@ class System(object):
                 self._primary._map, "_obl", self._math.to_array_or_tensor(0.0)
             ),
             getattr(
-                self._primary._map,
-                "_fproj",
-                self._math.to_array_or_tensor(0.0),
+                self._primary._map, "fproj", self._math.to_array_or_tensor(0.0)
             ),
             self._primary._map._u,
             self._primary._map._f,
@@ -1030,12 +1030,14 @@ class System(object):
             # to get a matrix (ylm index, wavelength), to which we can apply
             # the design matrix (time, ylm index) to get the spectral
             # light curve out.
-            y = self._primary.map.ops.weight_ylms_by_grav_dark_filter(
-                self._primary.map.y, self._primary.map._f
-            )
+            if self._primary.map.ydeg == 0:
+                y = self._primary.map._f
+            else:
+                y = self._primary.map.ops.weight_ylms_by_grav_dark_filter(
+                    self._primary.map.y, self._primary.map._f
+                )
             ay = [self._primary.map.amp * y] + [
-                self._primary.map.amp * body.map.amp * body._map._y
-                for body in self._secondaries
+                body.map.amp * body._map._y for body in self._secondaries
             ]
 
         else:
@@ -1169,9 +1171,7 @@ class System(object):
                 self._primary._map, "_obl", self._math.to_array_or_tensor(0.0)
             ),
             getattr(
-                self._primary._map,
-                "_fproj",
-                self._math.to_array_or_tensor(0.0),
+                self._primary._map, "fproj", self._math.to_array_or_tensor(0.0)
             ),
             self._primary._map._y,
             self._primary._map._u,

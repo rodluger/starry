@@ -2621,15 +2621,20 @@ class OblateBase(object):
         if self.__props__.get("normalized", True):
 
             # Normalize by the flux from a uniform map
-            uniform_y = np.zeros(self.Ny)
-            uniform_y[0] = 1.0
-            uniform_y = self._math.cast(uniform_y)
+            if self.nw is None:
+                uniform_y = np.zeros(self.Ny)
+                uniform_y[0] = 1.0
+                uniform_y = self._math.cast(uniform_y)
+            else:
+                uniform_y = np.zeros((self.Ny, self.nw))
+                uniform_y[0, :] = 1.0
+                uniform_y = self._math.cast(uniform_y)
             flux0 = self.ops.flux(
-                self._math.cast([0.0]),
-                self._math.cast([0.0]),
-                self._math.cast([0.0]),
-                self._math.cast([0.0]),
-                self._math.cast(0.0),
+                self._math.cast([0.0]),  # theta
+                self._math.cast([0.0]),  # xo
+                self._math.cast([0.0]),  # yo
+                self._math.cast([0.0]),  # zo
+                self._math.cast(0.0),  # ro
                 self._inc,
                 self._obl,
                 self.fproj,
