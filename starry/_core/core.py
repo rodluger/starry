@@ -1628,25 +1628,27 @@ class OpsOblate(OpsYlm):
                 )
             else:
 
-                # We need to compute the filter for each wavelength bin.
-                # We could speed this up by vectorization on the C++ side
-                A1InvFA1 = tt.zeros(
-                    (
-                        self.nw,
-                        (self.ydeg + self.fdeg + 1) ** 2,
-                        (self.ydeg + 1) ** 2,
-                    )
-                )
-                for i in range(self.nw):
-                    F = self.Fg(tt.as_tensor_variable([-1.0]), f[:, i])
-                    A1InvFA1 = tt.set_subtensor(
-                        A1InvFA1[i],
-                        ts.dot(ts.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1),
-                    )
-                y = tt.transpose(tt.batched_dot(A1InvFA1, tt.transpose(y)))
+                # We need to pre-weight the spherical harmonic vector by
+                # the filter in each wavelength bin
+                y = self.weight_ylms_by_grav_dark_filter(y, f)
                 return tt.dot(
                     self.X(theta, xo, yo, zo, ro, inc, obl, fproj, u, f), y
                 )
+
+    @autocompile
+    def weight_ylms_by_grav_dark_filter(self, y, f):
+        # We need to compute the filter for each wavelength bin.
+        # We could speed this up by vectorization on the C++ side
+        A1InvFA1 = tt.zeros(
+            (self.nw, (self.ydeg + self.fdeg + 1) ** 2, (self.ydeg + 1) ** 2)
+        )
+        for i in range(self.nw):
+            F = self.Fg(tt.as_tensor_variable([-1.0]), f[:, i])
+            A1InvFA1 = tt.set_subtensor(
+                A1InvFA1[i], ts.dot(ts.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1)
+            )
+        y = tt.transpose(tt.batched_dot(A1InvFA1, tt.transpose(y)))
+        return y
 
     @autocompile
     def grav_dark(self, z, wavnorm, omega, fobl, beta, tpole):

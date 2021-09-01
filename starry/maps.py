@@ -1116,12 +1116,15 @@ class YlmBase(legacy.YlmBase):
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
+            integrated (bool, optional): If True, dots the flux with the
+                amplitude. Default False, in which case this returns a
+                2d array (wavelength-dependent maps only).
         """
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
         # Compute & return
-        return self.amp * self.ops.flux(
+        flux = self.ops.flux(
             theta,
             xo,
             yo,
@@ -1133,6 +1136,11 @@ class YlmBase(legacy.YlmBase):
             self._u,
             self._f,
         )
+
+        if kwargs.get("integrated", False):
+            return self._math.dot(flux, self.amp)
+        else:
+            return self.amp * flux
 
     def intensity(self, lat=0, lon=0, **kwargs):
         """
@@ -2251,13 +2259,16 @@ class ReflectedBase(object):
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
+            integrated (bool, optional): If True, dots the flux with the
+                amplitude. Default False, in which case this returns a
+                2d array (wavelength-dependent maps only).
 
         """
         # Orbital kwargs
         theta, xs, ys, zs, Rs, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
         # Compute & return
-        return self.amp * self.ops.flux(
+        flux = self.ops.flux(
             theta,
             xs,
             ys,
@@ -2274,6 +2285,11 @@ class ReflectedBase(object):
             self._f,
             self._sigr,
         )
+
+        if kwargs.get("integrated", False):
+            return self._math.dot(flux, self.amp)
+        else:
+            return self.amp * flux
 
     def intensity(
         self,
@@ -2974,6 +2990,7 @@ def Map(
     # Limb-darkened?
     if (
         (ydeg == 0)
+        and (udeg > 0)
         and (rv is False)
         and (reflected is False)
         and (oblate is False)

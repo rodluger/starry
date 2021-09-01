@@ -1002,7 +1002,7 @@ class System(object):
             ),
         )
 
-    def flux(self, t, total=True):
+    def flux(self, t, total=True, integrated=False):
         """Compute the system flux at times ``t``.
 
         Args:
@@ -1023,16 +1023,55 @@ class System(object):
                 self._primary.map.amp * body.map.amp * body._map._y
                 for body in self._secondaries
             ]
+        elif self._oblate and self.primary.map.nw is not None:
+            # The problem is not strictly linear, since the design matrix
+            # is now 3D (time, ylm index, wavelength). So we pre-weight
+            # the spherical harmonic vector by the filter at each wavelength
+            # to get a matrix (ylm index, wavelength), to which we can apply
+            # the design matrix (time, ylm index) to get the spectral
+            # light curve out.
+            y = self._primary.map.ops.weight_ylms_by_grav_dark_filter(
+                self._primary.map.y, self._primary.map._f
+            )
+            ay = [self._primary.map.amp * y] + [
+                self._primary.map.amp * body.map.amp * body._map._y
+                for body in self._secondaries
+            ]
+
         else:
             ay = [body.map.amp * body._map._y for body in self._bodies]
 
         if total:
-            return self._math.dot(X, self._math.concatenate(ay))
+            ay = self._math.concatenate(ay)
+            if integrated and self.primary.map.nw is not None:
+                ay = self._math.sum(ay, axis=1)
+            return self._math.dot(X, ay)
         else:
-            return [
-                self._math.dot(X[:, idx], ay[i])
-                for i, idx in enumerate(self._inds)
-            ]
+            if self._oblate:
+                # Because of our weighting hack above, the indices of
+                # the primary's coefficients in X changed, so let's
+                # re-compute all indices
+                Npri = (
+                    self._primary._map.ydeg + self._primary._map.fdeg + 1
+                ) ** 2
+                Ny = [Npri] + [sec._map.Ny for sec in self._secondaries]
+                inds = []
+                cur = 0
+                for N in Ny:
+                    inds.append(cur + np.arange(N))
+                    cur += N
+            else:
+                inds = self._inds
+            if integrated and self.primary.map.nw is not None:
+                return [
+                    self._math.dot(X[:, idx], self._math.sum(ay[i], axis=1))
+                    for i, idx in enumerate(inds)
+                ]
+            else:
+                return [
+                    self._math.dot(X[:, idx], ay[i])
+                    for i, idx in enumerate(inds)
+                ]
 
     def rv(self, t, keplerian=True, total=True):
         """Compute the observed radial velocity of the system at times ``t``.
