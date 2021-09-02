@@ -139,7 +139,7 @@ class OpsYlm(object):
 
     @autocompile
     def tensordotRz(self, matrix, theta):
-        if self.ydeg == 0:
+        if (self.ydeg == 0) and (self.fdeg == 0):
             return matrix
         else:
             return self._tensordotRz(matrix, theta)
@@ -208,6 +208,7 @@ class OpsYlm(object):
         sTA = ts.dot(sT, self.A)
         theta_z = tt.arctan2(xo[i_occ], yo[i_occ])
         sTAR = self.tensordotRz(sTA, theta_z)
+
         if self.filter:
             A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
             sTAR = tt.dot(sTAR, A1InvFA1)
@@ -854,6 +855,9 @@ class OpsRV(OpsYlm):
         # Compute the velocity-weighted intensity
         f = self.compute_rv_filter(inc, obl, veq, alpha)
         Iv = self.flux(theta, xo, yo, zo, ro, inc, obl, y, u, f)
+
+        # DEBUG
+        return self.X(theta, xo, yo, zo, ro, inc, obl, u, f)
 
         # Compute the inverse of the intensity
         f0 = tt.zeros_like(f)
