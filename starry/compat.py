@@ -55,8 +55,8 @@ def evaluator(**kwargs):
 
     """
     # Store the kwargs
-    kwargs_point = kwargs.pop("point", None)
-    kwargs_model = kwargs.pop("model", None)
+    kwargs_point = kwargs.get("point", None)
+    kwargs_model = kwargs.get("model", None)
 
     if kwargs_point is not None:
 

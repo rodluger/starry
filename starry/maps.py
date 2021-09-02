@@ -1906,7 +1906,7 @@ class RVBase(object):
                 vmax += 1e-9
             try:
                 norm = colors.TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
-            except AttributeError:  # pragma: no cover
+            except (AttributeError, ValueError):  # pragma: no cover
                 # TwoSlopeNorm was introduced in matplotlib 3.2
                 norm = colors.Normalize(vmin=vmin, vmax=vmax)
         else:
