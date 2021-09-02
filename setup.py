@@ -241,6 +241,7 @@ setup(
             "rtds_action",
             "nbsphinx",
             "tqdm",
+            "Jinja2==2.11",
         ],
     },
     setup_requires=["setuptools_scm", "pybind11>2.4"],
