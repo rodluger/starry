@@ -146,7 +146,7 @@ class OpsYlm(object):
 
     @autocompile
     def dotR(self, matrix, ux, uy, uz, theta):
-        if self.ydeg == 0:
+        if (self.ydeg == 0) and (self.fdeg == 0):
             return matrix
         else:
             return self._dotR(matrix, ux, uy, uz, theta)
