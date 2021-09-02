@@ -52,7 +52,15 @@ class OpsYlm(object):
     """Class housing Theano operations for spherical harmonics maps."""
 
     def __init__(
-        self, ydeg, udeg, fdeg, nw, reflected=False, oblate=False, **kwargs
+        self,
+        ydeg,
+        udeg,
+        fdeg,
+        nw,
+        reflected=False,
+        oblate=False,
+        rv=False,
+        **kwargs
     ):
         # Ingest kwargs
         self.ydeg = ydeg
@@ -61,6 +69,7 @@ class OpsYlm(object):
         self.deg = ydeg + udeg + fdeg
         self.filter = (fdeg > 0) or (udeg > 0)
         self.nw = nw
+        self._rv = rv
         self._oblate = oblate
         self._reflected = reflected
         self.Ny = (self.ydeg + 1) ** 2
@@ -139,14 +148,14 @@ class OpsYlm(object):
 
     @autocompile
     def tensordotRz(self, matrix, theta):
-        if (self.ydeg == 0) and (self.fdeg == 0):
+        if self.ydeg + self.fdeg == 0:
             return matrix
         else:
             return self._tensordotRz(matrix, theta)
 
     @autocompile
     def dotR(self, matrix, ux, uy, uz, theta):
-        if (self.ydeg == 0) and (self.fdeg == 0):
+        if self.ydeg == 0:
             return matrix
         else:
             return self._dotR(matrix, ux, uy, uz, theta)
@@ -855,9 +864,6 @@ class OpsRV(OpsYlm):
         # Compute the velocity-weighted intensity
         f = self.compute_rv_filter(inc, obl, veq, alpha)
         Iv = self.flux(theta, xo, yo, zo, ro, inc, obl, y, u, f)
-
-        # DEBUG
-        return self.X(theta, xo, yo, zo, ro, inc, obl, u, f)
 
         # Compute the inverse of the intensity
         f0 = tt.zeros_like(f)
