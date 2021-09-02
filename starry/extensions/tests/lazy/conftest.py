@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+import pytest
 import starry
 
-starry.config.lazy = True
+
+@pytest.fixture(scope="module", autouse=True)
+def setup():
+    starry.config.lazy = True
+    yield

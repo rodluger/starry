@@ -113,6 +113,15 @@ PYBIND11_MODULE(_c_ops, m) {
 #endif
   });
 
+  // Change of basis matrix: poly to green's
+  Ops.def_property_readonly("A2", [](starry::Ops<Scalar> &ops) {
+#ifdef STARRY_MULTI
+    return (ops.B.A2.template cast<double>()).eval();
+#else
+    return ops.B.A2;
+#endif
+  });
+
   // Augmented change of basis matrix: Ylm to poly
   Ops.def_property_readonly("A1Big", [](starry::Ops<Scalar> &ops) {
 #ifdef STARRY_MULTI
@@ -250,6 +259,87 @@ PYBIND11_MODULE(_c_ops, m) {
 
     // Return the value & the forward derivs
     return py::make_tuple(result, ddb, ddtheta, ddbo, ddro, ddsigr);
+  });
+
+  // Occultation of an oblate spheroid
+  Ops.def("sTOblate", [](starry::Ops<Scalar> &ops, const double &f_,
+                         const Vector<double> &theta_,
+                         const Vector<double> &bo_, const double &ro_) {
+    // Total number of terms in `s^T`
+    int K = theta_.size();
+
+    // Cast to ADScalar
+    ADScalar<Scalar, 0> f, theta, bo, ro;
+    f.value() = static_cast<Scalar>(f_);
+    ro.value() = static_cast<Scalar>(ro_);
+
+    // The output
+    Matrix<double> result(K, ops.N);
+
+    // Loop through the timeseries
+    for (int k = 0; k < K; ++k) {
+
+      // Compute sT for this timestep
+      theta.value() = static_cast<Scalar>(theta_(k));
+      bo.value() = static_cast<Scalar>(bo_(k));
+      ops.OBL.compute(bo, ro, f, theta);
+
+      // Process the ADScalar
+      for (int n = 0; n < ops.N; ++n) {
+        result(k, n) = static_cast<double>(ops.OBL.sT(n).value());
+      }
+    }
+    return result;
+  });
+
+  // Occultation in reflected light (backprop)
+  Ops.def("sTOblate", [](starry::Ops<Scalar> &ops, const double &f_,
+                         const Vector<double> &theta_,
+                         const Vector<double> &bo_, const double &ro_,
+                         const Matrix<double> &bsT) {
+    // Total number of terms in `s^T`
+    int K = theta_.size();
+
+    // Seed the derivatives
+    ADScalar<Scalar, 4> f, theta, bo, ro;
+    f.derivatives() = Vector<Scalar>::Unit(4, 0);
+    theta.derivatives() = Vector<Scalar>::Unit(4, 1);
+    bo.derivatives() = Vector<Scalar>::Unit(4, 2);
+    ro.derivatives() = Vector<Scalar>::Unit(4, 3);
+    f.value() = f_ < STARRY_MIN_F ? STARRY_MIN_F : static_cast<Scalar>(f_);
+    ro.value() = static_cast<Scalar>(ro_);
+
+    // The output
+    Matrix<double> ddf(K, ops.N);
+    Matrix<double> ddtheta(K, ops.N);
+    Matrix<double> ddbo(K, ops.N);
+    Matrix<double> ddro(K, ops.N);
+
+    // Loop through the timeseries
+    for (int k = 0; k < K; ++k) {
+
+      // Compute sT for this timestep
+      theta.value() = static_cast<Scalar>(theta_(k));
+      bo.value() = static_cast<Scalar>(bo_(k));
+      ops.OBLAD.compute(bo, ro, f, theta);
+
+      // Process the ADScalar
+      for (int n = 0; n < ops.N; ++n) {
+        ddf(k, n) = static_cast<double>(ops.OBLAD.sT(n).derivatives()(0));
+        ddtheta(k, n) = static_cast<double>(ops.OBLAD.sT(n).derivatives()(1));
+        ddbo(k, n) = static_cast<double>(ops.OBLAD.sT(n).derivatives()(2));
+        ddro(k, n) = static_cast<double>(ops.OBLAD.sT(n).derivatives()(3));
+      }
+    }
+
+    // Chain rule
+    double bf = bsT.cwiseProduct(ddf).sum();
+    Vector<double> btheta = bsT.cwiseProduct(ddtheta).rowwise().sum();
+    Vector<double> bbo = bsT.cwiseProduct(ddbo).rowwise().sum();
+    double bro = bsT.cwiseProduct(ddro).sum();
+
+    // Return the backprop grads
+    return py::make_tuple(bf, btheta, bbo, bro);
   });
 
   // Rotation solution in emitted light dotted into Ylm space
@@ -415,4 +505,16 @@ PYBIND11_MODULE(_c_ops, m) {
                                                static_cast<Scalar>(a),
                                                static_cast<Scalar>(b));
         });
+
+#ifdef STARRY_UNIT_TESTS
+
+  m.attr("STARRY_UNIT_TESTS") = py::bool_(1);
+
+  // TODO: Unit tests for C++ functions here.
+
+#else
+
+  m.attr("STARRY_UNIT_TESTS") = py::bool_(0);
+
+#endif
 }

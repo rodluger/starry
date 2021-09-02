@@ -9,33 +9,35 @@ to make under the hood to ensure all of these tests pass.
 
 import numpy as np
 import starry
+import pytest
 
 
-starry.config.lazy = False
-map = starry.Map(1, reflected=True)
+@pytest.fixture(autouse=True)
+def map():
+    return starry.Map(1, reflected=True)
 
 
-def test_amp():
+def test_amp(map):
     assert map.amp == 1.0
 
 
-def test_flux():
+def test_flux(map):
     assert np.allclose(map.flux(zs=1, xs=0, ys=0), 2.0 / 3.0)
 
 
-def test_design_matrix():
+def test_design_matrix(map):
     assert np.allclose(
         map.amp * map.design_matrix(zs=1, xs=0, ys=0)[0, 0], 2.0 / 3.0
     )
 
 
-def test_intensity():
+def test_intensity(map):
     assert np.allclose(
         map.intensity(lat=0, lon=0, zs=1, xs=0, ys=0), 1.0 / np.pi
     )
 
 
-def test_albedo():
+def test_albedo(map):
     assert np.allclose(
         map.amp
         * map.intensity(lat=0, lon=0, zs=1, xs=0, ys=0, illuminate=False),
@@ -43,23 +45,23 @@ def test_albedo():
     )
 
 
-def test_albedo_design_matrix():
+def test_albedo_design_matrix(map):
     assert np.allclose(
         map.amp * map.intensity_design_matrix(lat=0, lon=0)[0, 0], 1.0
     )
 
 
-def test_render():
+def test_render(map):
     assert np.allclose(np.nanmax(map.render(zs=1, xs=0, ys=0)), 1.0 / np.pi)
 
 
-def test_render_albedo():
+def test_render_albedo(map):
     assert np.allclose(
         np.nanmax(map.render(zs=1, xs=0, ys=0, illuminate=False)), 1.0
     )
 
 
-def test_numerical_flux(res=300):
+def test_numerical_flux(map, res=300):
     res = 300
     atol = 1e-4
     rtol = 1e-4
@@ -67,7 +69,7 @@ def test_numerical_flux(res=300):
     assert np.allclose(num_flux, 2.0 / 3.0, atol=atol, rtol=rtol)
 
 
-def test_solve():
+def test_solve(map):
     # Generate a light curve with two points: one at
     # full phase, one at new phase.
     np.random.seed(0)
@@ -92,7 +94,7 @@ def test_solve():
     assert np.allclose(map.amp, 1.0)
 
 
-def test_one_over_r_squared(n_tests=10, plot=False):
+def test_one_over_r_squared(map, n_tests=10, plot=False):
     """Test that the flux decreases as 1/r^2."""
     flux0 = map.flux()
     zs = np.linspace(1, 10, 100)

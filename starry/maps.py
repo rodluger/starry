@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from . import config, legacy
 from ._constants import *
-from ._core import OpsYlm, OpsLD, OpsReflected, OpsRV, math
+from ._core import OpsYlm, OpsLD, OpsReflected, OpsRV, OpsOblate, math
 from ._core.utils import is_tensor
 from ._indices import integers, get_ylm_inds, get_ul_inds, get_ylmw_inds
 from ._plotting import (
@@ -35,6 +35,7 @@ __all__ = [
     "LimbDarkenedBase",
     "RVBase",
     "ReflectedBase",
+    "OblateBase",
 ]
 
 
@@ -73,20 +74,16 @@ class MapBase(object):
         self._N = (ydeg + udeg + fdeg + 1) ** 2
         self._nw = nw
 
-        # Basic properties
-        self._inc = self._math.cast(0.5 * np.pi)
-        self._obl = self._math.cast(0.0)
-        self._sigr = self._math.cast(0.0)
-
         # Units
-        self.angle_unit = kwargs.pop("angle_unit", units.degree)
+        self.angle_unit = kwargs.get("angle_unit", units.degree)
+        self.wav_unit = kwargs.get("wav_unit", units.nm)
 
         # Initialize
         self.reset(**kwargs)
 
     @property
     def angle_unit(self):
-        """An ``astropy.units`` unit defining the angle metric for this map."""
+        """An ``astropy.units`` quantity defining the angle unit for this map."""
         return self._angle_unit
 
     @angle_unit.setter
@@ -94,6 +91,17 @@ class MapBase(object):
         assert value.physical_type == "angle"
         self._angle_unit = value
         self._angle_factor = value.in_units(units.radian)
+
+    @property
+    def wav_unit(self):
+        """An ``astropy.units`` quantity defining the wavelength unit for this map."""
+        return self._wav_unit
+
+    @angle_unit.setter
+    def wav_unit(self, value):
+        assert value.physical_type == "length"
+        self._wav_unit = value
+        self._wav_factor = value.in_units(units.m)
 
     @property
     def ydeg(self):
@@ -177,6 +185,24 @@ class MapBase(object):
         """
         return self._u
 
+    @property
+    def wav(self):
+        """
+        The wavelength(s) at which the flux is measured in units of ``wav_unit``.
+
+        """
+        return self._wav / self._wav_factor
+
+    @wav.setter
+    def wav(self, value):
+        value = self._math.cast(value) * self._wav_factor
+        if self._nw is None:
+            assert value.ndim == 0, "Wavelength must be a scalar."
+            self._wav = value
+        else:
+            assert value.ndim == 1, "Wavelength must be a vector."
+            self._wav = value * self._math.ones(self._nw)
+
     def __getitem__(self, idx):
         if isinstance(idx, integers) or isinstance(idx, slice):
             # User is accessing a limb darkening index
@@ -253,23 +279,57 @@ class MapBase(object):
         else:
             raise ValueError("Invalid map index.")
 
-    def _check_kwargs(self, method, kwargs):
-        if not config.quiet:
-            for key in kwargs.keys():
-                message = "Invalid keyword `{0}` in call to `{1}()`. Ignoring."
-                message = message.format(key, method)
-                logger.warning(message)
+    def _get_norm(self, image_arr, **kwargs):
+        norm = kwargs.get("norm", None)
+        if norm is None:
+            vmin = np.nanmin(image_arr)
+            vmax = np.nanmax(image_arr)
+            if np.abs(vmin - vmax) < 1e-9:
+                vmin -= 1e-9
+                vmax += 1e-9
+            norm = colors.Normalize(vmin=vmin, vmax=vmax)
+        return norm
 
-    def _get_flux_kwargs(self, kwargs):
-        xo = kwargs.pop("xo", 0.0)
-        yo = kwargs.pop("yo", 0.0)
-        zo = kwargs.pop("zo", 1.0)
-        ro = kwargs.pop("ro", 0.0)
-        theta = kwargs.pop("theta", 0.0)
-        theta, xo, yo, zo = self._math.vectorize(theta, xo, yo, zo)
-        theta, xo, yo, zo, ro = self._math.cast(theta, xo, yo, zo, ro)
-        theta *= self._angle_factor
-        return theta, xo, yo, zo, ro
+    def _get_projection(self, **kwargs):
+        return get_projection(kwargs.get("projection", "ortho"))
+
+    def _get_ortho_borders(self, **kwargs):
+        xp = np.linspace(-1, 1, 10000)
+        yp = np.sqrt(1 - xp ** 2)
+        xm = xp
+        ym = -yp
+        return xp, yp, xm, ym
+
+    def _updatefig(
+        self,
+        i,
+        img,
+        image,
+        img_overlay,
+        overlay,
+        projection,
+        grid,
+        lonlines,
+        latlines,
+        borders,
+        kwargs,
+    ):
+        img.set_array(image[i])
+        images = [img]
+        if overlay is not None:
+            img_overlay.set_array(overlay[i])
+            images += [img_overlay]
+        if (
+            projection == STARRY_ORTHOGRAPHIC_PROJECTION
+            and grid
+            and len(image) > 1
+            and self.nw is None
+        ):
+            lons = self._get_ortho_longitude_lines(i=i, **kwargs)
+            for n, l in enumerate(lons):
+                lonlines[n].set_xdata(l[0])
+                lonlines[n].set_ydata(l[1])
+        return tuple(images + lonlines + latlines + borders)
 
     def reset(self, **kwargs):
         """Reset all map coefficients and attributes.
@@ -281,10 +341,16 @@ class MapBase(object):
         if self.nw is None:
             y = np.zeros(self.Ny)
             y[0] = 1.0
+            wav = kwargs.get("wav", 650.0)
         else:
             y = np.zeros((self.Ny, self.nw))
             y[0, :] = 1.0
+            if self.nw == 1:
+                wav = kwargs.get("wav", np.array([650.0]))
+            else:
+                wav = kwargs.get("wav", np.linspace(400.0, 900.0, self.nw))
         self._y = self._math.cast(y)
+        self.wav = wav
 
         u = np.zeros(self.Nu)
         u[0] = -1.0
@@ -294,7 +360,7 @@ class MapBase(object):
         f[0] = np.pi
         self._f = self._math.cast(f)
 
-        self._amp = self._math.cast(kwargs.pop("amp", np.ones(self.nw)))
+        self._amp = self._math.cast(kwargs.get("amp", np.ones(self.nw)))
 
         # Reset data and priors
         self._flux = None
@@ -302,12 +368,6 @@ class MapBase(object):
         self._mu = None
         self._L = None
         self._solution = None
-
-        # Check for bad kwargs, with the following exceptions
-        kwargs.pop("source_npts", None)
-        kwargs.pop("dr_oversample", None)
-        kwargs.pop("dr_lam", None)
-        self._check_kwargs("reset", kwargs)
 
     def show(self, **kwargs):
         """
@@ -369,108 +429,37 @@ class MapBase(object):
 
         """
         # Get kwargs
-        get_val = evaluator(**kwargs)
-        cmap = kwargs.pop("cmap", "plasma")
-        grid = kwargs.pop("grid", True)
-        interval = kwargs.pop("interval", 75)
-        file = kwargs.pop("file", None)
-        html5_video = kwargs.pop("html5_video", True)
-        norm = kwargs.pop("norm", None)
-        dpi = kwargs.pop("dpi", None)
-        figsize = kwargs.pop("figsize", None)
-        bitrate = kwargs.pop("bitrate", None)
-        colorbar = kwargs.pop("colorbar", False)
-        ax = kwargs.pop("ax", None)
+        cmap = kwargs.get("cmap", "plasma")
+        grid = kwargs.get("grid", True)
+        interval = kwargs.get("interval", 75)
+        file = kwargs.get("file", None)
+        html5_video = kwargs.get("html5_video", True)
+        dpi = kwargs.get("dpi", None)
+        figsize = kwargs.get("figsize", None)
+        bitrate = kwargs.get("bitrate", None)
+        colorbar = kwargs.get("colorbar", False)
+        ax = kwargs.get("ax", None)
         if ax is None:
             custom_ax = False
         else:
             custom_ax = True
 
-        # Ylm-base maps only
-        if not self.__props__["limbdarkened"]:
-
-            projection = get_projection(kwargs.get("projection", "ortho"))
-
-            # Get the map orientation
-            if self.lazy:
-                inc = get_val(self._inc)
-                obl = get_val(self._obl)
-            else:
-                inc = self._inc
-                obl = self._obl
-
-            # Get the rotational phase
-            if self.lazy:
-                theta = get_val(
-                    self._math.vectorize(
-                        self._math.cast(kwargs.pop("theta", 0.0))
-                        * self._angle_factor
-                    )
-                )
-            else:
-                theta = np.atleast_1d(
-                    np.array(kwargs.pop("theta", 0.0)) * self._angle_factor
-                )
-
-        else:
-
-            inc = np.array(0.5 * np.pi)
-            obl = np.array(0)
-            theta = np.array([0])
-
         # Render the map if needed
-        image = kwargs.pop("image", None)  # undocumented, used internally
-        illum = kwargs.pop("illum", None)  # undocumented, used internally
+        image = kwargs.get("image", None)  # undocumented, used internally
+        overlay = kwargs.get("overlay", None)  # undocumented, used internally
         if image is None:
-
-            # We need to evaluate the variables so we can plot the map!
-            if self.lazy:
-
-                # Get kwargs
-                res = kwargs.pop("res", 300)
-
-                # Evaluate the variables
-                u = get_val(self._u)
-
-                if not self.__props__["limbdarkened"]:
-
-                    inc = get_val(self._inc)
-                    obl = get_val(self._obl)
-                    y = get_val(self._y)
-                    f = get_val(self._f)
-
-                    # Explicitly call the compiled version of `render`
-                    image = get_val(self._amp).reshape(
-                        -1, 1, 1
-                    ) * self.ops.render(
-                        res, projection, theta, inc, obl, y, u, f
-                    )
-
-                else:
-
-                    # Explicitly call the compiled version of `render`
-                    image = get_val(self._amp).reshape(
-                        -1, 1, 1
-                    ) * self.ops.render_ld(res, u)
-
-            else:
-
-                # Easy!
-                if not self.__props__["limbdarkened"]:
-                    image = self.render(
-                        theta=theta / self._angle_factor, **kwargs
-                    )
-                else:
-                    image = self.render(**kwargs)
-                kwargs.pop("res", None)
-
+            image = self._render_greedy(**kwargs)
         if len(image.shape) == 3:
             nframes = image.shape[0]
         else:
             nframes = 1
             image = np.reshape(image, (1,) + image.shape)
-            if illum is not None:
-                illum = np.reshape(illum, (1,) + illum.shape)
+            if overlay is not None:
+                overlay = np.reshape(overlay, (1,) + overlay.shape)
+
+        # Additional kwargs
+        projection = self._get_projection(**kwargs)
+        norm = self._get_norm(image, **kwargs)
 
         # Animation
         animated = nframes > 1
@@ -478,10 +467,9 @@ class MapBase(object):
         latlines = []
         lonlines = []
 
-        if (
-            not self.__props__["limbdarkened"]
-            and projection != STARRY_ORTHOGRAPHIC_PROJECTION
-        ):
+        # Set up the figure
+        if projection != STARRY_ORTHOGRAPHIC_PROJECTION:
+
             # Set up the plot
             if figsize is None:
                 figsize = (7, 3.75)
@@ -586,52 +574,30 @@ class MapBase(object):
             extent = (-1 - dx, 1, -1 - dx, 1)
 
             # Anti-aliasing at the edges
-            x = np.linspace(-1, 1, 10000)
-            y = np.sqrt(1 - x ** 2)
-            borders += [ax.fill_between(x, 1.1 * y, y, color="w", zorder=-1)]
-            borders += [ax.fill_betweenx(x, 1.1 * y, y, color="w", zorder=-1)]
-            borders += [ax.fill_between(x, -1.1 * y, -y, color="w", zorder=-1)]
+            xp, yp, xm, ym = self._get_ortho_borders()
             borders += [
-                ax.fill_betweenx(x, -1.1 * y, -y, color="w", zorder=-1)
+                ax.fill_between(xp, 1.1 * yp, yp, color="w", zorder=-1)
+            ]
+            borders += [
+                ax.fill_between(xm, 1.1 * ym, ym, color="w", zorder=-1)
             ]
 
             # Grid lines
             if grid:
-                x = np.linspace(-1, 1, 10000)
-                y = np.sqrt(1 - x ** 2)
-                borders += ax.plot(x, y, "k-", alpha=1, lw=1.5, zorder=0)
-                borders += ax.plot(x, -y, "k-", alpha=1, lw=1.5, zorder=0)
-                lats = get_ortho_latitude_lines(inc=inc, obl=obl)
+                borders += ax.plot(xp, yp, "k-", alpha=1, lw=1.5, zorder=0)
+                borders += ax.plot(xm, ym, "k-", alpha=1, lw=1.5, zorder=0)
+                lats = self._get_ortho_latitude_lines(**kwargs)
                 latlines = [None for n in lats]
                 for n, l in enumerate(lats):
                     (latlines[n],) = ax.plot(
                         l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=0
                     )
-                lons = get_ortho_longitude_lines(
-                    inc=inc, obl=obl, theta=theta[0]
-                )
+                lons = self._get_ortho_longitude_lines(**kwargs)
                 lonlines = [None for n in lons]
                 for n, l in enumerate(lons):
                     (lonlines[n],) = ax.plot(
                         l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=0
                     )
-
-        # Plot the first frame of the image
-        if norm is None or norm == "rv":
-            vmin = np.nanmin(image)
-            vmax = np.nanmax(image)
-            # Set a minimum contrast
-            if np.abs(vmin - vmax) < 1e-12:
-                vmin -= 1e-12
-                vmax += 1e-12
-            if norm is None:
-                norm = colors.Normalize(vmin=vmin, vmax=vmax)
-            elif norm == "rv":
-                try:
-                    norm = colors.TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
-                except AttributeError:  # pragma: no cover
-                    # TwoSlopeNorm was introduced in matplotlib 3.2
-                    norm = colors.Normalize(vmin=vmin, vmax=vmax)
 
         img = ax.imshow(
             image[0],
@@ -644,19 +610,19 @@ class MapBase(object):
             zorder=-3,
         )
 
-        if illum is not None:
-
-            # Apply the transparency filter for the illumination
+        if overlay is None:
+            img_overlay = None
+        else:
             cmapI = colors.LinearSegmentedColormap.from_list(
-                "illum", ["k", "k"], 256
+                "overlay", ["k", "k"], 256
             )
             cmapI._init()
             alphas = np.linspace(1.0, 0.0, cmapI.N + 3)
             cmapI._lut[:, -1] = alphas
             cmapI.set_under((0, 0, 0, 1))
             cmapI.set_over((0, 0, 0, 0))
-            img_illum = ax.imshow(
-                illum[0],
+            img_overlay = ax.imshow(
+                overlay[0],
                 origin="lower",
                 extent=extent,
                 cmap=cmapI,
@@ -678,30 +644,21 @@ class MapBase(object):
         # Display or save the image / animation
         if animated:
 
-            def updatefig(i):
-                img.set_array(image[i])
-                images = [img]
-                if illum is not None:
-                    img_illum.set_array(illum[i])
-                    images += [img_illum]
-                if (
-                    not self.__props__["limbdarkened"]
-                    and projection == STARRY_ORTHOGRAPHIC_PROJECTION
-                    and grid
-                    and len(theta) > 1
-                    and self.nw is None
-                ):
-                    lons = get_ortho_longitude_lines(
-                        inc=inc, obl=obl, theta=theta[i]
-                    )
-                    for n, l in enumerate(lons):
-                        lonlines[n].set_xdata(l[0])
-                        lonlines[n].set_ydata(l[1])
-                return tuple(images + lonlines + latlines + borders)
-
             ani = FuncAnimation(
                 fig,
-                updatefig,
+                self._updatefig,
+                fargs=(
+                    img,
+                    image,
+                    img_overlay,
+                    overlay,
+                    projection,
+                    grid,
+                    lonlines,
+                    latlines,
+                    borders,
+                    kwargs,
+                ),
                 interval=interval,
                 blit=True,
                 frames=image.shape[0],
@@ -765,19 +722,6 @@ class MapBase(object):
                     plt.close()
             elif not custom_ax:
                 plt.show()
-
-        # Check for invalid kwargs
-        kwargs.pop("point", None)
-        kwargs.pop("model", None)
-        if self.__props__["rv"]:
-            kwargs.pop("rv", None)
-        if not self.__props__["limbdarkened"]:
-            kwargs.pop("projection", None)
-        if self.__props__["reflected"]:
-            kwargs.pop("xs", None)
-            kwargs.pop("ys", None)
-            kwargs.pop("zs", None)
-        self._check_kwargs("show", kwargs)
 
     def limbdark_is_physical(self):
         """Check whether the limb darkening profile (if any) is physical.
@@ -1030,14 +974,56 @@ class YlmBase(legacy.YlmBase):
 
     _ops_class_ = OpsYlm
 
+    def _render_greedy(self, **kwargs):
+        get_val = evaluator(**kwargs)
+        amp = get_val(self.amp).reshape(-1, 1, 1)
+        return amp * self.ops.render(
+            kwargs.get("res", 300),
+            get_projection(kwargs.get("projection", "ortho")),
+            np.atleast_1d(get_val(kwargs.get("theta", 0.0)))
+            * self._angle_factor,
+            get_val(self._inc),
+            get_val(self._obl),
+            get_val(self._y),
+            get_val(self._u),
+            get_val(self._f),
+        )
+
+    def _get_ortho_latitude_lines(self, **kwargs):
+        get_val = evaluator(**kwargs)
+        inc = get_val(self._inc)
+        obl = get_val(self._obl)
+        return get_ortho_latitude_lines(inc=inc, obl=obl)
+
+    def _get_ortho_longitude_lines(self, i=0, **kwargs):
+        get_val = evaluator(**kwargs)
+        inc = get_val(self._inc)
+        obl = get_val(self._obl)
+        theta = (
+            np.atleast_1d(get_val(kwargs.get("theta", 0.0)))
+            * self._angle_factor
+        )
+        return get_ortho_longitude_lines(inc=inc, obl=obl, theta=theta[i])
+
+    def _get_flux_kwargs(self, kwargs):
+        xo = kwargs.get("xo", 0.0)
+        yo = kwargs.get("yo", 0.0)
+        zo = kwargs.get("zo", 1.0)
+        ro = kwargs.get("ro", 0.0)
+        theta = kwargs.get("theta", 0.0)
+        theta, xo, yo, zo = self._math.vectorize(theta, xo, yo, zo)
+        theta, xo, yo, zo, ro = self._math.cast(theta, xo, yo, zo, ro)
+        theta *= self._angle_factor
+        return theta, xo, yo, zo, ro
+
     def reset(self, **kwargs):
         if kwargs.get("inc", None) is not None:
-            self.inc = kwargs.pop("inc")
+            self.inc = kwargs.get("inc")
         else:
             self._inc = self._math.cast(0.5 * np.pi)
 
         if kwargs.get("obl", None) is not None:
-            self.obl = kwargs.pop("obl")
+            self.obl = kwargs.get("obl")
         else:
             self._obl = self._math.cast(0.0)
 
@@ -1082,9 +1068,6 @@ class YlmBase(legacy.YlmBase):
         """
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
-
-        # Check for invalid kwargs
-        self._check_kwargs("design_matrix", kwargs)
 
         # Compute & return
         return self.ops.X(
@@ -1133,15 +1116,15 @@ class YlmBase(legacy.YlmBase):
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
+            integrated (bool, optional): If True, dots the flux with the
+                amplitude. Default False, in which case this returns a
+                2d array (wavelength-dependent maps only).
         """
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
-        # Check for invalid kwargs
-        self._check_kwargs("flux", kwargs)
-
         # Compute & return
-        return self.amp * self.ops.flux(
+        flux = self.ops.flux(
             theta,
             xo,
             yo,
@@ -1153,6 +1136,11 @@ class YlmBase(legacy.YlmBase):
             self._u,
             self._f,
         )
+
+        if kwargs.get("integrated", False):
+            return self._math.dot(flux, self.amp)
+        else:
+            return self.amp * flux
 
     def intensity(self, lat=0, lon=0, **kwargs):
         """
@@ -1180,13 +1168,10 @@ class YlmBase(legacy.YlmBase):
         theta *= self._angle_factor
 
         # If limb-darkened, allow a `limbdarken` keyword
-        if kwargs.pop("limbdarken", True) and self.udeg > 0:
+        if kwargs.get("limbdarken", True) and self.udeg > 0:
             ld = np.array(True)
         else:
             ld = np.array(False)
-
-        # Check for invalid kwargs
-        self._check_kwargs("intensity", kwargs)
 
         # Compute & return
         return self.amp * self.ops.intensity(
@@ -1415,7 +1400,7 @@ class YlmBase(legacy.YlmBase):
 
             # Scale the coeffs?
             if I < 0:
-                fac = self._amp / (self._amp - np.pi * I)
+                fac = self.amp / (self.amp - np.pi * I)
                 if self.lazy:
                     self._y *= fac
                     self._y = self.ops.set_map_vector(self._y, 0, 1.0)
@@ -1579,14 +1564,14 @@ class YlmBase(legacy.YlmBase):
             return (
                 lat / self._angle_factor,
                 lon / self._angle_factor,
-                self._amp * I,
+                self.amp * I,
                 self.ops._minimize.result,
             )
         else:
             return (
                 lat / self._angle_factor,
                 lon / self._angle_factor,
-                self._amp * I,
+                self.amp * I,
             )
 
     def get_pixel_transforms(self, oversample=2, lam=1e-6, eps=1e-6):
@@ -1784,6 +1769,38 @@ class LimbDarkenedBase(object):
 
     _ops_class_ = OpsLD
 
+    def _render_greedy(self, **kwargs):
+        get_val = evaluator(**kwargs)
+        amp = get_val(self.amp).reshape(-1, 1, 1)
+        return amp.reshape(-1, 1, 1) * self.ops.render_ld(
+            kwargs.get("res", 300), get_val(self._u)
+        )
+
+    def _get_projection(self, **kwargs):
+        projection = get_projection(kwargs.get("projection", "ortho"))
+        assert (
+            projection == STARRY_ORTHOGRAPHIC_PROJECTION
+        ), "Only orthographic projection is supported for limb-darkened maps."
+        return projection
+
+    def _get_ortho_latitude_lines(self, **kwargs):
+        return get_ortho_latitude_lines()
+
+    def _get_ortho_longitude_lines(self, i=0, **kwargs):
+        return get_ortho_longitude_lines()
+
+    def _updatefig(i):
+        return ()
+
+    def _get_flux_kwargs(self, kwargs):
+        xo = kwargs.get("xo", 0.0)
+        yo = kwargs.get("yo", 0.0)
+        zo = kwargs.get("zo", 1.0)
+        ro = kwargs.get("ro", 0.0)
+        xo, yo, zo = self._math.vectorize(xo, yo, zo)
+        xo, yo, zo, ro = self._math.cast(xo, yo, zo, ro)
+        return xo, yo, zo, ro
+
     def flux(self, **kwargs):
         """
         Compute and return the light curve.
@@ -1799,14 +1816,7 @@ class LimbDarkenedBase(object):
                 this body's radius.
         """
         # Orbital kwargs
-        theta = kwargs.pop("theta", None)
-        _, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
-
-        # Check for invalid kwargs
-        if theta is not None:
-            # If the user passed in `theta`, make sure a warning is raised
-            kwargs["theta"] = theta
-        self._check_kwargs("flux", kwargs)
+        xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
         # Compute & return
         return self.amp * self.ops.flux(xo, yo, zo, ro, self._u)
@@ -1886,10 +1896,26 @@ class RVBase(object):
 
     _ops_class_ = OpsRV
 
+    def _get_norm(self, image, **kwargs):
+        norm = kwargs.get("norm", None)
+        if norm is None:
+            vmin = np.nanmin(image)
+            vmax = np.nanmax(image)
+            if np.abs(vmin - vmax) < 1e-9:
+                vmin -= 1e-9
+                vmax += 1e-9
+            try:
+                norm = colors.TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
+            except (AttributeError, ValueError):  # pragma: no cover
+                # TwoSlopeNorm was introduced in matplotlib 3.2
+                norm = colors.Normalize(vmin=vmin, vmax=vmax)
+        else:
+            return norm
+
     def reset(self, **kwargs):
-        self.velocity_unit = kwargs.pop("velocity_unit", units.m / units.s)
-        self.veq = kwargs.pop("veq", 0.0)
-        self.alpha = kwargs.pop("alpha", 0.0)
+        self.velocity_unit = kwargs.get("velocity_unit", units.m / units.s)
+        self.veq = kwargs.get("veq", 0.0)
+        self.alpha = kwargs.get("alpha", 0.0)
         super(RVBase, self).reset(**kwargs)
 
     @property
@@ -1983,9 +2009,6 @@ class RVBase(object):
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
-        # Check for invalid kwargs
-        self._check_kwargs("rv", kwargs)
-
         # Compute
         return self.ops.rv(
             theta,
@@ -2020,7 +2043,7 @@ class RVBase(object):
 
         """
         # Compute the velocity-weighted intensity if `rv==True`
-        rv = kwargs.pop("rv", True)
+        rv = kwargs.get("rv", True)
         if rv:
             self._set_RV_filter()
         res = super(RVBase, self).intensity(**kwargs)
@@ -2056,7 +2079,7 @@ class RVBase(object):
         # Render the velocity map if `rv==True`
         # Override the `projection` kwarg if we're
         # plotting the radial velocity.
-        rv = kwargs.pop("rv", True)
+        rv = kwargs.get("rv", True)
         if rv:
             kwargs.pop("projection", None)
             self._set_RV_filter()
@@ -2072,8 +2095,7 @@ class RVBase(object):
         if rv:
             kwargs.pop("projection", None)
             self._set_RV_filter()
-            kwargs["cmap"] = kwargs.pop("cmap", "RdBu_r")
-            kwargs["norm"] = kwargs.pop("norm", "rv")
+            kwargs["cmap"] = kwargs.get("cmap", "RdBu_r")
         res = super(RVBase, self).show(rv=rv, **kwargs)
         if rv:
             self._unset_RV_filter()
@@ -2120,7 +2142,7 @@ class ReflectedBase(object):
     _ops_class_ = OpsReflected
 
     def reset(self, **kwargs):
-        self.roughness = kwargs.pop("roughness", self._math.cast(0.0))
+        self.roughness = kwargs.get("roughness", self._math.cast(0.0))
         super(ReflectedBase, self).reset(**kwargs)
 
     @property
@@ -2146,15 +2168,15 @@ class ReflectedBase(object):
         self._sigr = self._math.cast(value) * self._angle_factor
 
     def _get_flux_kwargs(self, kwargs):
-        xo = kwargs.pop("xo", 0.0)
-        yo = kwargs.pop("yo", 0.0)
-        zo = kwargs.pop("zo", 1.0)
-        ro = kwargs.pop("ro", 0.0)
-        xs = kwargs.pop("xs", 0.0)
-        ys = kwargs.pop("ys", 0.0)
-        zs = kwargs.pop("zs", 1.0)
-        Rs = kwargs.pop("rs", 0.0)
-        theta = kwargs.pop("theta", 0.0)
+        xo = kwargs.get("xo", 0.0)
+        yo = kwargs.get("yo", 0.0)
+        zo = kwargs.get("zo", 1.0)
+        ro = kwargs.get("ro", 0.0)
+        xs = kwargs.get("xs", 0.0)
+        ys = kwargs.get("ys", 0.0)
+        zs = kwargs.get("zs", 1.0)
+        Rs = kwargs.get("rs", 0.0)
+        theta = kwargs.get("theta", 0.0)
         theta, xs, ys, zs, xo, yo, zo = self._math.vectorize(
             theta, xs, ys, zs, xo, yo, zo
         )
@@ -2195,9 +2217,6 @@ class ReflectedBase(object):
         """
         # Orbital kwargs
         theta, xs, ys, zs, Rs, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
-
-        # Check for invalid kwargs
-        self._check_kwargs("X", kwargs)
 
         # Compute & return
         return self.ops.X(
@@ -2240,16 +2259,16 @@ class ReflectedBase(object):
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
+            integrated (bool, optional): If True, dots the flux with the
+                amplitude. Default False, in which case this returns a
+                2d array (wavelength-dependent maps only).
 
         """
         # Orbital kwargs
         theta, xs, ys, zs, Rs, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
-        # Check for invalid kwargs
-        self._check_kwargs("flux", kwargs)
-
         # Compute & return
-        return self.amp * self.ops.flux(
+        flux = self.ops.flux(
             theta,
             xs,
             ys,
@@ -2266,6 +2285,11 @@ class ReflectedBase(object):
             self._f,
             self._sigr,
         )
+
+        if kwargs.get("integrated", False):
+            return self._math.dot(flux, self.amp)
+        else:
+            return self.amp * flux
 
     def intensity(
         self,
@@ -2458,17 +2482,17 @@ class ReflectedBase(object):
 
         # Get kwargs
         get_val = evaluator(**kwargs)
-        res = kwargs.pop("res", 300)
+        res = kwargs.get("res", 300)
         projection = get_projection(kwargs.get("projection", "ortho"))
-        theta = self._math.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
-        xs = self._math.cast(kwargs.pop("xs", 0))
-        ys = self._math.cast(kwargs.pop("ys", 0))
-        zs = self._math.cast(kwargs.pop("zs", 1))
-        Rs = self._math.cast(kwargs.pop("rs", 0))
+        theta = self._math.cast(kwargs.get("theta", 0.0)) * self._angle_factor
+        xs = self._math.cast(kwargs.get("xs", 0))
+        ys = self._math.cast(kwargs.get("ys", 0))
+        zs = self._math.cast(kwargs.get("zs", 1))
+        Rs = self._math.cast(kwargs.get("rs", 0))
         theta, xs, ys, zs = self._math.vectorize(theta, xs, ys, zs)
-        illuminate = int(kwargs.pop("illuminate", True))
-        on94_exact = int(kwargs.pop("on94_exact", False))
-        screen = bool(kwargs.pop("screen", True))
+        illuminate = int(kwargs.get("illuminate", True))
+        on94_exact = int(kwargs.get("on94_exact", False))
+        screen = bool(kwargs.get("screen", True))
 
         if self.nw is None:
             amp = self.amp
@@ -2477,27 +2501,19 @@ class ReflectedBase(object):
             # so we must reshape `amp` to take the product correctly
             amp = self.amp[:, np.newaxis, np.newaxis]
 
-        if self.lazy:
-            # Evaluate the variables
-            theta = get_val(theta)
-            xs = get_val(xs)
-            ys = get_val(ys)
-            zs = get_val(zs)
-            Rs = get_val(Rs)
-            inc = get_val(self._inc)
-            obl = get_val(self._obl)
-            y = get_val(self._y)
-            u = get_val(self._u)
-            f = get_val(self._f)
-            sigr = get_val(self._sigr)
-            amp = get_val(amp)
-        else:
-            inc = self._inc
-            obl = self._obl
-            y = self._y
-            u = self._u
-            f = self._f
-            sigr = self._sigr
+        # Evaluate the variables
+        theta = get_val(theta)
+        xs = get_val(xs)
+        ys = get_val(ys)
+        zs = get_val(zs)
+        Rs = get_val(Rs)
+        inc = get_val(self._inc)
+        obl = get_val(self._obl)
+        y = get_val(self._y)
+        u = get_val(self._u)
+        f = get_val(self._f)
+        sigr = get_val(self._sigr)
+        amp = get_val(amp)
 
         if screen and illuminate:
 
@@ -2542,7 +2558,7 @@ class ReflectedBase(object):
             )
             if np.nanmax(illum) > 0:
                 illum /= np.nanmax(illum)
-            kwargs["illum"] = illum
+            kwargs["overlay"] = illum
 
         else:
 
@@ -2570,13 +2586,345 @@ class ReflectedBase(object):
         return super(ReflectedBase, self).show(**kwargs)
 
 
+class OblateAmplitude(Amplitude):
+    def __get__(self, instance, owner):
+        return instance._amp * instance._norm
+
+
+class OblateBase(object):
+    """The oblate ``starry`` map class.
+
+    This class handles maps of oblate spheroids, such as fast-rotating
+    stars and planets or bodies with (moderate) tidal distortion.
+    It has all the same attributes and methods as :py:class:`starry.maps.YlmBase`,
+    with the additions and modifications listed below.
+
+    .. note::
+        Instantiate this class by calling :py:func:`starry.Map` with
+        ``oblate`` set to True.
+    """
+
+    _ops_class_ = OpsOblate
+
+    # Special handling for the map amplitude
+    amp = OblateAmplitude()
+
+    # Constants for Planck law (mks)
+    _twohcsq = 1.19104295e-16
+    _hcdivkb = 1.43877735e-2
+
+    @property
+    def _norm(self):
+        # Planck's law normalization
+        pnorm = self._twohcsq / self._wav ** 5
+
+        if self.__props__.get("normalized", True):
+
+            # Normalize by the flux from a uniform map
+            if self.nw is None:
+                uniform_y = np.zeros(self.Ny)
+                uniform_y[0] = 1.0
+                uniform_y = self._math.cast(uniform_y)
+            else:
+                uniform_y = np.zeros((self.Ny, self.nw))
+                uniform_y[0, :] = 1.0
+                uniform_y = self._math.cast(uniform_y)
+            flux0 = self.ops.flux(
+                self._math.cast([0.0]),  # theta
+                self._math.cast([0.0]),  # xo
+                self._math.cast([0.0]),  # yo
+                self._math.cast([0.0]),  # zo
+                self._math.cast(0.0),  # ro
+                self._inc,
+                self._obl,
+                self.fproj,
+                uniform_y,
+                self._u,
+                self._f,
+            )[0]
+            return pnorm / self._math.dot(pnorm * flux0, self._amp)
+
+        else:
+
+            # Trivial
+            return pnorm
+
+    def render(self, res=300, projection="ortho", theta=0.0):
+        # Multiple frames?
+        if self.nw is not None:
+            animated = True
+        else:
+            if is_tensor(theta):
+                animated = hasattr(theta, "ndim") and theta.ndim > 0
+            else:
+                animated = hasattr(theta, "__len__")
+
+        # Convert
+        projection = get_projection(projection)
+        theta = self._math.vectorize(
+            self._math.cast(theta) * self._angle_factor
+        )
+
+        # Compute
+        if self.nw is None or self.lazy:
+            amp = self.amp
+        else:
+            # The intensity has shape `(nw, res, res)`
+            # so we must reshape `amp` to take the product correctly
+            amp = self.amp[:, np.newaxis, np.newaxis]
+        image = amp * self.ops.render(
+            res,
+            projection,
+            theta,
+            self._inc,
+            self._obl,
+            self.fproj,
+            self._y,
+            self._u,
+            self._f,
+        )
+
+        # Squeeze?
+        if animated:
+            return image
+        else:
+            return self._math.reshape(image, [res, res])
+
+    def _render_greedy(self, **kwargs):
+        get_val = evaluator(**kwargs)
+        amp = get_val(self.amp).reshape(-1, 1, 1)
+        image = self.ops.render(
+            kwargs.get("res", 300),
+            get_projection(kwargs.get("projection", "ortho")),
+            np.atleast_1d(get_val(kwargs.get("theta", 0.0)))
+            * self._angle_factor,
+            get_val(self._inc),
+            get_val(self._obl),
+            get_val(self.fproj),
+            get_val(self._y),
+            get_val(self._u),
+            get_val(self._f),
+        )
+        return amp * image
+
+    def _get_ortho_borders(self, **kwargs):
+        get_val = evaluator(**kwargs)
+        obl = get_val(self._obl)
+        fproj = get_val(self.fproj)
+        xp = np.linspace(-1, 1, 10000)
+        yp = np.sqrt(1 - xp ** 2)
+        xm = xp
+        ym = -yp
+        xpr = xp * np.cos(obl) - yp * (1 - fproj) * np.sin(obl)
+        ypr = xp * np.sin(obl) + yp * (1 - fproj) * np.cos(obl)
+        xmr = xm * np.cos(obl) - ym * (1 - fproj) * np.sin(obl)
+        ymr = xm * np.sin(obl) + ym * (1 - fproj) * np.cos(obl)
+        return xpr, ypr, xmr, ymr
+
+    def _get_ortho_latitude_lines(self, **kwargs):
+        get_val = evaluator(**kwargs)
+        inc = get_val(self._inc)
+        obl = get_val(self._obl)
+        fproj = get_val(self.fproj)
+        return get_ortho_latitude_lines(inc=inc, obl=obl, fproj=fproj)
+
+    def _get_ortho_longitude_lines(self, i=0, **kwargs):
+        get_val = evaluator(**kwargs)
+        inc = get_val(self._inc)
+        obl = get_val(self._obl)
+        fproj = get_val(self.fproj)
+        theta = (
+            np.atleast_1d(get_val(kwargs.get("theta", 0.0)))
+            * self._angle_factor
+        )
+        return get_ortho_longitude_lines(
+            inc=inc, obl=obl, fproj=fproj, theta=theta[i]
+        )
+
+    def reset(self, **kwargs):
+        self._fobl = self._math.cast(kwargs.get("f", 0.0))
+        self._omega = self._math.cast(kwargs.get("omega", 0.0))
+        self._tpole = self._math.cast(kwargs.get("tpole", 5800.0))
+        self._beta = self._math.cast(kwargs.get("beta", 0.23))
+        super(OblateBase, self).reset(**kwargs)
+        self._set_grav_dark_filter()
+
+    @property
+    def f(self):
+        """The oblateness of the spheroid.
+
+        This is the ratio of the difference between the equatorial and
+        polar radii to the equatorial radius, and must be in the range
+        ``[0, 1)``.
+        """
+        return self._fobl
+
+    @f.setter
+    def f(self, value):
+        self._fobl = self._math.cast(value)
+        self._set_grav_dark_filter()
+
+    @property
+    def omega(self):
+        """
+        The angular rotational velocity of the body as a fraction of the breakup velocity.
+
+        """
+        return self._omega
+
+    @omega.setter
+    def omega(self, value):
+        self._omega = self._math.cast(value)
+        self._set_grav_dark_filter()
+
+    @property
+    def fproj(self):
+        """The projected oblateness at the current inclination."""
+        return 1 - self._math.sqrt(
+            1 - self._fobl * (2 - self._fobl) * self._math.sin(self._inc) ** 2
+        )
+
+    @property
+    def tpole(self):
+        """The polar temperature of the star in K."""
+        return self._tpole
+
+    @tpole.setter
+    def tpole(self, value):
+        self._tpole = self._math.cast(value)
+        self._set_grav_dark_filter()
+
+    @property
+    def beta(self):
+        """The von Zeipel law coefficient."""
+        return self._beta
+
+    @beta.setter
+    def beta(self, value):
+        self._beta = self._math.cast(value)
+        self._set_grav_dark_filter()
+
+    @property
+    def wav(self):
+        """
+        The wavelength(s) at which the flux is measured in units of ``wav_unit``.
+
+        """
+        return self._wav / self._wav_factor
+
+    @wav.setter
+    def wav(self, value):
+        value = self._math.cast(value) * self._wav_factor
+        if self._nw is None:
+            assert value.ndim == 0, "Wavelength must be a scalar."
+            self._wav = value
+        else:
+            assert value.ndim == 1, "Wavelength must be a vector."
+            self._wav = value * self._math.ones(self._nw)
+        self._set_grav_dark_filter()
+
+    def _set_grav_dark_filter(self):
+        if self._fdeg > 0:
+            self._f = self.ops.compute_grav_dark_filter(
+                self._wav / self._hcdivkb,
+                self._omega,
+                self._fobl,
+                self._beta,
+                self._tpole,
+            )
+
+    def design_matrix(self, **kwargs):
+        r"""Compute and return the light curve design matrix :math:`A`.
+
+        This matrix is used to compute the flux :math:`f` from a vector of spherical
+        harmonic coefficients :math:`y` and the map amplitude :math:`a`:
+        :math:`f = a A y`.
+
+        Args:
+            xo (scalar or vector, optional): x coordinate of the occultor
+                relative to this body in units of this body's radius.
+            yo (scalar or vector, optional): y coordinate of the occultor
+                relative to this body in units of this body's radius.
+            zo (scalar or vector, optional): z coordinate of the occultor
+                relative to this body in units of this body's radius.
+            ro (scalar, optional): Radius of the occultor in units of
+                this body's radius.
+            theta (scalar or vector, optional): Angular phase of the body
+                in units of :py:attr:`angle_unit`.
+        """
+        # The problem isn't quite linear for spectral maps
+        self._no_spectral()
+
+        # Orbital kwargs
+        theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
+
+        # Compute & return
+        return self.ops.X(
+            theta,
+            xo,
+            yo,
+            zo,
+            ro,
+            self._inc,
+            self._obl,
+            self.fproj,
+            self._u,
+            self._f,
+        )
+
+    def flux(self, **kwargs):
+        """
+        Compute and return the flux from the map.
+
+        Args:
+            xo (scalar or vector, optional): x coordinate of the occultor
+                relative to this body in units of this body's radius.
+            yo (scalar or vector, optional): y coordinate of the occultor
+                relative to this body in units of this body's radius.
+            zo (scalar or vector, optional): z coordinate of the occultor
+                relative to this body in units of this body's radius.
+            ro (scalar, optional): Radius of the occultor in units of
+                this body's radius.
+            theta (scalar or vector, optional): Angular phase of the body
+                in units of :py:attr:`angle_unit`.
+            integrated (bool, optional): If True, dots the flux with the
+                amplitude. Default False, in which case this returns a
+                2d array (wavelength-dependent maps only).
+        """
+        # Orbital kwargs
+        theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
+
+        # Compute & return
+        flux = self.ops.flux(
+            theta,
+            xo,
+            yo,
+            zo,
+            ro,
+            self._inc,
+            self._obl,
+            self.fproj,
+            self._y,
+            self._u,
+            self._f,
+        )
+
+        if kwargs.get("integrated", False):
+            return self._math.dot(flux, self.amp)
+        else:
+            return self.amp * flux
+
+
 def Map(
     ydeg=0,
     udeg=0,
     nw=None,
     rv=False,
     reflected=False,
+    oblate=False,
     source_npts=1,
+    gdeg=4,
+    normalized=True,
     lazy=None,
     **kwargs
 ):
@@ -2585,26 +2933,38 @@ def Map(
     This function is a class factory that returns either
     a :doc:`spherical harmonic map <SphericalHarmonicMap>`,
     a :doc:`limb darkened map <LimbDarkenedMap>`,
-    a :doc:`radial velocity map <RadialVelocityMap>`, or
-    a :doc:`reflected light map <ReflectedLightMap>`,
+    a :doc:`radial velocity map <RadialVelocityMap>`,
+    a :doc:`reflected light map <ReflectedLightMap>`, or
+    an :doc:`oblate map <OblateMap>`
     depending on the arguments provided by the user. The default is
     a :doc:`spherical harmonic map <SphericalHarmonicMap>`. If ``rv`` is True,
-    instantiates a :doc:`radial velocity map <RadialVelocityMap>` map, and
+    instantiates a :doc:`radial velocity map <RadialVelocityMap>` map,
     if ``reflected`` is True, instantiates a :doc:`reflected light map
-    <ReflectedLightMap>`. Otherwise, if ``ydeg`` is zero, instantiates a
-    :doc:`limb darkened map <LimbDarkenedMap>`.
+    <ReflectedLightMap>`, or if ``oblate`` is True, instantiates an
+    :doc:`oblate map <OblateMap>`. Otherwise, if ``ydeg`` is zero,
+    instantiates a :doc:`limb darkened map <LimbDarkenedMap>`.
 
     Args:
         ydeg (int, optional): Degree of the spherical harmonic map.
             Defaults to 0.
         udeg (int, optional): Degree of the limb darkening filter.
             Defaults to 0.
+        gdeg (int, optional): Degree of the gravity darkening filter.
+            Defaults to 4. Enabled only if `oblate` is True.
         nw (int, optional): Number of wavelength bins. Defaults to None
             (for monochromatic light curves).
         rv (bool, optional): If True, enable computation of radial velocities
             for modeling the Rossiter-McLaughlin effect. Defaults to False.
         reflected (bool, optional): If True, models light curves in reflected
             light. Defaults to False.
+        oblate (bool, optional): If True, models the object as an oblate
+            spheroid. Defaults to False.
+        normalized (bool, optional): Whether the flux from a uniform map should
+            be normalized to unity regardless of the projected oblateness of
+            the object (oblate maps only). Default is True. If False, the flux
+            from a uniform map is proportional to its projected area, which
+            scales as `1 / (1 - fproj)` where `fproj` is the projected
+            oblateness.
         source_npts (int, optional): Number of points used to approximate the
             finite illumination source size. Default is 1. Valid only if
             `reflected` is True.
@@ -2617,6 +2977,8 @@ def Map(
     if nw is not None:
         nw = int(nw)
         assert nw > 0, "Number of wavelength bins must be positive."
+    gdeg = int(gdeg)
+    assert gdeg >= 0, "Keyword `gdeg` must be positive."
     source_npts = int(source_npts)
     if source_npts < 1:
         source_npts = 1
@@ -2631,7 +2993,13 @@ def Map(
         )
 
     # Limb-darkened?
-    if (ydeg == 0) and (rv is False) and (reflected is False):
+    if (
+        (ydeg == 0)
+        and (udeg > 0)
+        and (rv is False)
+        and (reflected is False)
+        and (oblate is False)
+    ):
 
         # TODO: Add support for wavelength-dependent limb darkening
         if nw is not None:
@@ -2650,13 +3018,16 @@ def Map(
     elif reflected:
         Bases = (ReflectedBase,) + Bases
         fdeg = 0
+    elif oblate:
+        Bases = (OblateBase,) + Bases
+        fdeg = gdeg
     else:
         fdeg = 0
 
-    # Ensure we're not doing both
-    if rv and reflected:
+    # Ensure we're not doing a combo
+    if np.count_nonzero([rv, reflected, oblate]) > 1:
         raise NotImplementedError(
-            "Radial velocity maps not implemented in reflected light."
+            "Combinations of `rv`, `reflected`, and `oblate` not yet implemented."
         )
 
     # Construct the class
@@ -2667,8 +3038,10 @@ def Map(
             limbdarkened=LimbDarkenedBase in Bases,
             reflected=ReflectedBase in Bases,
             rv=RVBase in Bases,
+            oblate=OblateBase in Bases,
             spectral=nw is not None,
             source_npts=source_npts,
+            normalized=normalized,
         )
 
         def __init__(self, *args, **kwargs):

@@ -6,6 +6,7 @@ from .ops import (
     sTOp,
     rTReflectedOp,
     sTReflectedOp,
+    sTOblateOp,
     dotROp,
     tensordotRzOp,
     FOp,
@@ -22,6 +23,8 @@ from .ops import (
 from .utils import logger, autocompile, is_tensor, clear_cache
 from .math import lazy_math as math
 from scipy.special import legendre as LegendreP
+from scipy.sparse import csc_matrix
+from scipy.sparse.linalg import inv as sparse_inv
 import numpy as np
 from astropy import units
 import os
@@ -35,13 +38,22 @@ else:
     from .. import _c_ops
 
 
-__all__ = ["OpsYlm", "OpsLD", "OpsReflected", "OpsRV", "OpsSystem"]
+__all__ = [
+    "OpsYlm",
+    "OpsLD",
+    "OpsReflected",
+    "OpsRV",
+    "OpsOblate",
+    "OpsSystem",
+]
 
 
 class OpsYlm(object):
     """Class housing Theano operations for spherical harmonics maps."""
 
-    def __init__(self, ydeg, udeg, fdeg, nw, reflected=False, **kwargs):
+    def __init__(
+        self, ydeg, udeg, fdeg, nw, reflected=False, oblate=False, **kwargs
+    ):
         # Ingest kwargs
         self.ydeg = ydeg
         self.udeg = udeg
@@ -49,6 +61,7 @@ class OpsYlm(object):
         self.deg = ydeg + udeg + fdeg
         self.filter = (fdeg > 0) or (udeg > 0)
         self.nw = nw
+        self._oblate = oblate
         self._reflected = reflected
         self.Ny = (self.ydeg + 1) ** 2
 
@@ -126,11 +139,17 @@ class OpsYlm(object):
 
     @autocompile
     def tensordotRz(self, matrix, theta):
-        return self._tensordotRz(matrix, theta)
+        if self.ydeg == 0:
+            return matrix
+        else:
+            return self._tensordotRz(matrix, theta)
 
     @autocompile
     def dotR(self, matrix, ux, uy, uz, theta):
-        return self._dotR(matrix, ux, uy, uz, theta)
+        if self.ydeg == 0:
+            return matrix
+        else:
+            return self._dotR(matrix, ux, uy, uz, theta)
 
     @autocompile
     def F(self, u, f):
@@ -427,10 +446,6 @@ class OpsYlm(object):
         that transforms a spherical harmonic coefficient vector in the
         input frame to a vector in the observer's frame.
         """
-        # Trivial case
-        if self.ydeg == 0:
-            return M
-
         # Rotate to the sky frame
         # TODO: Do this in a single compound rotation
         M = self.dotR(
@@ -487,10 +502,6 @@ class OpsYlm(object):
         input frame to a vector in the observer's frame.
 
         """
-        # Trivial case
-        if self.ydeg == 0:
-            return M
-
         # Note that here we are using the fact that R . M = (M^T . R^T)^T
         MT = tt.transpose(M)
 
@@ -667,10 +678,9 @@ class OpsYlm(object):
 class OpsLD(object):
     """Class housing Theano operations for limb-darkened maps."""
 
-    def __init__(self, ydeg, udeg, fdeg, nw, reflected=False, **kwargs):
+    def __init__(self, ydeg, udeg, fdeg, nw, **kwargs):
         # Sanity checks
         assert ydeg == fdeg == 0
-        assert reflected is False
 
         # Ingest kwargs
         self.udeg = udeg
@@ -1357,6 +1367,340 @@ class OpsReflected(OpsYlm):
             return tt.sum(I, axis=2) / self.source_npts
 
 
+class OpsOblate(OpsYlm):
+    def __init__(self, *args, **kwargs):
+        super(OpsOblate, self).__init__(*args, oblate=True, **kwargs)
+        self._sT = sTOblateOp(self._c_ops.sTOblate, self._c_ops.N)
+
+        # Spherical harmonic transform operator
+        smoothing = 0.0
+        eps4 = 1e-9
+        npts = 4 * (self.fdeg + 1) ** 2
+        z = np.linspace(-1, 1, npts)
+        B = np.hstack(
+            [
+                np.sqrt(2 * l + 1) * LegendreP(l)(z).reshape(-1, 1)
+                for l in range(self.fdeg + 1)
+            ]
+        )
+        A = np.linalg.solve(B.T @ B + eps4 * np.eye(self.fdeg + 1), B.T)
+        l = np.arange(self.fdeg + 1)
+        idx = l * (l + 1)
+        S = np.exp(-0.5 * idx * smoothing ** 2)
+        self.SHT = tt.as_tensor_variable(S[:, None] * A)
+        self.z = tt.as_tensor_variable(z)
+        self.idx = idx
+
+        # We need to instantiate custom versions of the C++ ops
+        # so we can apply and manipulate the gravity darkening filter
+        # Several steps in `render` and `X` require operators with
+        # different dimensions. Some day it would make sense to
+        # handle this logic on the C++ side so we don't have to
+        # instantiate so many Ops objects.
+        if self.fdeg == 0 and self.udeg == 0:
+            ops_y_0_f = self._c_ops
+            ops_yf_0_0 = self._c_ops
+            ops_yu_0_0 = self._c_ops
+            ops_f_0_0 = self._c_ops
+            ops_yf_u_0 = self._c_ops
+            ops_yuf_0_0 = self._c_ops
+        elif self.udeg == 0:
+            ops_y_0_f = self._c_ops
+            ops_yf_0_0 = _c_ops.Ops(self.ydeg + self.fdeg, 0, 0)
+            ops_yu_0_0 = _c_ops.Ops(self.ydeg, 0, 0)
+            ops_f_0_0 = _c_ops.Ops(self.fdeg, 0, 0)
+            ops_yf_u_0 = ops_yf_0_0
+            ops_yuf_0_0 = ops_yf_0_0
+        else:
+            ops_y_0_f = _c_ops.Ops(self.ydeg, 0, self.fdeg)
+            ops_yf_0_0 = _c_ops.Ops(self.ydeg + self.fdeg, 0, 0)
+            ops_yu_0_0 = _c_ops.Ops(self.ydeg + self.udeg, 0, 0)
+            ops_f_0_0 = _c_ops.Ops(self.fdeg, 0, 0)
+            ops_yf_u_0 = _c_ops.Ops(self.ydeg + self.fdeg, self.udeg, 0)
+            ops_yuf_0_0 = _c_ops.Ops(self.ydeg + self.udeg + self.fdeg, 0, 0)
+
+        # Filter operator (gravity darkening)
+        self.Fg = FOp(
+            ops_y_0_f.F, (self.ydeg + self.fdeg + 1) ** 2, (self.ydeg + 1) ** 2
+        )
+
+        # Change of basis matrices
+        if self.ydeg == 0 and self.fdeg == 0:
+            self.A1Inv_Nyf_x_Nyf = csc_matrix([[np.pi]])
+        else:
+            self.A1Inv_Nyf_x_Nyf = ts.as_sparse_variable(
+                sparse_inv(ops_y_0_f.A1Big)
+            )
+        self.A1_Nyf_x_Nyf = ts.as_sparse_variable(ops_y_0_f.A1Big)
+
+        # Rotation operator (gravity-darkened map)
+        self._dotR = dotROp(ops_yf_0_0.dotR)
+
+        # Rotation operator (limb-darkened map)
+        self._dotR_Nyu_x_Nyu = dotROp(ops_yu_0_0.dotR)
+
+        # Rotation operator (gravity darkening filter)
+        self._dotR_Nf_x_Nf = dotROp(ops_f_0_0.dotR)
+
+        # Filter operator (limb darkening)
+        self.Fu = FOp(
+            ops_yf_u_0.F,
+            (self.ydeg + self.udeg + self.fdeg + 1) ** 2,
+            (self.ydeg + self.fdeg + 1) ** 2,
+        )
+
+        # Greens-to-poly change of basis
+        self.A2_Nyuf_x_Nyuf = ts.as_sparse_variable(ops_yuf_0_0.A2)
+
+    @autocompile
+    def tensordotRz(self, matrix, theta):
+        if self.ydeg + self.fdeg == 0:
+            return matrix
+        else:
+            return self._tensordotRz(matrix, theta)
+
+    @autocompile
+    def dotR(self, matrix, ux, uy, uz, theta):
+        if self.ydeg + self.fdeg == 0:
+            return matrix
+        else:
+            return self._dotR(matrix, ux, uy, uz, theta)
+
+    @autocompile
+    def render(self, res, projection, theta, inc, obl, fproj, y, u, f):
+        """Render the map on a Cartesian grid."""
+        # Compute the Cartesian grid
+        xyz = ifelse(
+            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+            self.compute_rect_grid(res)[-1],
+            ifelse(
+                tt.eq(projection, STARRY_MOLLWEIDE_PROJECTION),
+                self.compute_moll_grid(res)[-1],
+                self.compute_ortho_grid_fproj(res, obl, fproj)[-1],
+            ),
+        )
+
+        # Compute the polynomial basis
+        pT = self.pT(xyz[0], xyz[1], xyz[2])
+
+        # Apply the grav dark filter to the map
+        if self.fdeg > 0:
+            if self.ydeg == 0:
+                # Trivial!
+                y = f
+            else:
+                if self.nw is None:
+                    F = self.Fg(tt.as_tensor_variable([-1.0]), f)
+                    A1InvFA1 = ts.dot(ts.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1)
+                    y = tt.dot(A1InvFA1, y)
+                else:
+                    # We need to compute the filter for each wavelength bin.
+                    # We could speed this up by vectorization on the C++ side
+                    A1InvFA1 = tt.zeros(
+                        (
+                            self.nw,
+                            (self.ydeg + self.fdeg + 1) ** 2,
+                            (self.ydeg + 1) ** 2,
+                        )
+                    )
+                    for i in range(self.nw):
+                        F = self.Fg(tt.as_tensor_variable([-1.0]), f[:, i])
+                        A1InvFA1 = tt.set_subtensor(
+                            A1InvFA1[i],
+                            ts.dot(ts.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1),
+                        )
+                    y = tt.transpose(tt.batched_dot(A1InvFA1, tt.transpose(y)))
+
+        # If orthographic, rotate the map to the correct frame
+        if self.nw is None:
+            Ry = ifelse(
+                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                self.left_project(
+                    tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+                    inc,
+                    obl * 0,  # We already account for the obliquity in `pT`
+                    theta,
+                ),
+                tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+            )
+        else:
+            Ry = ifelse(
+                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                tt.reshape(
+                    self.left_project(
+                        y,
+                        inc,
+                        obl
+                        * 0,  # We already account for the obliquity in `pT`
+                        tt.tile(theta[0], self.nw),
+                    ),
+                    (-1, self.nw),
+                ),
+                y,
+            )
+
+        # Change basis to polynomials
+        A1Ry = ts.dot(self.A1_Nyf_x_Nyf, Ry)
+
+        # Apply the limb darkening *only if orthographic*
+        if self.udeg > 0:
+            A1Ry = ifelse(
+                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                tt.dot(self.Fu(u, tt.as_tensor_variable([np.pi])), A1Ry),
+                A1Ry,
+            )
+
+        # Dot the polynomial into the basis
+        res = tt.reshape(tt.dot(pT, A1Ry), [res, res, -1])
+
+        # We need the shape to be (nframes, npix, npix)
+        return res.dimshuffle(2, 0, 1)
+
+    @autocompile
+    def compute_ortho_grid_fproj(self, res, obl, fproj):
+        dx = 2.0 / (res - 0.01)
+        y, x = tt.mgrid[-1:1:dx, -1:1:dx]
+        xp = x * tt.cos(obl) + y * tt.sin(obl)
+        yp = -x * tt.sin(obl) + y * tt.cos(obl)
+        x = xp
+        y = yp / (1 - fproj)
+        z = tt.sqrt(1 - x ** 2 - y ** 2)
+        y = tt.set_subtensor(y[tt.isnan(z)], np.nan)
+        x = tt.reshape(x, [1, -1])
+        y = tt.reshape(y, [1, -1])
+        z = tt.reshape(z, [1, -1])
+        lat = tt.reshape(0.5 * np.pi - tt.arccos(y), [1, -1])
+        lon = tt.reshape(tt.arctan2(x, z), [1, -1])
+        return tt.concatenate((lat, lon)), tt.concatenate((x, y, z))
+
+    @autocompile
+    def sT(self, f, theta, bo, ro):
+        return self._sT(f, theta, bo, ro)
+
+    @autocompile
+    def X(self, theta, xo, yo, zo, ro, inc, obl, fproj, u, f):
+        """Compute the light curve design matrix."""
+        # Determine shapes
+        rows = theta.shape[0]
+        cols = self.Ny
+        X = tt.zeros((rows, cols))
+
+        # Compute the occultation mask
+        bo = tt.sqrt(xo ** 2 + yo ** 2)
+        thetao = tt.arctan2(xo, yo)
+
+        # Occultation + phase curve operator
+        sT = self.sT(fproj, thetao, bo, ro)
+
+        # Limb darkening
+        if self.udeg > 0:
+            sTA2 = ts.dot(sT, self.A2_Nyuf_x_Nyuf)
+            F = self.Fu(u, tt.as_tensor_variable([np.pi]))
+            FA1 = ts.dot(F, self.A1_Nyf_x_Nyf)
+            sTA = tt.dot(sTA2, FA1)
+        else:
+            sTA = ts.dot(sT, self.A)
+
+        # Projection onto the sky
+        sTAR = self.right_project(sTA, inc, obl, theta)
+
+        # Gravity darkening
+        if self.nw is None and self.fdeg > 0:
+            F = self.Fg(tt.as_tensor_variable([-1.0]), f)
+            A1InvFA1 = ts.dot(ts.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1)
+            sTAR = tt.dot(sTAR, A1InvFA1)
+
+        return sTAR
+
+    @autocompile
+    def flux(self, theta, xo, yo, zo, ro, inc, obl, fproj, y, u, f):
+        """Compute the light curve."""
+        if self.nw is None or self.fdeg == 0:
+            return tt.dot(
+                self.X(theta, xo, yo, zo, ro, inc, obl, fproj, u, f), y
+            )
+        else:
+
+            if self.ydeg == 0:
+                # Trivial!
+                return tt.dot(
+                    self.X(theta, xo, yo, zo, ro, inc, obl, fproj, u, f), f
+                )
+            else:
+
+                # We need to pre-weight the spherical harmonic vector by
+                # the filter in each wavelength bin
+                y = self.weight_ylms_by_grav_dark_filter(y, f)
+                return tt.dot(
+                    self.X(theta, xo, yo, zo, ro, inc, obl, fproj, u, f), y
+                )
+
+    @autocompile
+    def weight_ylms_by_grav_dark_filter(self, y, f):
+        # We need to compute the filter for each wavelength bin.
+        # We could speed this up by vectorization on the C++ side
+        A1InvFA1 = tt.zeros(
+            (self.nw, (self.ydeg + self.fdeg + 1) ** 2, (self.ydeg + 1) ** 2)
+        )
+        for i in range(self.nw):
+            F = self.Fg(tt.as_tensor_variable([-1.0]), f[:, i])
+            A1InvFA1 = tt.set_subtensor(
+                A1InvFA1[i], ts.dot(ts.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1)
+            )
+        y = tt.transpose(tt.batched_dot(A1InvFA1, tt.transpose(y)))
+        return y
+
+    @autocompile
+    def grav_dark(self, z, wavnorm, omega, fobl, beta, tpole):
+        b = 1.0 - fobl
+        z2 = z * z
+        term = (-(omega ** 2) * (z2 * b ** 2 - z2 + 1) ** 1.5 + 1.0) ** 2.0
+        temp = (
+            tpole
+            * b ** (2 * beta)
+            * ((-z2 * b ** 2 + (z2 - 1) * term) / (-z2 * b ** 2 + z2 - 1) ** 3)
+            ** (0.5 * beta)
+        )
+        return 1.0 / (tt.exp(1.0 / (wavnorm * temp)) - 1.0)
+
+    @autocompile
+    def compute_grav_dark_filter(self, wavnorm, omega, fobl, beta, tpole):
+
+        # Compute the map expansion in the polar frame
+        nw = 1 if self.nw is None else self.nw
+        y = tt.zeros(((self.fdeg + 1) ** 2, nw))
+        y = tt.set_subtensor(
+            y[self.idx],
+            tt.dot(
+                self.SHT,
+                self.grav_dark(
+                    tt.reshape(self.z, (-1, 1)),
+                    tt.reshape(wavnorm, (1, -1)),
+                    omega,
+                    fobl,
+                    beta,
+                    tpole,
+                ),
+            ),
+        )
+
+        # Rotate down to the standard frame
+        y = tt.reshape(
+            tt.transpose(
+                self._dotR_Nf_x_Nf(
+                    tt.transpose(y),
+                    math.to_tensor(1.0),
+                    math.to_tensor(0.0),
+                    math.to_tensor(0.0),
+                    0.5 * np.pi,
+                )
+            ),
+            (-1,) if self.nw is None else (-1, self.nw),
+        )
+
+        return y
+
+
 class OpsSystem(object):
     """Class housing ops for modeling Keplerian systems."""
 
@@ -1366,6 +1710,7 @@ class OpsSystem(object):
         secondaries,
         reflected=False,
         rv=False,
+        oblate=False,
         light_delay=False,
         texp=None,
         oversample=7,
@@ -1375,6 +1720,7 @@ class OpsSystem(object):
         self.primary = primary
         self.secondaries = secondaries
         self._reflected = reflected
+        self._oblate = oblate
         self._rv = rv
         self.nw = self.primary._map.nw
         self.light_delay = light_delay
@@ -1448,6 +1794,7 @@ class OpsSystem(object):
         pri_amp,
         pri_inc,
         pri_obl,
+        pri_fproj,
         pri_u,
         pri_f,
         sec_r,
@@ -1533,17 +1880,31 @@ class OpsSystem(object):
         ) + tt.shape_padright(sec_theta0)
 
         # Compute all the phase curves
-        phase_pri = pri_amp * self.primary.map.ops.X(
-            theta_pri,
-            tt.zeros_like(t),
-            tt.zeros_like(t),
-            tt.zeros_like(t),
-            math.to_tensor(0.0),
-            pri_inc,
-            pri_obl,
-            pri_u,
-            pri_f,
-        )
+        if self._oblate:
+            phase_pri = pri_amp * self.primary.map.ops.X(
+                theta_pri,
+                tt.zeros_like(t),
+                tt.zeros_like(t),
+                tt.zeros_like(t),
+                math.to_tensor(0.0),
+                pri_inc,
+                pri_obl,
+                pri_fproj,
+                pri_u,
+                pri_f,
+            )
+        else:
+            phase_pri = pri_amp * self.primary.map.ops.X(
+                theta_pri,
+                tt.zeros_like(t),
+                tt.zeros_like(t),
+                tt.zeros_like(t),
+                math.to_tensor(0.0),
+                pri_inc,
+                pri_obl,
+                pri_u,
+                pri_f,
+            )
         if self._reflected:
             phase_sec = [
                 pri_amp
@@ -1606,23 +1967,43 @@ class OpsSystem(object):
                 tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
             )
             idx = tt.arange(b.shape[0])[b_occ]
-            occ_pri = tt.set_subtensor(
-                occ_pri[idx],
-                occ_pri[idx]
-                + pri_amp
-                * self.primary.map.ops.X(
-                    theta_pri[idx],
-                    xo[idx],
-                    yo[idx],
-                    zo[idx],
-                    ro,
-                    pri_inc,
-                    pri_obl,
-                    pri_u,
-                    pri_f,
+            if self._oblate:
+                occ_pri = tt.set_subtensor(
+                    occ_pri[idx],
+                    occ_pri[idx]
+                    + pri_amp
+                    * self.primary.map.ops.X(
+                        theta_pri[idx],
+                        xo[idx],
+                        yo[idx],
+                        zo[idx],
+                        ro,
+                        pri_inc,
+                        pri_obl,
+                        pri_fproj,
+                        pri_u,
+                        pri_f,
+                    )
+                    - phase_pri[idx],
                 )
-                - phase_pri[idx],
-            )
+            else:
+                occ_pri = tt.set_subtensor(
+                    occ_pri[idx],
+                    occ_pri[idx]
+                    + pri_amp
+                    * self.primary.map.ops.X(
+                        theta_pri[idx],
+                        xo[idx],
+                        yo[idx],
+                        zo[idx],
+                        ro,
+                        pri_inc,
+                        pri_obl,
+                        pri_u,
+                        pri_f,
+                    )
+                    - phase_pri[idx],
+                )
 
         # Compute occultations by the primary
         for i, sec in enumerate(self.secondaries):
@@ -1636,7 +2017,29 @@ class OpsSystem(object):
                 tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
             )
             idx = tt.arange(b.shape[0])[b_occ]
-            if self._reflected:
+            if self._oblate:
+                # TODO: Occultations *by* an oblate occultor are not
+                # currently supported. The following code ignores any
+                # oblateness and instead treats the body as a spherical
+                # occultor with radius equal to its equatorial radius.
+                occ_sec[i] = tt.set_subtensor(
+                    occ_sec[i][idx],
+                    occ_sec[i][idx]
+                    + sec_amp[i]
+                    * sec.map.ops.X(
+                        theta_sec[i, idx],
+                        xo[idx],
+                        yo[idx],
+                        zo[idx],
+                        ro,
+                        sec_inc[i],
+                        sec_obl[i],
+                        sec_u[i],
+                        sec_f[i],
+                    )
+                    - phase_sec[i][idx],
+                )
+            elif self._reflected:
                 occ_sec[i] = tt.set_subtensor(
                     occ_sec[i][idx],
                     occ_sec[i][idx]
@@ -1769,6 +2172,7 @@ class OpsSystem(object):
         pri_amp,
         pri_inc,
         pri_obl,
+        pri_fproj,
         pri_y,
         pri_u,
         pri_alpha,
@@ -1828,6 +2232,7 @@ class OpsSystem(object):
             pri_amp,
             pri_inc,
             pri_obl,
+            pri_fproj,
             pri_u,
             pri_f,
             sec_r,
@@ -1858,6 +2263,7 @@ class OpsSystem(object):
             pri_amp,
             pri_inc,
             pri_obl,
+            pri_fproj,
             pri_u,
             pri_f0,
             sec_r,
@@ -1945,6 +2351,7 @@ class OpsSystem(object):
         pri_theta0,
         pri_inc,
         pri_obl,
+        pri_fproj,
         pri_y,
         pri_u,
         pri_f,
@@ -2002,16 +2409,29 @@ class OpsSystem(object):
         ) + tt.shape_padright(sec_theta0)
 
         # Compute all the maps
-        img_pri = self.primary.map.ops.render(
-            res,
-            STARRY_ORTHOGRAPHIC_PROJECTION,
-            theta_pri,
-            pri_inc,
-            pri_obl,
-            pri_y,
-            pri_u,
-            pri_f,
-        )
+        if self._oblate:
+            img_pri = self.primary.map.ops.render(
+                res,
+                STARRY_ORTHOGRAPHIC_PROJECTION,
+                theta_pri,
+                pri_inc,
+                pri_obl,
+                pri_fproj,
+                pri_y,
+                pri_u,
+                pri_f,
+            )
+        else:
+            img_pri = self.primary.map.ops.render(
+                res,
+                STARRY_ORTHOGRAPHIC_PROJECTION,
+                theta_pri,
+                pri_inc,
+                pri_obl,
+                pri_y,
+                pri_u,
+                pri_f,
+            )
         if self._reflected:
             img_sec = tt.as_tensor_variable(
                 [

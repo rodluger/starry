@@ -12,22 +12,10 @@ import glob
 on_rtd = os.getenv("READTHEDOCS") == "True"
 
 # Custom compiler flags
-macros = dict(
-    STARRY_NDIGITS=16,
-    STARRY_ELLIP_MAX_ITER=200,
-    STARRY_MAX_LMAX=50,
-    STARRY_BCUT=1.0e-3,
-    STARRY_MN_MAX_ITER=100,
-    STARRY_IJ_MAX_ITER=200,
-    STARRY_REFINE_J_AT=25,
-    STARRY_USE_INCOMPLETE_INTEGRALS=0,
-    STARRY_QUAD_POINTS=100,
-    STARRY_EL2_MAX_ITER=100,
-)
-
-# Override with user values
-for key, value in macros.items():
-    macros[key] = os.getenv(key, value)
+macros = {}
+for key in os.environ.keys():
+    if key.startswith("STARRY_"):
+        macros[key] = os.getenv(key)
 
 # Compiler optimization flag -O
 optimize = int(os.getenv("STARRY_O", 2))
@@ -46,6 +34,10 @@ if debug:
     optimize = 0
     macros["STARRY_O"] = 0
     macros["STARRY_DEBUG"] = 1
+
+# Unit tests for C++ functions?
+if bool(int(os.getenv("STARRY_UNIT_TESTS", 0))):
+    macros["STARRY_UNIT_TESTS"] = 1
 
 # Numerical override at high l?
 if bool(int(os.getenv("STARRY_KL_NUMERICAL", 0))):
@@ -170,7 +162,7 @@ class BuildExt(build_ext):
         build_ext.build_extensions(self)
 
 
-if int(macros["STARRY_NDIGITS"]) > 16:
+if int(os.getenv("STARRY_NDIGITS", 16)) > 16:
     include_dirs = ["starry/_core/ops/lib/vendor/boost_1_66_0"]
 else:
     include_dirs = []
@@ -236,6 +228,7 @@ setup(
             "scikit-image",
             "pillow",
             "tqdm",
+            "mpmath",
         ],
         "docs": [
             "sphinx>=1.7.5",

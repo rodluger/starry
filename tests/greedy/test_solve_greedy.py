@@ -10,36 +10,46 @@ from scipy.stats import multivariate_normal
 import pytest
 import itertools
 
+
+@pytest.fixture(autouse=True)
+def data():
+
+    # Instantiate a dipole map
+    map = starry.Map(ydeg=1, reflected=True)
+    amp_true = 0.75
+    inc_true = 60
+    y_true = np.array([1, 0.1, 0.2, 0.3])
+    map.amp = amp_true
+    map[1, :] = y_true[1:]
+    map.inc = inc_true
+
+    # Generate a synthetic light curve with just a little noise
+    theta = np.linspace(0, 360, 100)
+    phi = 3.5 * theta
+    xs = np.cos(phi * np.pi / 180)
+    ys = 0.1 * np.cos(phi * np.pi / 180)
+    zs = np.sin(phi * np.pi / 180)
+    kwargs = dict(theta=theta, xs=xs, ys=ys, zs=zs)
+    flux = map.flux(**kwargs)
+    sigma = 1e-5
+    np.random.seed(1)
+    flux += np.random.randn(len(theta)) * sigma
+
+    return (map, kwargs, amp_true, inc_true, y_true, sigma, flux)
+
+
 # Parameter combinations we'll test
 vals = ["scalar", "vector", "matrix", "cholesky"]
 woodbury = [False, True]
 solve_inputs = itertools.product(vals, vals)
 lnlike_inputs = itertools.product(vals, vals, woodbury)
 
-# Instantiate a dipole map
-map = starry.Map(ydeg=1, reflected=True)
-amp_true = 0.75
-inc_true = 60
-y_true = np.array([1, 0.1, 0.2, 0.3])
-map.amp = amp_true
-map[1, :] = y_true[1:]
-map.inc = inc_true
-
-# Generate a synthetic light curve with just a little noise
-theta = np.linspace(0, 360, 100)
-phi = 3.5 * theta
-xs = np.cos(phi * np.pi / 180)
-ys = 0.1 * np.cos(phi * np.pi / 180)
-zs = np.sin(phi * np.pi / 180)
-kwargs = dict(theta=theta, xs=xs, ys=ys, zs=zs)
-flux = map.flux(**kwargs)
-sigma = 1e-5
-np.random.seed(1)
-flux += np.random.randn(len(theta)) * sigma
-
 
 @pytest.mark.parametrize("L,C", solve_inputs)
-def test_solve(L, C):
+def test_solve(L, C, data):
+
+    map, kwargs, amp_true, inc_true, y_true, sigma, flux = data
+
     # Place a generous prior on the map coefficients
     if L == "scalar":
         map.set_prior(L=1)
@@ -76,8 +86,11 @@ def test_solve(L, C):
 
 
 @pytest.mark.parametrize("L,C,woodbury", lnlike_inputs)
-def test_lnlike(L, C, woodbury):
+def test_lnlike(L, C, woodbury, data):
     """Test the log marginal likelihood method."""
+
+    map, kwargs, amp_true, inc_true, y_true, sigma, flux = data
+
     # Place a generous prior on the map coefficients
     if L == "scalar":
         map.set_prior(L=1)

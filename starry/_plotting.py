@@ -69,7 +69,9 @@ def get_moll_longitude_lines(dlon=np.pi / 6, npts=1000, niter=100):
     return res
 
 
-def get_ortho_latitude_lines(inc=np.pi / 2, obl=0, dlat=np.pi / 6, npts=1000):
+def get_ortho_latitude_lines(
+    inc=np.pi / 2, obl=0, fproj=0, dlat=np.pi / 6, npts=1000
+):
     """
 
     """
@@ -107,15 +109,15 @@ def get_ortho_latitude_lines(inc=np.pi / 2, obl=0, dlat=np.pi / 6, npts=1000):
 
         # Rotate them
         for y in (y1, y2):
-            xr = -x * co - y * so
-            yr = -x * so + y * co
+            xr = -x * co - (y * (1 - fproj)) * so
+            yr = -x * so + (y * (1 - fproj)) * co
             res.append((xr, yr))
 
     return res
 
 
 def get_ortho_longitude_lines(
-    inc=np.pi / 2, obl=0, theta=0, dlon=np.pi / 6, npts=1000
+    inc=np.pi / 2, obl=0, fproj=0, theta=0, dlon=np.pi / 6, npts=1000
 ):
     """
 
@@ -185,8 +187,8 @@ def get_ortho_longitude_lines(
                         y[imax:] = np.nan
 
             # Rotate by the obliquity
-            xr = -x * co - y * so
-            yr = -x * so + y * co
+            xr = -x * co - (y * (1 - fproj)) * so
+            yr = -x * so + (y * (1 - fproj)) * co
             res.append((xr, yr))
 
     return res

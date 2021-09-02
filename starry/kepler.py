@@ -9,6 +9,7 @@ from astropy import units
 from inspect import getmro
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from matplotlib.patches import Ellipse
 from IPython.display import HTML
 import os
 import logging
@@ -449,6 +450,7 @@ class System(object):
         ), "Reflected light map not allowed for the primary body."
         self._primary = primary
         self._rv = primary._map.__props__["rv"]
+        self._oblate = primary._map.__props__["oblate"]
         self._lazy = primary._lazy
         self._math = primary._math
         if self._lazy:
@@ -473,6 +475,9 @@ class System(object):
             assert (
                 sec._lazy == self._lazy
             ), "All bodies must have the same evaluation mode (lazy/greedy)."
+            assert not sec._map.__props__[
+                "oblate"
+            ], "Oblate secondary bodies are not currently supported."
 
         reflected = [sec._map.__props__["reflected"] for sec in secondaries]
         if np.all(reflected):
@@ -505,6 +510,7 @@ class System(object):
             self._secondaries,
             reflected=self._reflected,
             rv=self._rv,
+            oblate=self._oblate,
             light_delay=self._light_delay,
             texp=self._texp,
             oversample=self._oversample,
@@ -642,8 +648,17 @@ class System(object):
             self._primary._prot,
             self._primary._t0,
             self._primary._theta0,
-            self._primary._map._inc,
-            self._primary._map._obl,
+            getattr(
+                self._primary._map,
+                "_inc",
+                self._math.to_array_or_tensor(0.5 * np.pi),
+            ),
+            getattr(
+                self._primary._map, "_obl", self._math.to_array_or_tensor(0.0)
+            ),
+            getattr(
+                self._primary._map, "fproj", self._math.to_array_or_tensor(0.0)
+            ),
             self._primary._map._y,
             self._primary._map._u,
             self._primary._map._f,
@@ -676,10 +691,22 @@ class System(object):
                 [sec._inc for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
-                [sec._map._inc for sec in self._secondaries]
+                [
+                    getattr(
+                        sec._map,
+                        "_inc",
+                        self._math.to_array_or_tensor(0.5 * np.pi),
+                    )
+                    for sec in self._secondaries
+                ]
             ),
             self._math.to_array_or_tensor(
-                [sec._map._obl for sec in self._secondaries]
+                [
+                    getattr(
+                        sec._map, "_obl", self._math.to_array_or_tensor(0.0)
+                    )
+                    for sec in self._secondaries
+                ]
             ),
             self._math.to_array_or_tensor(
                 [sec._map._y for sec in self._secondaries]
@@ -691,11 +718,16 @@ class System(object):
                 [sec._map._f for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
-                [sec._map._sigr for sec in self._secondaries]
+                [
+                    getattr(
+                        sec._map, "_sigr", self._math.to_array_or_tensor(0.0)
+                    )
+                    for sec in self._secondaries
+                ]
             ),
         )
 
-        # Convert to units of the primary radiu
+        # Convert to units of the primary radius
         x, y, z = (
             x / self._primary._r,
             y / self._primary._r,
@@ -707,13 +739,12 @@ class System(object):
         r = r / self._primary._r
 
         # Evaluate if needed
-        if self._lazy:
-            img_pri = get_val(img_pri)
-            img_sec = get_val(img_sec)
-            x = get_val(x)
-            y = get_val(y)
-            z = get_val(z)
-            r = get_val(r)
+        img_pri = get_val(img_pri)
+        img_sec = get_val(img_sec)
+        x = get_val(x)
+        y = get_val(y)
+        z = get_val(z)
+        r = get_val(r)
 
         # We need this to be of shape (nplanet, nframe)
         x = x.T
@@ -750,9 +781,21 @@ class System(object):
             animated=animated,
             zorder=0.0,
         )
-        circ[0] = plt.Circle(
-            (0, 0), 1, color="k", fill=False, zorder=1e-3, lw=2
-        )
+        if hasattr(self._primary._map, "fproj"):
+            circ[0] = Ellipse(
+                (0, 0),
+                2,
+                2 * (1 - get_val(self._primary._map.fproj)),
+                angle=180 / np.pi * get_val(self._primary._map._obl),
+                color="k",
+                fill=False,
+                zorder=1e-3,
+                lw=2,
+            )
+        else:
+            circ[0] = plt.Circle(
+                (0, 0), 1, color="k", fill=False, zorder=1e-3, lw=2
+            )
         ax.add_artist(circ[0])
         for i, _ in enumerate(self._secondaries):
             extent = np.array([x[i, 0], x[i, 0], y[i, 0], y[i, 0]]) + (
@@ -876,9 +919,20 @@ class System(object):
             self._primary._prot,
             self._primary._t0,
             self._primary._theta0,
-            self._math.to_array_or_tensor(1.0),
-            self._primary._map._inc,
-            self._primary._map._obl,
+            self._math.to_array_or_tensor(
+                1.0
+            ),  # we treat `amp` seprately in `flux()`
+            getattr(
+                self._primary._map,
+                "_inc",
+                self._math.to_array_or_tensor(0.5 * np.pi),
+            ),
+            getattr(
+                self._primary._map, "_obl", self._math.to_array_or_tensor(0.0)
+            ),
+            getattr(
+                self._primary._map, "fproj", self._math.to_array_or_tensor(0.0)
+            ),
             self._primary._map._u,
             self._primary._map._f,
             self._math.to_array_or_tensor(
@@ -910,16 +964,27 @@ class System(object):
                 [sec._inc for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
+                np.ones(
+                    len(self._secondaries)
+                )  # we treat `amp` seprately in `flux()`
+            ),
+            self._math.to_array_or_tensor(
                 [
-                    self._math.to_array_or_tensor(1.0)
+                    getattr(
+                        sec._map,
+                        "_inc",
+                        self._math.to_array_or_tensor(0.5 * np.pi),
+                    )
                     for sec in self._secondaries
                 ]
             ),
             self._math.to_array_or_tensor(
-                [sec._map._inc for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
-                [sec._map._obl for sec in self._secondaries]
+                [
+                    getattr(
+                        sec._map, "_obl", self._math.to_array_or_tensor(0.0)
+                    )
+                    for sec in self._secondaries
+                ]
             ),
             self._math.to_array_or_tensor(
                 [sec._map._u for sec in self._secondaries]
@@ -928,11 +993,16 @@ class System(object):
                 [sec._map._f for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
-                [sec._map._sigr for sec in self._secondaries]
+                [
+                    getattr(
+                        sec._map, "_sigr", self._math.to_array_or_tensor(0.0)
+                    )
+                    for sec in self._secondaries
+                ]
             ),
         )
 
-    def flux(self, t, total=True):
+    def flux(self, t, total=True, integrated=False):
         """Compute the system flux at times ``t``.
 
         Args:
@@ -953,16 +1023,57 @@ class System(object):
                 self._primary.map.amp * body.map.amp * body._map._y
                 for body in self._secondaries
             ]
+        elif self._oblate and self.primary.map.nw is not None:
+            # The problem is not strictly linear, since the design matrix
+            # is now 3D (time, ylm index, wavelength). So we pre-weight
+            # the spherical harmonic vector by the filter at each wavelength
+            # to get a matrix (ylm index, wavelength), to which we can apply
+            # the design matrix (time, ylm index) to get the spectral
+            # light curve out.
+            if self._primary.map.ydeg == 0:
+                y = self._primary.map._f
+            else:
+                y = self._primary.map.ops.weight_ylms_by_grav_dark_filter(
+                    self._primary.map.y, self._primary.map._f
+                )
+            ay = [self._primary.map.amp * y] + [
+                body.map.amp * body._map._y for body in self._secondaries
+            ]
+
         else:
             ay = [body.map.amp * body._map._y for body in self._bodies]
 
         if total:
-            return self._math.dot(X, self._math.concatenate(ay))
+            ay = self._math.concatenate(ay)
+            if integrated and self.primary.map.nw is not None:
+                ay = self._math.sum(ay, axis=1)
+            return self._math.dot(X, ay)
         else:
-            return [
-                self._math.dot(X[:, idx], ay[i])
-                for i, idx in enumerate(self._inds)
-            ]
+            if self._oblate:
+                # Because of our weighting hack above, the indices of
+                # the primary's coefficients in X changed, so let's
+                # re-compute all indices
+                Npri = (
+                    self._primary._map.ydeg + self._primary._map.fdeg + 1
+                ) ** 2
+                Ny = [Npri] + [sec._map.Ny for sec in self._secondaries]
+                inds = []
+                cur = 0
+                for N in Ny:
+                    inds.append(cur + np.arange(N))
+                    cur += N
+            else:
+                inds = self._inds
+            if integrated and self.primary.map.nw is not None:
+                return [
+                    self._math.dot(X[:, idx], self._math.sum(ay[i], axis=1))
+                    for i, idx in enumerate(inds)
+                ]
+            else:
+                return [
+                    self._math.dot(X[:, idx], ay[i])
+                    for i, idx in enumerate(inds)
+                ]
 
     def rv(self, t, keplerian=True, total=True):
         """Compute the observed radial velocity of the system at times ``t``.
@@ -1051,8 +1162,17 @@ class System(object):
             self._primary._t0,
             self._primary._theta0,
             self._primary._map._amp,
-            self._primary._map._inc,
-            self._primary._map._obl,
+            getattr(
+                self._primary._map,
+                "_inc",
+                self._math.to_array_or_tensor(0.5 * np.pi),
+            ),
+            getattr(
+                self._primary._map, "_obl", self._math.to_array_or_tensor(0.0)
+            ),
+            getattr(
+                self._primary._map, "fproj", self._math.to_array_or_tensor(0.0)
+            ),
             self._primary._map._y,
             self._primary._map._u,
             self._primary._map._alpha,
@@ -1089,10 +1209,22 @@ class System(object):
                 [sec._map._amp for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
-                [sec._map._inc for sec in self._secondaries]
+                [
+                    getattr(
+                        sec._map,
+                        "_inc",
+                        self._math.to_array_or_tensor(0.5 * np.pi),
+                    )
+                    for sec in self._secondaries
+                ]
             ),
             self._math.to_array_or_tensor(
-                [sec._map._obl for sec in self._secondaries]
+                [
+                    getattr(
+                        sec._map, "_obl", self._math.to_array_or_tensor(0.0)
+                    )
+                    for sec in self._secondaries
+                ]
             ),
             self._math.to_array_or_tensor(
                 [sec._map._y for sec in self._secondaries]
@@ -1104,7 +1236,12 @@ class System(object):
                 [sec._map._alpha for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
-                [sec._map._sigr for sec in self._secondaries]
+                [
+                    getattr(
+                        sec._map, "_sigr", self._math.to_array_or_tensor(0.0)
+                    )
+                    for sec in self._secondaries
+                ]
             ),
             self._math.to_array_or_tensor(
                 [sec._map._veq for sec in self._secondaries]

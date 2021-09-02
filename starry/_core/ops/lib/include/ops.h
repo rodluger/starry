@@ -7,6 +7,7 @@
 #include "basis.h"
 #include "filter.h"
 #include "misc.h"
+#include "oblate/occultation.h"
 #include "reflected/occultation.h"
 #include "reflected/phasecurve.h"
 #include "solver.h"
@@ -29,12 +30,19 @@ public:
   const int deg;
   const int N;
 
+  // Standard starry
   basis::Basis<Scalar> B;
   wigner::Wigner<Scalar> W;
-  solver::Greens<Scalar> G; /**< The occultation integral solver class */
+  solver::Greens<Scalar> G;
+  filter::Filter<Scalar> F;
+
+  // Reflected light starry
   reflected::phasecurve::PhaseCurve<ADScalar<Scalar, 2>> RP;
   reflected::occultation::Occultation<ADScalar<Scalar, 5>> RO;
-  filter::Filter<Scalar> F;
+
+  // Oblate starry
+  oblate::occultation::Occultation<Scalar, 0> OBL;
+  oblate::occultation::Occultation<Scalar, 4> OBLAD;
 
   // Spot gradients
   RowVector<Scalar> bamp;
@@ -47,7 +55,7 @@ public:
       : ydeg(ydeg), Ny((ydeg + 1) * (ydeg + 1)), udeg(udeg), Nu(udeg + 1),
         fdeg(fdeg), Nf((fdeg + 1) * (fdeg + 1)), deg(ydeg + udeg + fdeg),
         N((deg + 1) * (deg + 1)), B(ydeg, udeg, fdeg), W(ydeg, udeg, fdeg),
-        G(deg), RP(deg, B), RO(deg, B), F(B) {
+        G(deg), F(B), RP(deg, B), RO(deg, B), OBL(deg), OBLAD(deg) {
     // Bounds checks
     if ((ydeg < 0) || (ydeg > STARRY_MAX_LMAX))
       throw std::out_of_range("Spherical harmonic degree out of range.");

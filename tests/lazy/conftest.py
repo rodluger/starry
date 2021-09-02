@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
+import pytest
 import starry
 import matplotlib
 
-matplotlib.use("Agg")
-starry.config.lazy = True
+
+@pytest.fixture(scope="module", autouse=True)
+def setup():
+    matplotlib.use("Agg")
+    starry.config.lazy = True
+    yield

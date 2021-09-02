@@ -13,7 +13,6 @@ light).
 #include "../quad.h"
 #include "../solver.h"
 #include "../utils.h"
-#include "constants.h"
 #include "geometry.h"
 #include "phasecurve.h"
 #include "primitive.h"
@@ -99,7 +98,7 @@ protected:
 
   /**
    *
-  */
+   */
   inline RowVector<T> sTr(const T &b, const T &theta, const T &sigr) {
 
     // Compute the reflection solution in the terminator frame
