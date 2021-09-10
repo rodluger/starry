@@ -401,6 +401,8 @@ class MapBase(object):
         figsize = kwargs.pop("figsize", None)
         bitrate = kwargs.pop("bitrate", None)
         colorbar = kwargs.pop("colorbar", False)
+        colorbar_size = kwargs.pop("colorbar_size", "5%")
+        colorbar_pad = kwargs.pop("colorbar_pad", 0.05)
         ax = kwargs.pop("ax", None)
         if ax is None:
             custom_ax = False
@@ -693,7 +695,9 @@ class MapBase(object):
             if not custom_ax:
                 fig.subplots_adjust(right=0.85)
             divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="5%", pad=0.05)
+            cax = divider.append_axes(
+                position="right", size=colorbar_size, pad=colorbar_pad
+            )
             fig.colorbar(img, cax=cax, orientation="vertical")
 
         # Display or save the image / animation

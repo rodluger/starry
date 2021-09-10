@@ -197,7 +197,7 @@ class DopplerMap:
         else:
             assert not is_tensor(
                 wavc
-            ), "The continuum wavelenght must be a numerical quantity."
+            ), "The continuum wavelength must be a numerical quantity."
             # The closest element in `wav` to `wavc`
             self._continuum_idx = np.argmin(np.abs(wav - wavc))
 
@@ -1504,7 +1504,7 @@ class DopplerMap:
                 moll[k] = img
                 ortho += get_val(
                     # Evaluate the ortho maps at the *continuum*
-                    self._spectrum[k, self._continuum_idx0]
+                    self.spectrum[k, self._continuum_idx0]
                     * self._map.render(
                         projection="ortho",
                         theta=theta / self._angle_factor,
