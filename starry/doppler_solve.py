@@ -532,16 +532,25 @@ class Solve:
             # Marginalize over the unknown baseline at each epoch
             # and compute the factorized data covariance
             if self.flux_err.ndim == 0:
-                cho_C = cho_factor(
-                    self.T[i] * self.flux_err ** 2 * np.eye(self.nw)
-                    + self.baseline_var
+                cho_C = block_diag(
+                    *[
+                        cho_factor(
+                            self.T[i]
+                            * self.flux_err ** 2
+                            * np.eye(self.nw)
+                            * baseline.reshape(self.nt, self.nw)[n] ** 2
+                            + self.baseline_var
+                        )
+                        for n in range(self.nt)
+                    ]
                 )
-                cho_C = block_diag(*[cho_C for n in range(self.nt)])
             elif self.flux_err.ndim == 2:
                 cho_C = block_diag(
                     *[
                         cho_factor(
-                            self.T[i] * np.diag(self.flux_err[n] ** 2)
+                            self.T[i]
+                            * np.diag(self.flux_err[n] ** 2)
+                            * baseline.reshape(self.nt, self.nw)[n] ** 2
                             + self.baseline_var
                         )
                         for n in range(self.nt)
