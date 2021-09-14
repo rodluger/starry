@@ -267,9 +267,9 @@ class Solve:
         if spectral_mean is None:
             spectral_mean = 1.0
         if spectral_cov is None:
-            spectral_cov = 1e-2
+            spectral_cov = 1e-3
         if spectral_lambda is None:
-            spectral_lambda = 1e6
+            spectral_lambda = 1e5
         if spectral_maxiter is None:
             spectral_maxiter = 100
         if spectral_method is None:

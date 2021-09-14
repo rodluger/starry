@@ -1822,7 +1822,7 @@ class DopplerMap:
                 each spectral component equal to this matrix. Users can also
                 provide a list of length :py:attr:`nc` containing scalars,
                 vectors, or matrices corresponding to the prior covariance for
-                each component. Default is `1e-2`.
+                each component. Default is `1e-3`.
             spectral_guess (float, vector, or list, optional): The guess
                 for the spectral components of the map. If a scalar,
                 the same value is assumed for all spectral elements. If a vector
@@ -1834,7 +1834,7 @@ class DopplerMap:
                 mean observed spectrum.
             spectral_lambda (float, optional): The regularization parameter for
                 the L1 solver. Increasing this value increases the sparsity of
-                the solution. Default is `1e6`.
+                the solution. Default is `1e5`.
             spectral_maxiter (int, optional): Maximum number of iterations in
                 the L1 solver. Default is `100`.
             spectral_eps (float, optional): Small parameter added to the
