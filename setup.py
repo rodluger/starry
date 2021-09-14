@@ -241,6 +241,7 @@ setup(
         "docs": [
             "sphinx>=1.7.5",
             "pandoc",
+            "jupyter_client<7.0",
             "jupyter",
             "jupytext",
             "ipywidgets",
