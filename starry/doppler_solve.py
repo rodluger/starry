@@ -227,6 +227,7 @@ class Solve:
         spatial_cov=None,
         spectral_mean=None,
         spectral_cov=None,
+        spectral_guess=None,
         spectral_lambda=None,
         spectral_maxiter=None,
         spectral_eps=None,
@@ -249,10 +250,10 @@ class Solve:
         if flux_err is None:
             flux_err = 1e-4
         if spatial_mean is None:
-            spatial_mean = 0.0
+            spatial_mean = np.zeros(self.Ny)
+            spatial_mean[0] = 1.0
         if spatial_cov is None:
-            spatial_cov = 1e-4 * np.ones(self.Ny)
-            spatial_cov[0] = 1
+            spatial_cov = 1e-4
         if baseline_var is None:
             baseline_var = 1e-2
         if logT0 is None:
@@ -420,9 +421,31 @@ class Solve:
         self.spectral_cov = np.concatenate(spectral_cov, axis=0)
         self.spectral_inv_cov = np.concatenate(spectral_inv_cov, axis=0)
 
+        # Spectral guess must be a scalar, a vector (nw0), or a list of those
+        # Interpolate it to the internal grid (nw0_) and reshape to (nc, nw0_)
+        if spectral_guess is not None:
+            if type(spectral_guess) not in (list, tuple):
+                # Use the same guess for all components
+                spectral_guess = [spectral_guess for n in range(self.nc)]
+            else:
+                # Check that we have one mean per component
+                assert len(spectral_guess) == self.nc
+            for n in range(self.nc):
+                spectral_guess[n] = np.array(spectral_guess[n])
+                assert spectral_guess[n].ndim < 2
+                spectral_guess[n] = np.reshape(
+                    spectral_guess[n] * np.ones(self.nw0), (-1, 1)
+                )
+                spectral_guess[n] = self.S0e2i.dot(spectral_guess[n]).T
+            self.spectral_guess = np.concatenate(spectral_guess, axis=0)
+        else:
+            self.spectral_guess = None
+
         # Tempering schedule
         if nlogT == 1:
             self.T = np.array([10 ** logTf])
+        elif logT0 == logTf:
+            self.T = logTf * np.ones(nlogT)
         else:
             self.T = np.logspace(logT0, logTf, nlogT)
 
@@ -659,31 +682,34 @@ class Solve:
 
         # Store
         self.spectrum_ = np.reshape(spectrum_, (self.nc, self.nw0_))
-        self.cho_scov = choK
+        self.cho_scov = cho_factor(cho_solve(choK, np.eye(choK.shape[0])))
 
     def solve_for_everything_bilinear(self):
         """
         Solve for both the map and the spectrum.
 
         """
-        # First, deconvolve the flux to obtain a guess for the spectrum
-        # We subtract the convolved mean spectrum and add the deconvolved
-        # residuals to each of the component spectral means to obtain
-        # a rough guess for all components. This is by no means optimal.
-        f = self.Se2i.dot(np.mean(self.flux, axis=0))
-        f /= f[self.continuum_idx]
-        mu = self.spectral_mean.T
-        f -= np.mean(np.dot(self.KT0, mu), axis=1)
-        CInv = np.dot(self.KT0.T, self.KT0) / np.mean(self.flux_err) ** 2
-        term = np.dot(self.KT0.T, f) / np.mean(self.flux_err) ** 2
-        self.spectrum_ = mu.T + self.L1(
-            CInv,
-            term,
-            np.array(self.spectral_lambda),
-            self.spectral_maxiter,
-            np.array(self.spectral_eps),
-            np.array(self.spectral_tol),
-        )
+        if self.spectral_guess is None:
+            # First, deconvolve the flux to obtain a guess for the spectrum
+            # We subtract the convolved mean spectrum and add the deconvolved
+            # residuals to each of the component spectral means to obtain
+            # a rough guess for all components. This is by no means optimal.
+            f = self.Se2i.dot(np.mean(self.flux, axis=0))
+            f /= f[self.continuum_idx]
+            mu = self.spectral_mean.T
+            f -= np.mean(np.dot(self.KT0, mu), axis=1)
+            CInv = np.dot(self.KT0.T, self.KT0) / np.mean(self.flux_err) ** 2
+            term = np.dot(self.KT0.T, f) / np.mean(self.flux_err) ** 2
+            self.spectrum_ = mu.T + self.L1(
+                CInv,
+                term,
+                np.array(self.spectral_lambda),
+                self.spectral_maxiter,
+                np.array(self.spectral_eps),
+                np.array(self.spectral_tol),
+            )
+        else:
+            self.spectrum_ = self.spectral_guess
         self.meta["spectrum_guess"] = self.spectrum_
 
         # Assume a unit baseline guess

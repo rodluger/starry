@@ -1789,7 +1789,8 @@ class DopplerMap:
                 length :py:attr:`Ny`, the same mean vector is assumed for all
                 map components. Users can also provide a list of length
                 :py:attr:`nc` containing scalars or vectors corresponding to
-                the prior mean for each component. Default is `0.0`.
+                the prior mean for each component. Default is the vector
+                `[1.0, 0.0, ..., 0.0]`.
             spatial_cov (float, vector, matrix, or list, optional): The prior
                 (co)variance on the spherical harmonic coefficients of the map.
                 If a scalar, assumes the same variance for all map coefficients
@@ -1801,9 +1802,7 @@ class DopplerMap:
                 each map component equal to this matrix. Users can also provide
                 a list of length :py:attr:`nc` containing scalars, vectors, or
                 matrices corresponding to the prior covariance for each
-                component. Default is a vector where the first coefficient is
-                unity and the remanining :py:attr:`Ny` - 1 coefficients are
-                `1e-4`.
+                component. Default is `1e-4`.
             spectral_mean (float, vector, or list, optional): The prior mean
                 on the spectral components of the map. If a scalar,
                 the same mean is assumed for all spectral elements. If a vector
@@ -1824,6 +1823,15 @@ class DopplerMap:
                 provide a list of length :py:attr:`nc` containing scalars,
                 vectors, or matrices corresponding to the prior covariance for
                 each component. Default is `1e-2`.
+            spectral_guess (float, vector, or list, optional): The guess
+                for the spectral components of the map. If a scalar,
+                the same value is assumed for all spectral elements. If a vector
+                of length :py:attr:`nw0`, the same guess vector is assumed for
+                all spectral components. Users can also provide a list of
+                length :py:attr:`nc` containing scalars or vectors
+                corresponding to the guess for each component.
+                Default is to compute the guess based on a deconvolution of the
+                mean observed spectrum.
             spectral_lambda (float, optional): The regularization parameter for
                 the L1 solver. Increasing this value increases the sparsity of
                 the solution. Default is `1e6`.
@@ -2019,6 +2027,7 @@ class DopplerMap:
 
         # Iterate
         loss = []
+        map_soln = None
         best_loss = np.inf
         for obj, point in tqdm(
             pmx.optim.optimize_iterator(
