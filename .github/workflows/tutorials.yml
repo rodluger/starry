@@ -2,7 +2,7 @@ name: tutorials
 
 on:
   push:
-    branches: [master,dev]
+    branches: [master,dev,paparazzi]
   pull_request:
     branches: [master]
 

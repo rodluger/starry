@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 from .. import config
-from ..compat import tt, slinalg, floatX
+from ..compat import theano, tt, ts, slinalg, floatX
 from .._constants import *
 from .utils import *
 import numpy as np
 from scipy.linalg import block_diag as scipy_block_diag
 import scipy
+from scipy.sparse import issparse, csr_matrix
 
-__all__ = ["lazy_math", "greedy_math", "lazy_linalg", "greedy_linalg"]
+__all__ = ["lazy_math", "greedy_math", "lazy_linalg", "greedy_linalg", "nadam"]
 
 
 # Cholesky solve
@@ -165,6 +166,15 @@ class MathType(type):
             else:
                 return [np.array(arg, dtype=floatX) for arg in args]
 
+    def sparse_cast(cls, *args):
+        if cls.lazy:
+            return cls.to_sparse_tensor(*args)
+        else:
+            if len(args) == 1:
+                return csr_matrix(args[0], dtype=floatX)
+            else:
+                return [csr_matrix(arg, dtype=floatX) for arg in args]
+
     def to_array_or_tensor(cls, x):
         if cls.lazy:
             return tt.as_tensor_variable(x)
@@ -194,6 +204,27 @@ class MathType(type):
             return tt.as_tensor_variable(args[0]).astype(floatX)
         else:
             return [tt.as_tensor_variable(arg).astype(floatX) for arg in args]
+
+    def to_sparse_tensor(cls, *args):
+        """Convert all ``args`` to Theano sparse tensor variables.
+
+        Converts to tensor regardless of whether `cls.lazy` is True or False.
+        """
+        if len(args) == 1:
+            return ts.as_sparse_variable(args[0]).astype(floatX)
+        else:
+            return [ts.as_sparse_variable(arg).astype(floatX) for arg in args]
+
+    def sparse_dot(cls, A, B):
+        if cls.lazy:
+            return ts.dot(A, B)
+        else:
+            if issparse(A):
+                return A.dot(B)
+            elif issparse(B):
+                return (B.T.dot(A.T)).T
+            else:
+                raise ValueError("At least one input must be sparse.")
 
     def __getattr__(cls, attr):
         if cls.lazy:
@@ -230,8 +261,6 @@ class LinAlgType(type):
             covariance matrix.
 
         """
-        # TODO: These if statements won't play well with @autocompile!!!
-
         # Compute C^-1 . X
         if cho_C.ndim == 0:
             CInvX = X / cho_C ** 2
@@ -285,8 +314,6 @@ class LinAlgType(type):
             computable for the linear `starry` model.
 
         """
-        # TODO: These if statements won't play well with @autocompile!!!
-
         # Compute the GP mean
         gp_mu = tt.dot(X, mu)
 
@@ -338,8 +365,6 @@ class LinAlgType(type):
             computable for the linear `starry` model.
 
         """
-        # TODO: These if statements won't play well with @autocompile!!!
-
         # Compute the GP mean
         gp_mu = tt.dot(X, mu)
 
@@ -434,3 +459,57 @@ class greedy_linalg(metaclass=LinAlgType):
                 self.kind,
                 self.N,
             ) = _get_covariance(greedy_math, greedy_linalg, *args, **kwargs)
+
+
+def nadam(cost, params, lr=0.002, b1=0.9, b2=0.999, e=1e-8, sd=0.004):
+    """
+    Optimizer that implements the NAdam algorithm.
+
+    Args:
+        lr: The learning rate.
+        b1: The exponential decay rate for the 1st moment estimates.
+        b2: The exponential decay rate for the exponentially
+            weighted infinity norm.
+        e: A small constant for numerical stability.
+        sd: Schedule decay.
+
+    Adapted from
+    https://github.com/keras-team/keras/blob/master/keras/optimizers.py
+
+    """
+    updates = []
+    grads = tt.grad(cost, params)
+    i = theano.shared(np.array(0.0, dtype=theano.config.floatX))
+    i_t = i + 1.0
+
+    # Warm up
+    m_schedule = theano.shared(np.array(1.0, dtype=theano.config.floatX))
+    momentum_cache_t = b1 * (1.0 - 0.5 * (tt.pow(0.96, i_t * sd)))
+    momentum_cache_t_1 = b1 * (1.0 - 0.5 * (tt.pow(0.96, (i_t + 1) * sd)))
+    m_schedule_new = m_schedule * momentum_cache_t
+    m_schedule_next = m_schedule * momentum_cache_t * momentum_cache_t_1
+    updates.append((m_schedule, m_schedule_new))
+
+    for p, g in zip(params, grads):
+        m = theano.shared(p.get_value() * 0.0)
+        v = theano.shared(p.get_value() * 0.0)
+
+        g_prime = g / (1.0 - m_schedule_new)
+        m_t = b1 * m + (1.0 - b1) * g
+        m_t_prime = m_t / (1.0 - m_schedule_next)
+        v_t = b2 * v + (1.0 - b2) * tt.sqr(g)
+        v_t_prime = v_t / (1.0 - tt.pow(b2, i_t))
+        m_t_bar = (1.0 - momentum_cache_t) * g_prime + (
+            momentum_cache_t_1 * m_t_prime
+        )
+
+        updates.append((m, m_t))
+        updates.append((v, v_t))
+
+        p_t = p - lr * m_t_bar / (tt.sqrt(v_t_prime) + e)
+        new_p = p_t
+        updates.append((p, new_p))
+
+    updates.append((i, i_t))
+
+    return updates

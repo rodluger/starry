@@ -15,6 +15,7 @@ docs/_generate
 docs/.doxyxml
 docs/.build
 notebooks/tmp
+notebooks/*.html
 docs/notebooks
 junit/
 tests/cov.xml

@@ -14,8 +14,9 @@ from . import compat
 
 # Import the main interface
 from ._config import config
-from . import kepler, linalg, maps
+from . import kepler, linalg, maps, doppler
 from .maps import Map
+from .doppler import DopplerMap
 from .kepler import Primary, Secondary, System
 
 
@@ -28,7 +29,9 @@ __all__ = [
     "kepler",
     "linalg",
     "maps",
+    "doppler",
     "Map",
+    "DopplerMap",
     "Primary",
     "Secondary",
     "System",

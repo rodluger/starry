@@ -13,9 +13,7 @@ __all__ = [
 
 
 def RAxisAngle(axis=[0, 1, 0], theta=0):
-    """
-
-    """
+    """ """
     cost = np.cos(theta)
     sint = np.sin(theta)
 
@@ -41,9 +39,12 @@ def get_moll_latitude_lines(dlat=np.pi / 6, npts=1000, niter=100):
     for lat in latlines:
         theta = lat
         for n in range(niter):
-            theta -= (2 * theta + np.sin(2 * theta) - np.pi * np.sin(lat)) / (
-                2 + 2 * np.cos(2 * theta)
-            )
+            den = 2 + 2 * np.cos(2 * theta)
+            if np.abs(den) < 1e-6:
+                break
+            theta -= (
+                2 * theta + np.sin(2 * theta) - np.pi * np.sin(lat)
+            ) / den
         x = np.linspace(-2 * np.sqrt(2), 2 * np.sqrt(2), npts)
         y = np.ones(npts) * np.sqrt(2) * np.sin(theta)
         a = np.sqrt(2)
@@ -60,9 +61,11 @@ def get_moll_longitude_lines(dlon=np.pi / 6, npts=1000, niter=100):
         lat = np.linspace(-np.pi / 2, np.pi / 2, npts)
         theta = np.array(lat)
         for n in range(niter):
-            theta -= (2 * theta + np.sin(2 * theta) - np.pi * np.sin(lat)) / (
-                2 + 2 * np.cos(2 * theta)
-            )
+            den = 2 + 2 * np.cos(2 * theta)
+            den[den < 1e-6] = 1e-6
+            theta -= (
+                2 * theta + np.sin(2 * theta) - np.pi * np.sin(lat)
+            ) / den
         x = 2 * np.sqrt(2) / np.pi * lon * np.cos(theta)
         y = np.sqrt(2) * np.sin(theta)
         res.append((x, y))
@@ -119,9 +122,7 @@ def get_ortho_latitude_lines(
 def get_ortho_longitude_lines(
     inc=np.pi / 2, obl=0, fproj=0, theta=0, dlon=np.pi / 6, npts=1000
 ):
-    """
-
-    """
+    """ """
 
     # Angular quantities
     ci = np.cos(inc)
@@ -195,9 +196,7 @@ def get_ortho_longitude_lines(
 
 
 def get_projection(projection):
-    """
-
-    """
+    """ """
     if projection.lower().startswith("rect"):
         projection = STARRY_RECTANGULAR_PROJECTION
     elif projection.lower().startswith("ortho"):

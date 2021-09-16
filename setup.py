@@ -215,6 +215,7 @@ setup(
         "matplotlib>=3.2.2",
         "ipython",
         "exoplanet>=0.4.5",
+        "bokeh",
         "packaging",
     ],
     extras_require={
@@ -233,6 +234,7 @@ setup(
         "docs": [
             "sphinx>=1.7.5",
             "pandoc",
+            "jupyter_client<7.0",
             "jupyter",
             "jupytext",
             "ipywidgets",
@@ -241,7 +243,7 @@ setup(
             "rtds_action",
             "nbsphinx",
             "tqdm",
-            "Jinja2==2.11",
+            "jinja2<=2.11.3",  # jinja2>=3.0.0 --> 'nbformat.notebooknode.NotebookNode object' has no attribute 'tags'
         ],
     },
     setup_requires=["setuptools_scm", "pybind11>2.4"],

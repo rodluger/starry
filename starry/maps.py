@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from . import config, legacy
 from ._constants import *
-from ._core import OpsYlm, OpsLD, OpsReflected, OpsRV, OpsOblate, math
+from ._core import OpsYlm, OpsLD, OpsReflected, OpsRV, OpsOblate, OpsDoppler, math
 from ._core.utils import is_tensor
 from ._indices import integers, get_ylm_inds, get_ul_inds, get_ylmw_inds
 from ._plotting import (
@@ -36,6 +36,7 @@ __all__ = [
     "RVBase",
     "ReflectedBase",
     "OblateBase",
+    "DopplerBase"
 ]
 
 
@@ -227,10 +228,7 @@ class MapBase(object):
             inds = get_ul_inds(self.udeg, idx)
             if 0 in inds:
                 raise ValueError("The u_0 coefficient cannot be set.")
-            if self.lazy:
-                self._u = self.ops.set_map_vector(self._u, inds, val)
-            else:
-                self._u[inds] = val
+            self._u = self.ops.set_vector(self._u, inds, val)
         elif isinstance(idx, tuple) and len(idx) == 2 and self.nw is None:
             # User is accessing a Ylm index
             inds = get_ylm_inds(self.ydeg, idx[0], idx[1])
@@ -238,10 +236,7 @@ class MapBase(object):
                 if np.array_equal(np.sort(inds), np.arange(self.Ny)):
                     # The user is setting *all* coefficients, so we allow
                     # them to "set" the Y_{0,0} coefficient...
-                    if self.lazy:
-                        self._y = self.ops.set_map_vector(self._y, inds, val)
-                    else:
-                        self._y[inds] = val
+                    self._y = self.ops.set_vector(self._y, inds, val)
                     # ... except we scale the amplitude of the map and
                     # force Y_{0,0} to be unity.
                     self.amp = self._y[0]
@@ -252,30 +247,32 @@ class MapBase(object):
                         "Please change the map amplitude instead."
                     )
             else:
-                if self.lazy:
-                    self._y = self.ops.set_map_vector(self._y, inds, val)
-                else:
-                    self._y[inds] = val
+                self._y = self.ops.set_vector(self._y, inds, val)
         elif isinstance(idx, tuple) and len(idx) == 3 and self.nw:
             # User is accessing a Ylmw index
             inds = get_ylmw_inds(self.ydeg, self.nw, idx[0], idx[1], idx[2])
             if 0 in inds[0]:
-                raise ValueError(
-                    "The Y_{0,0} coefficient cannot be set. "
-                    "Please change the map amplitude instead."
-                )
-            else:
-                if self.lazy:
-                    self._y = self.ops.set_map_vector(self._y, inds, val)
+                if np.array_equal(
+                    np.sort(inds[0].reshape(-1)), np.arange(self.Ny)
+                ):
+                    # The user is setting *all* coefficients, so we allow
+                    # them to "set" the Y_{0,0} coefficient...
+                    self._y = self.ops.set_matrix(
+                        self._y, inds[0], inds[1], val
+                    )
+                    # ... except we scale the amplitude of the map and
+                    # force Y_{0,0} to be unity.
+                    self.amp = self.ops.set_vector(
+                        self.amp, inds[1], self._y[0, inds[1]]
+                    )
+                    self._y /= self._y[0]
                 else:
-                    old_shape = self._y[inds].shape
-                    new_shape = np.atleast_2d(val).shape
-                    if old_shape == new_shape:
-                        self._y[inds] = val
-                    elif old_shape == new_shape[::-1]:
-                        self._y[inds] = np.atleast_2d(val).T
-                    else:
-                        self._y[inds] = val
+                    raise ValueError(
+                        "The Y_{0,0} coefficient cannot be set. "
+                        "Please change the map amplitude instead."
+                    )
+            else:
+                self._y = self.ops.set_matrix(self._y, inds[0], inds[1], val)
         else:
             raise ValueError("Invalid map index.")
 
@@ -429,16 +426,20 @@ class MapBase(object):
 
         """
         # Get kwargs
-        cmap = kwargs.get("cmap", "plasma")
-        grid = kwargs.get("grid", True)
-        interval = kwargs.get("interval", 75)
-        file = kwargs.get("file", None)
-        html5_video = kwargs.get("html5_video", True)
-        dpi = kwargs.get("dpi", None)
-        figsize = kwargs.get("figsize", None)
-        bitrate = kwargs.get("bitrate", None)
-        colorbar = kwargs.get("colorbar", False)
-        ax = kwargs.get("ax", None)
+        get_val = evaluator(**kwargs)
+        cmap = kwargs.pop("cmap", "plasma")
+        grid = kwargs.pop("grid", True)
+        interval = kwargs.pop("interval", 75)
+        file = kwargs.pop("file", None)
+        html5_video = kwargs.pop("html5_video", True)
+        norm = kwargs.pop("norm", None)
+        dpi = kwargs.pop("dpi", None)
+        figsize = kwargs.pop("figsize", None)
+        bitrate = kwargs.pop("bitrate", None)
+        colorbar = kwargs.pop("colorbar", False)
+        colorbar_size = kwargs.pop("colorbar_size", "5%")
+        colorbar_pad = kwargs.pop("colorbar_pad", 0.05)
+        ax = kwargs.pop("ax", None)
         if ax is None:
             custom_ax = False
         else:
@@ -638,7 +639,9 @@ class MapBase(object):
             if not custom_ax:
                 fig.subplots_adjust(right=0.85)
             divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="5%", pad=0.05)
+            cax = divider.append_axes(
+                position="right", size=colorbar_size, pad=colorbar_pad
+            )
             fig.colorbar(img, cax=cax, orientation="vertical")
 
         # Display or save the image / animation
@@ -1403,7 +1406,7 @@ class YlmBase(legacy.YlmBase):
                 fac = self.amp / (self.amp - np.pi * I)
                 if self.lazy:
                     self._y *= fac
-                    self._y = self.ops.set_map_vector(self._y, 0, 1.0)
+                    self._y = self.ops.set_vector(self._y, 0, 1.0)
                 else:
                     self._y[1:] *= fac
 
@@ -3011,7 +3014,7 @@ def Map(
     else:
         Bases = (YlmBase, MapBase)
 
-    # Radial velocity / reflected light?
+    # Radial velocity / reflected light / etc?
     if rv:
         Bases = (RVBase,) + Bases
         fdeg = 3
@@ -3056,7 +3059,7 @@ def Map(
 
         @property
         def lazy(self):
-            """Map evaluation mode: lazy or greedy?"""
+            """Map evaluation mode -- lazy or greedy?"""
             return self._lazy
 
     return Map(ydeg, udeg, fdeg, nw, **kwargs)

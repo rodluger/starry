@@ -52,7 +52,7 @@ def get_ylm_inds(ydeg, ls, ms):
                     raise ValueError("Invalid value for `l` and/or `m`.")
                 inds.append(n)
 
-        return inds
+        return np.array(inds, dtype=int)
 
     else:
 
@@ -88,7 +88,10 @@ def get_ylmw_inds(ydeg, nw, ls, ms, ws):
         if (ws.start < 0) or (ws.start >= nw):
             raise ValueError("Invalid value for `w`.")
 
-        return tuple((lminds, ws))
+        # Turn into list
+        ws = np.array(list(range(nw)[ws]), dtype=int)
+
+        return (lminds.reshape(-1, 1), ws.reshape(1, -1))
 
     else:
 
@@ -125,7 +128,7 @@ def get_ul_inds(udeg, ls):
         for l in range(ls.start, ls.stop, ls.step):
             inds.append(l)
 
-        return inds
+        return np.array(inds, dtype=int)
 
     else:  # pragma: no cover
 

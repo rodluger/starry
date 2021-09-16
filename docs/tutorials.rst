@@ -39,6 +39,21 @@ Spectroscopy and radial velocity
 
    notebooks/RossiterMcLaughlin.ipynb
    notebooks/MultiWavelength.ipynb
+   notebooks/DopplerImaging_Intro.ipynb
+   notebooks/DopplerImaging_MultiComponent.ipynb
+
+
+Doppler Imaging Gallery
+-----------------------
+
+.. toctree::
+    :titlesonly:
+    :maxdepth: 1
+
+    notebooks/DopplerImagingGallery_Featureless.ipynb
+    notebooks/DopplerImagingGallery_Simple.ipynb
+    notebooks/DopplerImagingGallery_Grey.ipynb
+    notebooks/DopplerImagingGallery_Variable.ipynb
 
 
 Custom Models
@@ -86,3 +101,4 @@ Miscellaneous
    notebooks/LDNormalization.ipynb
    notebooks/OrbitViz.ipynb
    notebooks/RVDerivation.ipynb
+   notebooks/DopplerTiming.ipynb

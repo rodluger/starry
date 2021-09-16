@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from .. import config
-from ..compat import theano, tt, ts, ifelse
+from ..compat import theano, tt, ts, ifelse, scan_until
 from .._constants import *
 from .ops import (
     sTOp,
@@ -18,18 +18,24 @@ from .ops import (
     GetClOp,
     RaiseValueErrorOp,
     RaiseValueErrorIfOp,
+    CheckBoundsOp,
     OrenNayarOp,
+    setMatrixOp,
 )
 from .utils import logger, autocompile, is_tensor, clear_cache
 from .math import lazy_math as math
+from .math import lazy_linalg as linalg
 from scipy.special import legendre as LegendreP
 from scipy.sparse import csc_matrix
 from scipy.sparse.linalg import inv as sparse_inv
+from scipy.sparse import eye as sparse_eye
 import numpy as np
 from astropy import units
 import os
 import exoplanet
 
+cho_factor = math.cholesky
+cho_solve = linalg.cho_solve
 
 # C extensions are not installed on RTD
 if os.getenv("READTHEDOCS") == "True":  # pragma: no cover
@@ -44,6 +50,7 @@ __all__ = [
     "OpsReflected",
     "OpsRV",
     "OpsOblate",
+    "OpsDoppler",
     "OpsSystem",
 ]
 
@@ -561,9 +568,30 @@ class OpsYlm(object):
         return tt.transpose(MT)
 
     @autocompile
-    def set_map_vector(self, vector, inds, vals):
-        """Set the elements of the theano map coefficient tensor."""
-        res = tt.set_subtensor(vector[inds], vals * tt.ones_like(vector[inds]))
+    def set_vector(self, vector, i, vals):
+        """Set the elements of the theano vector."""
+        i = tt.cast(i, "int16")
+        res = tt.set_subtensor(vector[i], vals * tt.ones_like(vector[i]))
+        return res
+
+    @autocompile
+    def set_matrix(self, matrix, i, j, vals):
+        """Set the elements of the theano matrix."""
+        # TODO: Implement this Op if necessary.
+        # The current method *may* still be a bit buggy.
+        # return setMatrixOp()(matrix, i, j, vals)
+        i = tt.as_tensor_variable(i)
+        j = tt.as_tensor_variable(j)
+        i = tt.cast(tt.addbroadcast(i, 1), "int16")
+        j = tt.cast(tt.addbroadcast(j, 0), "int16")
+        if vals.ndim == 0:
+            res = tt.set_subtensor(
+                matrix[i, j], vals * tt.ones_like(matrix[i, j])
+            )
+        else:
+            res = tt.set_subtensor(
+                matrix[i, j], tt.reshape(vals, tt.shape(matrix[i, j]))
+            )
         return res
 
     @autocompile
@@ -787,7 +815,7 @@ class OpsLD(object):
         return tt.reshape(intensity, (1, res, res))
 
     @autocompile
-    def set_map_vector(self, vector, inds, vals):
+    def set_vector(self, vector, inds, vals):
         """Set the elements of the theano map coefficient tensor."""
         res = tt.set_subtensor(vector[inds], vals * tt.ones_like(vector[inds]))
         return res
@@ -1709,6 +1737,501 @@ class OpsOblate(OpsYlm):
         )
 
         return y
+
+      
+class OpsDoppler(OpsYlm):
+    def __init__(
+        self,
+        ydeg,
+        udeg,
+        nw,
+        nc,
+        nt,
+        hw,
+        vsini_max,
+        clight,
+        log_lambda_padded,
+        **kwargs
+    ):
+        # Init the regular ops (with nw = nc, since that's
+        # the number of columns in the map matrix)
+        super(OpsDoppler, self).__init__(ydeg, udeg, 0, nc, **kwargs)
+        self.clight = clight
+
+        # Dimensions
+        self.nw = nw
+        self.nc = nc
+        self.nt = nt
+
+        # The wavelength grid spanning the kernel
+        self.vsini_max = vsini_max
+        self.nk = int(2 * hw + 1)
+        self.nwp = len(log_lambda_padded)
+        lam_kernel = log_lambda_padded[
+            self.nwp // 2 - hw : self.nwp // 2 + hw + 1
+        ]
+
+        # The factor used to compute `x`
+        self.xamp = (
+            self.clight
+            * (np.exp(-2 * lam_kernel) - 1)
+            / (np.exp(-2 * lam_kernel) + 1)
+        )
+
+        # Pre-compute the CSR matrix indices
+        self.indptr = (self.Ny * self.nk) * np.arange(
+            self.nw + 1, dtype="int32"
+        )
+        i0 = np.reshape(np.arange(self.nk), (-1, 1))
+        i1 = self.nwp * np.arange(self.Ny).reshape(1, -1)
+        i2 = np.arange(self.nw).reshape(1, -1)
+        self.indices = np.reshape(
+            np.transpose(np.reshape(np.transpose(i0 + i1), (-1, 1)) + i2),
+            (-1,),
+        )
+        self.shape = np.array([self.nw, self.Ny * self.nwp])
+
+        # Change of basis matrix (ydeg + udeg)
+        self._A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
+
+    @autocompile
+    def enforce_shape(self, tensor, shape):
+        return tensor + RaiseValueErrorIfOp(
+            "Incorrect shape for one of the inputs."
+        )(tt.sum(tt.neq(tt.shape(tensor), shape)))
+
+    @autocompile
+    def enforce_bounds(self, tensor, lower, upper):
+        return CheckBoundsOp(lower, upper, "vsini")([tensor])[0]
+
+    @autocompile
+    def get_x(self, vsini):
+        """The `x` coordinate of lines of constant Doppler shift."""
+        # Prevent division by zero: min vsini is 1 m/s
+        return self.xamp / tt.maximum(tt.as_tensor_variable(1.0), vsini)
+
+    @autocompile
+    def get_rT(self, x):
+        """The `rho^T` solution vector."""
+        deg = self.ydeg + self.udeg
+        sijk = tt.zeros((deg + 1, deg + 1, 2, tt.shape(x)[0]))
+
+        # Initial conditions
+        r2 = tt.maximum(1 - x ** 2, tt.zeros_like(x))
+        sijk = tt.set_subtensor(sijk[0, 0, 0], 2 * r2 ** 0.5)
+        sijk = tt.set_subtensor(sijk[0, 0, 1], 0.5 * np.pi * r2)
+
+        # Upward recursion in j
+        for j in range(2, deg + 1, 2):
+            sijk = tt.set_subtensor(
+                sijk[0, j, 0], ((j - 1.0) / (j + 1.0)) * r2 * sijk[0, j - 2, 0]
+            )
+            sijk = tt.set_subtensor(
+                sijk[0, j, 1], ((j - 1.0) / (j + 2.0)) * r2 * sijk[0, j - 2, 1]
+            )
+
+        # Upward recursion in i
+        for i in range(1, deg + 1):
+            sijk = tt.set_subtensor(sijk[i], sijk[i - 1] * x)
+
+        # Full vector
+        N = (deg + 1) ** 2
+        s = tt.zeros((N, tt.shape(x)[0]))
+        n = np.arange(N)
+        LAM = np.floor(np.sqrt(n))
+        DEL = 0.5 * (n - LAM ** 2)
+        i = np.array(np.floor(LAM - DEL), dtype=int)
+        j = np.array(np.floor(DEL), dtype=int)
+        k = np.array(np.ceil(DEL) - np.floor(DEL), dtype=int)
+        s = tt.set_subtensor(s[n], sijk[i, j, k])
+        return s
+
+    @autocompile
+    def get_kT0(self, rT):
+        """
+        Return the vectorized convolution kernels `kappa^T`.
+
+        This is a matrix whose rows are equal to the convolution kernels
+        for each term in the  spherical harmonic decomposition of the
+        surface.
+        """
+        kT0 = ts.dot(ts.transpose(self._A1Big), rT)
+        # Normalize to preserve the unit baseline
+        return kT0 / tt.sum(kT0[0])
+
+    @autocompile
+    def get_kT0_matrix(self, veq, inc):
+        """
+        Convolution matrix for pure line broadening.
+
+        """
+        # Get the kernel
+        vsini = self.enforce_bounds(veq * tt.sin(inc), 0.0, self.vsini_max)
+        x = self.get_x(vsini)
+        rT = self.get_rT(x)
+        kT0 = self.get_kT0(rT)[0]
+
+        # Create the Toeplitz matrix
+        indptr = self.nk * np.arange(self.nw + 1, dtype="int32")
+        i0 = np.arange(self.nk).reshape(-1, 1)
+        i2 = np.arange(self.nw).reshape(1, -1)
+        indices = np.transpose(i0 + i2).reshape(-1)
+        shape = np.array([self.nw, self.nwp])
+        data = tt.tile(tt.reshape(kT0, (-1,)), self.nw)
+        A = ts.basic.CSR(data, indices, indptr, shape)
+
+        # Return a dense version
+        return ts.DenseFromSparse()(A)
+
+    @autocompile
+    def get_kT(self, inc, theta, veq, u):
+        """
+        Get the kernels at an array of angular phases `theta`.
+
+        """
+        # Compute the convolution kernels
+        vsini = self.enforce_bounds(veq * tt.sin(inc), 0.0, self.vsini_max)
+        x = self.get_x(vsini)
+        rT = self.get_rT(x)
+        kT0 = self.get_kT0(rT)
+
+        # Compute the limb darkening operator
+        if self.udeg > 0:
+            F = self.F(
+                tt.as_tensor_variable(u), tt.as_tensor_variable([np.pi])
+            )
+            L = ts.dot(ts.dot(self.A1Inv, F), self.A1)
+            kT0 = tt.dot(tt.transpose(L), kT0)
+
+        # Compute the kernels at each epoch
+        kT = tt.zeros((self.nt, self.Ny, self.nk))
+        for m in range(self.nt):
+            kT = tt.set_subtensor(
+                kT[m],
+                tt.transpose(
+                    self.right_project(
+                        tt.transpose(kT0),
+                        inc,
+                        tt.as_tensor_variable(0.0),
+                        theta[m],
+                    )
+                ),
+            )
+        return kT
+
+    @autocompile
+    def get_D_data(self, kT0, inc, theta_scalar):
+        """
+        Return the Doppler matrix as a stack of data arrays.
+
+        """
+        # Rotate the kernels
+        kT = tt.transpose(
+            self.right_project(
+                tt.transpose(kT0),
+                inc,
+                tt.as_tensor_variable(0.0),
+                theta_scalar,
+            )
+        )
+        return tt.tile(tt.reshape(kT, (-1,)), self.nw)
+
+    @autocompile
+    def get_D(self, inc, theta, veq, u):
+        """
+        Return the full Doppler matrix.
+
+        This is a horizontal stack of Toeplitz convolution matrices, one per
+        spherical harmonic. These matrices are then stacked vertically for
+        each rotational phase.
+
+        In general, instantiating this matrix (even in its sparse form) is not
+        a good idea: it's very slow, and can consume a ton of memory!
+        """
+        # Compute the convolution kernels
+        vsini = self.enforce_bounds(veq * tt.sin(inc), 0.0, self.vsini_max)
+        x = self.get_x(vsini)
+        rT = self.get_rT(x)
+        kT0 = self.get_kT0(rT)
+
+        # Compute the limb darkening operator
+        if self.udeg > 0:
+            F = self.F(
+                tt.as_tensor_variable(u), tt.as_tensor_variable([np.pi])
+            )
+            L = ts.dot(ts.dot(self.A1Inv, F), self.A1)
+            kT0 = tt.dot(tt.transpose(L), kT0)
+
+        # Stack to get the full matrix
+        return ts.vstack(
+            [
+                ts.basic.CSR(
+                    self.get_D_data(kT0, inc, theta[m]),
+                    self.indices,
+                    self.indptr,
+                    self.shape,
+                )
+                for m in range(self.nt)
+            ]
+        )
+
+    @autocompile
+    def get_D_fixed_spectrum(self, inc, theta, veq, u, spectrum):
+        """
+        Return the Doppler matrix for a fixed spectrum.
+
+        This routine is heavily optimized, and can often be the fastest
+        way to compute the flux!
+
+        """
+        # Get the convolution kernels
+        kT = self.get_kT(inc, theta, veq, u)
+
+        # The dot product is just a 2d convolution!
+        product = tt.nnet.conv2d(
+            tt.reshape(spectrum, (self.nc, 1, 1, self.nwp)),
+            tt.reshape(kT, (self.nt * self.Ny, 1, 1, self.nk)),
+            border_mode="valid",
+            filter_flip=False,
+            input_shape=(self.nc, 1, 1, self.nwp),
+            filter_shape=(self.nt * self.Ny, 1, 1, self.nk),
+        )
+        product = tt.reshape(product, (self.nc, self.nt, self.Ny, self.nw))
+        product = tt.swapaxes(product, 1, 2)
+        product = tt.reshape(product, (self.Ny * self.nc, self.nt * self.nw))
+        product = tt.transpose(product)
+        return product
+
+    @autocompile
+    def get_D_fixed_map(self, inc, theta, veq, u, y):
+        """
+        Return the Doppler matrix for a fixed map.
+
+        In general, instantiating this matrix (even in its sparse form) is not
+        a good idea: it's much, much faster to use
+        `dot_design_matrix_fixed_map_into` below.
+
+        """
+        D = self.get_D(inc, theta, veq, u)
+        I = ts.as_sparse_variable(sparse_eye(self.nwp, format="csr"))
+        Y = ts.hstack(
+            [
+                ts.vstack([y[n, k] * I for n in range(self.Ny)])
+                for k in range(self.nc)
+            ]
+        )
+        return ts.dot(D, Y)
+
+    @autocompile
+    def dot_design_matrix_fixed_map_into(self, inc, theta, veq, u, y, matrix):
+        """
+        Dot the Doppler design matrix for a fixed Ylm map
+        into an arbitrary dense `matrix`. This is equivalent to
+        ``tt.dot(get_D_fixed_map(), matrix)``, but computes the
+        product with a single `conv2d` operation.
+
+        """
+        # Get the convolution kernels
+        kT = self.get_kT(inc, theta, veq, u)
+
+        # Dot them into the Ylms
+        # kTy has shape (nt, nc, nk)
+        kTy = tt.swapaxes(tt.dot(tt.transpose(y), kT), 0, 1)
+
+        # Ensure we have a matrix, not a vector
+        if matrix.ndim == 1:
+            matrix = tt.shape_padright(matrix)
+
+        # The dot product is just a 2d convolution!
+        product = tt.nnet.conv2d(
+            tt.reshape(tt.transpose(matrix), (-1, self.nc, 1, self.nwp)),
+            tt.reshape(kTy, (self.nt, self.nc, 1, self.nk)),
+            border_mode="valid",
+            filter_flip=False,
+            input_shape=(None, self.nc, 1, self.nwp),
+            filter_shape=(self.nt, self.nc, 1, self.nk),
+        )
+        return tt.transpose(tt.reshape(product, (-1, self.nt * self.nw)))
+
+    @autocompile
+    def dot_design_matrix_fixed_map_transpose_into(
+        self, inc, theta, veq, u, y, matrix
+    ):
+        """
+        Dot the transpose of the Doppler design matrix for a fixed Ylm map
+        into an arbitrary dense `matrix`. This is equivalent to
+        ``tt.dot(get_D_fixed_map().transpose(), matrix)``, but computes the
+        product with a single `conv2d_transpose` operation.
+
+        """
+        # Get the convolution kernels
+        kT = self.get_kT(inc, theta, veq, u)
+
+        # Dot them into the Ylms
+        # kTy has shape (nt, nc, nk)
+        kTy = tt.swapaxes(tt.dot(tt.transpose(y), kT), 0, 1)
+
+        # Ensure we have a matrix, not a vector
+        if matrix.ndim == 1:
+            matrix = tt.shape_padright(matrix)
+
+        # The dot product is just a 2d convolution!
+        product = tt.nnet.conv2d_transpose(
+            tt.reshape(tt.transpose(matrix), (-1, self.nt, 1, self.nw)),
+            tt.reshape(kTy, (self.nt, 1, self.nc, self.nk)),
+            border_mode="valid",
+            filter_flip=False,
+            output_shape=(None, 1, self.nc, self.nwp),
+            filter_shape=(self.nt, 1, self.nc, self.nk),
+        )
+        product = tt.swapaxes(product, 2, 3)
+        product = tt.swapaxes(product, 0, 3)
+        return tt.reshape(product, (self.nc * self.nwp, -1))
+
+    @autocompile
+    def dot_design_matrix_into(self, inc, theta, veq, u, matrix):
+        """
+        Dot the full Doppler design matrix into an arbitrary dense `matrix`.
+        This is equivalent to ``tt.dot(get_D(), matrix)``, but computes the
+        product with a single `conv2d` operation.
+
+        """
+        # Get the convolution kernels
+        kT = self.get_kT(inc, theta, veq, u)
+
+        # Ensure we have a matrix, not a vector
+        if matrix.ndim == 1:
+            matrix = tt.shape_padright(matrix)
+
+        # The dot product is just a 2d convolution!
+        product = tt.nnet.conv2d(
+            tt.reshape(tt.transpose(matrix), (-1, self.Ny, 1, self.nwp)),
+            tt.reshape(kT, (self.nt, self.Ny, 1, self.nk)),
+            border_mode="valid",
+            filter_flip=False,
+            input_shape=(None, self.Ny, 1, self.nwp),
+            filter_shape=(self.nt, self.Ny, 1, self.nk),
+        )
+        return tt.transpose(tt.reshape(product, (-1, self.nt * self.nw)))
+
+    @autocompile
+    def dot_design_matrix_transpose_into(self, inc, theta, veq, u, matrix):
+        """
+        Dot the transpose of the full Doppler design matrix into an arbitrary
+        dense `matrix`. This is equivalent to
+        ``tt.dot(get_D().transpose(), matrix)``, but computes the product with
+        a single `conv2d` operation.
+
+        """
+        # Get the convolution kernels
+        kT = self.get_kT(inc, theta, veq, u)
+
+        # Ensure we have a matrix, not a vector
+        if matrix.ndim == 1:
+            matrix = tt.shape_padright(matrix)
+
+        # The dot product is just a 2d convolution!
+        product = tt.nnet.conv2d_transpose(
+            tt.reshape(tt.transpose(matrix), (-1, self.nt, 1, self.nw)),
+            tt.reshape(kT, (self.nt, 1, self.Ny, self.nk)),
+            border_mode="valid",
+            filter_flip=False,
+            output_shape=(None, 1, self.Ny, self.nwp),
+            filter_shape=(self.nt, 1, self.Ny, self.nk),
+        )
+        product = tt.swapaxes(product, 2, 3)
+        product = tt.swapaxes(product, 0, 3)
+        return tt.reshape(product, (self.Ny * self.nwp, -1))
+
+    @autocompile
+    def get_flux_from_design(self, inc, theta, veq, u, a):
+        """
+        Compute the flux by dotting the design matrix into
+        the spectral map. This is the *slow* way of computing
+        the model.
+
+        """
+        D = self.get_D(inc, theta, veq, u)
+        flux = ts.dot(D, a)
+        return tt.reshape(flux, (self.nt, self.nw))
+
+    @autocompile
+    def get_flux_from_conv(self, inc, theta, veq, u, a):
+        """
+        Compute the flux via a single 2d convolution.
+        This is the *faster* way of computing the model.
+
+        """
+        # Get the convolution kernels
+        kT = self.get_kT(inc, theta, veq, u)
+
+        # The flux is just a 2d convolution!
+        flux = tt.nnet.conv2d(
+            tt.reshape(a, (1, self.Ny, 1, self.nwp)),
+            tt.reshape(kT, (self.nt, self.Ny, 1, self.nk)),
+            border_mode="valid",
+            filter_flip=False,
+            input_shape=(1, self.Ny, 1, self.nwp),
+            filter_shape=(self.nt, self.Ny, 1, self.nk),
+        )
+        return flux[0, :, 0, :]
+
+    @autocompile
+    def get_flux_from_dotconv(self, inc, theta, veq, u, y, spectrum):
+        """
+        Compute the flux via a dot product followed by a 2d convolution.
+        This is usually the *fastest* way of computing the model.
+
+        """
+        flux = self.dot_design_matrix_fixed_map_into(
+            inc, theta, veq, u, y, tt.reshape(spectrum, (-1,))
+        )
+        return tt.reshape(flux, (self.nt, self.nw))
+
+    @autocompile
+    def get_flux_from_convdot(self, inc, theta, veq, u, y, spectrum):
+        """
+        Compute the flux via a 2d convolution follwed by a dot product.
+        This is very fast, but usually slightly slower than
+        ``get_flux_from_dotconv``.
+
+        """
+        D = self.get_D_fixed_spectrum(inc, theta, veq, u, spectrum)
+        flux = tt.dot(D, tt.reshape(tt.transpose(y), (-1,)))
+        return tt.reshape(flux, (self.nt, self.nw))
+
+    @autocompile
+    def L1(self, ATA, ATy, lam, maxiter, eps, tol):
+        """
+        L1 regularized least squares via iterated ridge (L2) regression.
+        See Section 2.5 of
+
+            https://www.cs.ubc.ca/~schmidtm/Documents/2005_Notes_Lasso.pdf
+
+        The basic idea is to iteratively zero out the prior on the weights
+        until convergence.
+
+        TODO: Use `non_sequences`.
+
+        """
+        N = tt.shape(ATA)[0]
+        didx = (tt.arange(N), tt.arange(N))
+        w = tt.ones_like(ATA[0])
+
+        def step(w_prev):
+            absw = tt.abs_(w_prev)
+            absw = tt.switch(
+                tt.gt(absw, lam * eps), absw, lam * eps * tt.ones_like(absw)
+            )
+            KInv = tt.as_tensor_variable(ATA)
+            KInv = tt.inc_subtensor(KInv[didx], lam / absw)
+            choK = cho_factor(KInv)
+            w_new = cho_solve(choK, ATy)
+            chisq = tt.sum((w_prev - w_new) ** 2)
+            return w_new, scan_until(chisq < tol)
+
+        w, _ = theano.scan(step, outputs_info=w, n_steps=maxiter)
+        return w[-1]
 
 
 class OpsSystem(object):

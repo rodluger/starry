@@ -1,0 +1,3 @@
+.fa-download:before, .rst-content code.download span:first-child:before, .rst-content tt.download span:first-child:before {
+    content: "" !important;
+}

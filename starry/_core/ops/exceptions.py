@@ -44,6 +44,9 @@ class CheckBoundsOp(Op):
                 "%s out of bounds: %f %s %f" % (self.name, value, sign, bound)
             )
 
+    def grad(self, inputs, gradients):
+        return [1.0 * gradients[0]]
+
 
 class RaiseValueErrorIfOp(Op):
     """
@@ -57,7 +60,7 @@ class RaiseValueErrorIfOp(Op):
         condition = inputs
         inputs = [tt.as_tensor_variable(condition)]
         outputs = [tt.TensorType(floatX, ())()]
-        return gof.Apply(self, inputs, outputs)
+        return Apply(self, inputs, outputs)
 
     def infer_shape(self, *args):
         return [()]

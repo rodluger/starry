@@ -12,6 +12,7 @@ systems of objects, each with their own surface map.
     :maxdepth: 1
 
     MapFactory
+    DopplerMap
     Kepler
     linalg
     config

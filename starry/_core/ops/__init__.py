@@ -7,3 +7,4 @@ from .minimize import *
 from .polybasis import *
 from .rotation import *
 from .spot import *
+from .indices import *
