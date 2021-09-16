@@ -19,6 +19,7 @@ from .ops import (
     RaiseValueErrorIfOp,
     CheckBoundsOp,
     OrenNayarOp,
+    setMatrixOp,
 )
 from .utils import logger, autocompile, is_tensor, clear_cache
 from .math import lazy_math as math
@@ -561,6 +562,9 @@ class OpsYlm(object):
     @autocompile
     def set_matrix(self, matrix, i, j, vals):
         """Set the elements of the theano matrix."""
+        # TODO: Implement this Op if necessary.
+        # The current method *may* still be a bit buggy.
+        # return setMatrixOp()(matrix, i, j, vals)
         i = tt.as_tensor_variable(i)
         j = tt.as_tensor_variable(j)
         i = tt.cast(tt.addbroadcast(i, 1), "int8")

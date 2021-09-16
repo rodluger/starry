@@ -681,8 +681,6 @@ class DopplerMap:
         """
         Set the spherical harmonic or limb darkening coefficient(s).
 
-        TODO: STILL BUGGED WHEN USING `set_matrix`
-
         """
         if not is_tensor(val):
             val = np.array(val)
@@ -694,51 +692,19 @@ class DopplerMap:
             self._u = self.ops.set_vector(self._u, inds, val)
             self._map._u = self._u
         elif isinstance(idx, tuple) and len(idx) == 2:
-            if idx[0] == slice(None, None, None) and idx[1] == slice(
-                None, None, None
-            ):
-                # User is explicitly setting all coefficients
-                self._y = self._math.repeat(
-                    self._math.reshape(val, (-1, 1)), self.nc, axis=1
-                )
-            else:
-
-                # TODO! Fix me! Unreliable output
-                raise NotImplementedError(
-                    "This method is buggy, and will be fixed soon!"
-                )
-
-                # User is accessing a Ylm index
-                i, j = get_ylmw_inds(
-                    self.ydeg, self.nc, idx[0], idx[1], slice(None, None, None)
-                )
-                self._y = self.ops.set_matrix(self._y, i, j, val)
+            # User is accessing a Ylm index
+            i, j = get_ylmw_inds(
+                self.ydeg, self.nc, idx[0], idx[1], slice(None, None, None)
+            )
+            self._y = self.ops.set_matrix(self._y, i, j, val)
         elif isinstance(idx, tuple) and len(idx) == 3:
-            if (
-                idx[0] == slice(None, None, None)
-                and idx[1] == slice(None, None, None)
-                and idx[2] == slice(None, None, None)
-            ):
-                # User is explicitly setting all coefficients
-                self._y = self._math.repeat(
-                    self._math.reshape(val, (-1, 1)), self.nc, axis=1
-                )
-            else:
-
-                # TODO! Fix me! Unreliable output
-                raise NotImplementedError(
-                    "This method is buggy, and will be fixed soon!"
-                )
-
-                # User is accessing a Ylmc index
-                i, j = get_ylmw_inds(
-                    self.ydeg, self.nc, idx[0], idx[1], idx[2]
-                )
-                if self.nc == 1:
-                    assert np.array_equal(
-                        j.reshape(-1), [0]
-                    ), "Invalid map component."
-                self._y = self.ops.set_matrix(self._y, i, j, val)
+            # User is accessing a Ylmc index
+            i, j = get_ylmw_inds(self.ydeg, self.nc, idx[0], idx[1], idx[2])
+            if self.nc == 1:
+                assert np.array_equal(
+                    j.reshape(-1), [0]
+                ), "Invalid map component."
+            self._y = self.ops.set_matrix(self._y, i, j, val)
         else:
             raise ValueError("Invalid map index.")
 

@@ -202,10 +202,7 @@ class MapBase(object):
             inds = get_ul_inds(self.udeg, idx)
             if 0 in inds:
                 raise ValueError("The u_0 coefficient cannot be set.")
-            if self.lazy:
-                self._u = self.ops.set_vector(self._u, inds, val)
-            else:
-                self._u[inds] = val
+            self._u = self.ops.set_vector(self._u, inds, val)
         elif isinstance(idx, tuple) and len(idx) == 2 and self.nw is None:
             # User is accessing a Ylm index
             inds = get_ylm_inds(self.ydeg, idx[0], idx[1])
@@ -213,10 +210,7 @@ class MapBase(object):
                 if np.array_equal(np.sort(inds), np.arange(self.Ny)):
                     # The user is setting *all* coefficients, so we allow
                     # them to "set" the Y_{0,0} coefficient...
-                    if self.lazy:
-                        self._y = self.ops.set_vector(self._y, inds, val)
-                    else:
-                        self._y[inds] = val
+                    self._y = self.ops.set_vector(self._y, inds, val)
                     # ... except we scale the amplitude of the map and
                     # force Y_{0,0} to be unity.
                     self.amp = self._y[0]
@@ -227,10 +221,7 @@ class MapBase(object):
                         "Please change the map amplitude instead."
                     )
             else:
-                if self.lazy:
-                    self._y = self.ops.set_vector(self._y, inds, val)
-                else:
-                    self._y[inds] = val
+                self._y = self.ops.set_vector(self._y, inds, val)
         elif isinstance(idx, tuple) and len(idx) == 3 and self.nw:
             # User is accessing a Ylmw index
             inds = get_ylmw_inds(self.ydeg, self.nw, idx[0], idx[1], idx[2])
@@ -240,12 +231,9 @@ class MapBase(object):
                 ):
                     # The user is setting *all* coefficients, so we allow
                     # them to "set" the Y_{0,0} coefficient...
-                    if self.lazy:
-                        self._y = self.ops.set_matrix(
-                            self._y, inds[0], inds[1], val
-                        )
-                    else:
-                        self._y[inds] = val
+                    self._y = self.ops.set_matrix(
+                        self._y, inds[0], inds[1], val
+                    )
                     # ... except we scale the amplitude of the map and
                     # force Y_{0,0} to be unity.
                     self.amp = self.ops.set_vector(
@@ -258,19 +246,7 @@ class MapBase(object):
                         "Please change the map amplitude instead."
                     )
             else:
-                if self.lazy:
-                    self._y = self.ops.set_matrix(
-                        self._y, inds[0], inds[1], val
-                    )
-                else:
-                    old_shape = self._y[inds].shape
-                    new_shape = np.atleast_2d(val).shape
-                    if old_shape == new_shape:
-                        self._y[inds] = val
-                    elif old_shape == new_shape[::-1]:
-                        self._y[inds] = np.atleast_2d(val).T
-                    else:
-                        self._y[inds] = val
+                self._y = self.ops.set_matrix(self._y, inds[0], inds[1], val)
         else:
             raise ValueError("Invalid map index.")
 
