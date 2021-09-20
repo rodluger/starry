@@ -21,7 +21,7 @@ Filter operations on a spherical harmonic map.
 */
 template <typename Scalar> class Filter {
 protected:
-  basis::Basis<Scalar> &B;
+  basis::Basis<Scalar> B;
   const int ydeg; /**< */
   const int Ny;   /**< Number of spherical harmonic `(l, m)` coefficients */
   const int udeg; /**< */
