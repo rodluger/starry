@@ -5,7 +5,7 @@ from ._core import OpsDoppler, math
 from ._core.utils import is_tensor, CompileLogMessage
 from ._core.math import nadam
 from ._indices import integers, get_ylm_inds, get_ylmw_inds, get_ul_inds
-from .compat import evaluator
+from .compat import evaluator, tt
 from .maps import YlmBase, MapBase, Map
 from .doppler_visualize import Visualize
 from .doppler_solve import Solve
@@ -263,6 +263,7 @@ class DopplerMap:
                 "Rest frame wavelength grid ``wav0`` is not sufficiently padded. "
                 "Edge effects may occur. See the documentation for mode details."
             )
+        self._unused_idx = (wav0 < wav0_int[0]) | (wav0 > wav0_int[-1])
 
         # Index of the continuum (`wav0` grid)
         self._continuum_idx0 = np.argmin(
@@ -575,7 +576,12 @@ class DopplerMap:
         """
         # Interpolate to the ``wav0`` grid
         if self._interp:
-            return self._math.sparse_dot(self._spectrum, self._S0i2eTr)
+            spectrum = self._math.sparse_dot(self._spectrum, self._S0i2eTr)
+            if self._lazy:
+                spectrum = tt.set_subtensor(spectrum[:, self._unused_idx], 1.0)
+            else:
+                spectrum[:, self._unused_idx] = 1
+            return spectrum
         else:
             return self._spectrum
 

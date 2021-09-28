@@ -18,7 +18,7 @@ else:
     except ModuleNotFoundError:
         from theano.scan_module.scan_utils import until as scan_until
 
-        
+
 __all__ = [
     "theano",
     "tt",
@@ -55,6 +55,9 @@ Params = params_type.Params
 ParamsType = params_type.ParamsType
 MissingInputError = fg.MissingInputError
 theano.config.floatX = floatX
+
+# This helps prevent defaulting to float32
+theano.config.cast_policy = "numpy+floatX"
 
 
 def is_tensor(*objs):
