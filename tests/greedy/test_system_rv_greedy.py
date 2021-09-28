@@ -9,8 +9,7 @@ import exoplanet
 
 
 def test_compare_to_map_rv():
-    """Ensure we get the same result by calling `map.rv()` and `sys.rv()`.
-    """
+    """Ensure we get the same result by calling `map.rv()` and `sys.rv()`."""
     # Define the map
     map = starry.Map(ydeg=1, udeg=2, rv=True, amp=1, veq=1, alpha=0, lazy=True)
     map[1, 0] = 0.5
@@ -64,8 +63,7 @@ def test_compare_to_map_rv():
 
 
 def test_compare_to_exoplanet():
-    """Ensure we get the same result with `starry` and `exoplanet`.
-    """
+    """Ensure we get the same result with `starry` and `exoplanet`."""
     # Define the star
     A = starry.Primary(
         starry.Map(rv=True, veq=0),

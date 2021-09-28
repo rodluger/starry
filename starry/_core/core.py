@@ -2296,6 +2296,12 @@ class OpsSystem(object):
         else:
             x_pri, y_pri, z_pri = orbit.get_star_position(t)
 
+        # The shape of `x`, `y`, `z` in `exoplanet` is unreliable!
+        if x_pri.ndim == 1:
+            x_pri = tt.reshape(x_pri, (-1, 1))
+            y_pri = tt.reshape(y_pri, (-1, 1))
+            z_pri = tt.reshape(z_pri, (-1, 1))
+
         # Positions of the secondaries
         try:
             x_sec, y_sec, z_sec = orbit.get_planet_position(
@@ -2307,6 +2313,12 @@ class OpsSystem(object):
                     "This version of `exoplanet` does not model light delays."
                 )
             x_sec, y_sec, z_sec = orbit.get_planet_position(t)
+
+        # The shape of `x`, `y`, `z` in `exoplanet` is unreliable!
+        if x_sec.ndim == 1:
+            x_sec = tt.reshape(x_sec, (-1, 1))
+            y_sec = tt.reshape(y_sec, (-1, 1))
+            z_sec = tt.reshape(z_sec, (-1, 1))
 
         # Concatenate them
         x = tt.transpose(tt.concatenate((x_pri, x_sec), axis=-1))
@@ -2399,6 +2411,12 @@ class OpsSystem(object):
                     "This version of `exoplanet` does not model light delays."
                 )
             x, y, z = orbit.get_relative_position(t)
+
+        # The shape of `x`, `y`, `z` in `exoplanet` is unreliable!
+        if x.ndim == 1:
+            x = tt.reshape(x, (-1, 1))
+            y = tt.reshape(y, (-1, 1))
+            z = tt.reshape(z, (-1, 1))
 
         # Get all rotational phases
         pri_prot = ifelse(
@@ -2928,6 +2946,12 @@ class OpsSystem(object):
                     "This version of `exoplanet` does not model light delays."
                 )
             x, y, z = orbit.get_relative_position(t)
+
+        # The shape of `x`, `y`, `z` in `exoplanet` is unreliable!
+        if x.ndim == 1:
+            x = tt.reshape(x, (-1, 1))
+            y = tt.reshape(y, (-1, 1))
+            z = tt.reshape(z, (-1, 1))
 
         # Get all rotational phases
         pri_prot = ifelse(
