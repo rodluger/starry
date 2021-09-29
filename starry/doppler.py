@@ -71,7 +71,9 @@ class DopplerMap:
         oversample (float, optional): The oversampling factor for the internal
             wavelength grid. The number of spectral bins used to perform the
             convolutions is equal to this value times the length of
-            :py:attr:`wav`. Default is 1.
+            :py:attr:`wav`. If both, `wav0` and `wav` are provided, default is
+            the ratio of the lengths of the two arrays. Otherwise,
+            default is 1.
         interpolate (bool, optional): The wavelength grid used internally is
             different from :py:attr:`wav`, since ``starry`` requires a grid
             that is uniformly spaced in the log of the wavelength. By default,
@@ -127,7 +129,7 @@ class DopplerMap:
         wav=None,
         wav0=None,
         wavc=None,
-        oversample=1,
+        oversample=None,
         interpolate=True,
         interp_order=1,
         interp_tol=1e-12,
@@ -203,6 +205,10 @@ class DopplerMap:
 
         # Compute the size of the internal wavelength grid
         # Note that this must be odd!
+        if wav0 is None:
+            oversample = 1
+        else:
+            oversample = int(np.ceil(len(wav0) / len(wav)))
         nw = int(len(wav) * oversample)
         if (nw % 2) == 0:
             nw += 1
@@ -261,7 +267,7 @@ class DopplerMap:
         if (wav0_int[0] < np.min(wav0)) or (wav0_int[-1] > np.max(wav0)):
             warn(
                 "Rest frame wavelength grid ``wav0`` is not sufficiently padded. "
-                "Edge effects may occur. See the documentation for mode details."
+                "Edge effects may occur. See the documentation for more details."
             )
         self._unused_idx = (wav0 < wav0_int[0]) | (wav0 > wav0_int[-1])
 
