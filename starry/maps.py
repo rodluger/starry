@@ -1,7 +1,15 @@
 # -*- coding: utf-8 -*-
 from . import config, legacy
 from ._constants import *
-from ._core import OpsYlm, OpsLD, OpsReflected, OpsRV, OpsOblate, OpsDoppler, math
+from ._core import (
+    OpsYlm,
+    OpsLD,
+    OpsReflected,
+    OpsRV,
+    OpsOblate,
+    OpsDoppler,
+    math,
+)
 from ._core.utils import is_tensor
 from ._indices import integers, get_ylm_inds, get_ul_inds, get_ylmw_inds
 from ._plotting import (
@@ -36,7 +44,7 @@ __all__ = [
     "RVBase",
     "ReflectedBase",
     "OblateBase",
-    "DopplerBase"
+    "DopplerBase",
 ]
 
 
@@ -432,7 +440,6 @@ class MapBase(object):
         interval = kwargs.pop("interval", 75)
         file = kwargs.pop("file", None)
         html5_video = kwargs.pop("html5_video", True)
-        norm = kwargs.pop("norm", None)
         dpi = kwargs.pop("dpi", None)
         figsize = kwargs.pop("figsize", None)
         bitrate = kwargs.pop("bitrate", None)
