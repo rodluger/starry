@@ -2089,7 +2089,7 @@ class RVBase(object):
         # Render the velocity map if `rv==True`
         # Override the `projection` kwarg if we're
         # plotting the radial velocity.
-        rv = kwargs.get("rv", True)
+        rv = kwargs.pop("rv", True)
         if rv:
             kwargs.pop("projection", None)
             self._set_RV_filter()
