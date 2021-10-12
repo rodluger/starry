@@ -1,5 +1,17 @@
 .. :changelog:
 
+1.2.0 (2021-10-12)
+++++++++++++++++++
+
+- Implements the oblate star model of Dholakia, Luger, and Dholakia (2021)
+- Implements the Doppler imaging model of Luger et al. (2021)
+- Minor bugfixes
+
+1.1.3 (2021-09-20)
+++++++++++++++++++
+
+- Fixes a segfault encountered when running starry using multithreading.
+
 1.1.2 (2021-05-05)
 ++++++++++++++++++
 
