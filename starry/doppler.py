@@ -269,7 +269,18 @@ class DopplerMap:
                 "Rest frame wavelength grid ``wav0`` is not sufficiently padded. "
                 "Edge effects may occur. See the documentation for more details."
             )
-        self._unused_idx = (wav0 < wav0_int[0]) | (wav0 > wav0_int[-1])
+
+        # Unused indices in the rest-frame spectrum
+        # TODO: Make this a user option if necessary;
+        # this may be here for legacy reasons, in which
+        # case we should just get rid of this code block!
+        self._mask_unused_wavelength_bins = False
+        self._wav0_padding_left = wav0 < wav0_int[0]
+        self._wav0_extrapolate_left = np.argmax(wav0 > wav0_int[0])
+        self._wav0_padding_right = wav0 > wav0_int[-1]
+        self._wav0_extrapolate_right = (
+            nw0 - np.argmax(wav0[::-1] < wav0_int[-1]) - 1
+        )
 
         # Index of the continuum (`wav0` grid)
         self._continuum_idx0 = np.argmin(
@@ -580,13 +591,30 @@ class DopplerMap:
         accepted.
 
         """
-        # Interpolate to the ``wav0`` grid
+        # Interpolate to the ``wav0`` grid.
         if self._interp:
             spectrum = self._math.sparse_dot(self._spectrum, self._S0i2eTr)
-            if self._lazy:
-                spectrum = tt.set_subtensor(spectrum[:, self._unused_idx], 1.0)
-            else:
-                spectrum[:, self._unused_idx] = 1
+            if self._mask_unused_wavelength_bins:
+                if self._lazy:
+                    spectrum = tt.set_subtensor(
+                        spectrum[:, self._wav0_padding_left],
+                        tt.reshape(
+                            spectrum[:, self._wav0_extrapolate_left], (-1, 1)
+                        ),
+                    )
+                    spectrum = tt.set_subtensor(
+                        spectrum[:, self._wav0_padding_right],
+                        tt.reshape(
+                            spectrum[:, self._wav0_extrapolate_right], (-1, 1)
+                        ),
+                    )
+                else:
+                    spectrum[:, self._wav0_padding_left] = spectrum[
+                        :, self._wav0_extrapolate_left
+                    ].reshape(-1, 1)
+                    spectrum[:, self._wav0_padding_right] = spectrum[
+                        :, self._wav0_extrapolate_right
+                    ].reshape(-1, 1)
             return spectrum
         else:
             return self._spectrum
@@ -986,9 +1014,11 @@ class DopplerMap:
 
             # Interpolate from the ``wav0`` grid to internal, padded grid
             if self._interp:
-                self._spectrum = self._math.sparse_dot(VT, self._S0e2iTr)
+                self._spectrum = self._math.sparse_dot(
+                    self._math.cast(VT), self._S0e2iTr
+                )
             else:
-                self._spectrum = VT
+                self._spectrum = self._math.cast(VT)
 
             # -----------------------------------------------
             # The spatial maps are just the components of `U`
