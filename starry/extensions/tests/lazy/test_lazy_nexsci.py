@@ -3,30 +3,32 @@
 Test the nexsci extension.
 
 """
+import os
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
 import starry
-import warnings
 from starry.extensions import from_nexsci
 
 starry.config.lazy = True
 
 
-@pytest.mark.xfail
 def test_lazy_nexsci_query():
     """Tests if the nexsci query works."""
 
     # These should run without error
-    from_nexsci._retrieve_online_data()
-
-    df = from_nexsci._get_nexsci_data()
+    df, path1, path2 = from_nexsci._get_nexsci_data()
     assert isinstance(df, pd.DataFrame)
+    assert isinstance(path1, str)
+    assert isinstance(path2, str)
+    assert os.path.isfile(path1)
+    assert os.path.isfile(path2)
     df = from_nexsci._fill_data(df)
     assert isinstance(df, pd.DataFrame)
 
 
-@pytest.mark.xfail
 def test_lazy_nexsci_local():
     """Tests if creating a system from the local csv file works"""
 
