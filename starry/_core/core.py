@@ -1817,10 +1817,15 @@ class OpsDoppler(OpsYlm):
         sijk = tt.zeros((deg + 1, deg + 1, 2, tt.shape(x)[0]))
 
         # Initial conditions
-        r2 = tt.maximum(
-            1 - x ** 2, tt.zeros_like(x) + 1e-100
-        )  # avoid deriv issues at x = 1
-        sijk = tt.set_subtensor(sijk[0, 0, 0], 2 * r2 ** 0.5)
+        r2 = tt.maximum(1 - x ** 2, tt.zeros_like(x))
+
+        # Silly hack to prevent issues with the undefined derivative at x = 1
+        # This just computes the square root of r2, zeroing out values very
+        # close to zero.
+        r = tt.maximum(1 - x ** 2, tt.zeros_like(x) + 1e-100) ** 0.5
+        r = tt.switch(tt.gt(r, 1e-49), r, tt.zeros_like(r))
+
+        sijk = tt.set_subtensor(sijk[0, 0, 0], 2 * r)
         sijk = tt.set_subtensor(sijk[0, 0, 1], 0.5 * np.pi * r2)
 
         # Upward recursion in j
