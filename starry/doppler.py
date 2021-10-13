@@ -270,11 +270,10 @@ class DopplerMap:
                 "Edge effects may occur. See the documentation for more details."
             )
 
-        # Unused indices in the rest-frame spectrum
-        # TODO: Make this a user option if necessary;
-        # this may be here for legacy reasons, in which
-        # case we should just get rid of this code block!
-        self._mask_unused_wavelength_bins = False
+        # Mask unused indices in the rest-frame spectrum?
+        self._mask_unused_wavelength_bins = kwargs.pop(
+            "mask_unused_wavelength_bins", True
+        )
         self._wav0_padding_left = wav0 < wav0_int[0]
         self._wav0_extrapolate_left = np.argmax(wav0 > wav0_int[0])
         self._wav0_padding_right = wav0 > wav0_int[-1]
