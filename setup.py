@@ -248,7 +248,8 @@ setup(
     },
     setup_requires=["setuptools_scm", "pybind11>2.4"],
     cmdclass=cmdclass,
-    data_files=glob.glob("starry/img/*.png"),
+    data_files=glob.glob("starry/img/*.png")
+    + glob.glob("starry/extensions/nexsci/data/*.csv"),
     include_package_data=True,
     zip_safe=False,
 )

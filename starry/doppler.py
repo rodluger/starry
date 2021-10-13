@@ -1491,8 +1491,11 @@ class DopplerMap:
                 )
 
             # Get the observed spectrum at each phase (vsini = 0)
+            # TODO: If veq is too small, the convolution kernel is
+            # too narrow and we run into discretization error, which
+            # causes severe edge effects.
             veq = self.veq
-            self.veq = 0.0
+            self.veq = 500.0
             flux0 = get_val(
                 self.flux(theta / self._angle_factor, normalize=True)
             )

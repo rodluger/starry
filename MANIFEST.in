@@ -1,5 +1,6 @@
 include README.md LICENSE HISTORY.rst
 include starry/img/*.jpg
+include starry/extensions/nexsci/data/*.csv
 graft lib
 prune docs
 prune notebooks

@@ -192,8 +192,7 @@ class FromNexsci:
         return df
 
     def _retrieve_online_data(self, guess_masses=False):
-        """Queries nexsci database and returns a dataframe of planet data.
-        """
+        """Queries nexsci database and returns a dataframe of planet data."""
         logger.warning("Database out of date. Redownloading...")
         NEXSCI_API = "http://exoplanetarchive.ipac.caltech.edu/cgi-bin/nstedAPI/nph-nstedAPI"
         try:
@@ -243,6 +242,7 @@ class FromNexsci:
                 "st_spt",
             ]
         except Exception as e:
+            print(e)
             logger.warning(
                 "Couldn't obtain data from NEXSCI. Do you have an internet connection?"
             )
@@ -273,8 +273,8 @@ class FromNexsci:
         self.stale = False
 
     def _get_nexsci_data(self):
-        """Returns pandas dataframe of all exoplanet data from nexsci
-        """
+        """Returns pandas dataframe of all exoplanet data from nexsci"""
+        print(_PACKAGEDIR)
         if self.stale:
             self._retrieve_online_data()
         return pd.read_csv(
