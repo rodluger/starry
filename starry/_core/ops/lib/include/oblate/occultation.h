@@ -20,7 +20,8 @@ namespace occultation {
 using namespace utils;
 using namespace numerical;
 using namespace geometry;
-using std::min, std::max;
+using std::min;
+using std::max;
 
 template <class Scalar, int N> class Occultation {
 
