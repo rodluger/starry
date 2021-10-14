@@ -4,9 +4,8 @@ Test the nexsci extension.
 
 """
 import os
-import warnings
+import sys
 
-import numpy as np
 import pandas as pd
 import pytest
 import starry
