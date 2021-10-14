@@ -15,6 +15,9 @@ from starry.extensions import from_nexsci
 starry.config.lazy = False
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 8), reason="test requires python3.8 or higher"
+)
 def test_greedy_nexsci_query():
     """Tests if the nexsci query works."""
     # These should run without error
@@ -28,6 +31,9 @@ def test_greedy_nexsci_query():
     assert isinstance(df, pd.DataFrame)
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 8), reason="test requires python3.8 or higher"
+)
 def test_greedy_nexsci_local():
     """Tests if creating a system from the local csv file works"""
 
