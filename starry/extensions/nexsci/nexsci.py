@@ -208,11 +208,14 @@ class FromNexsci:
             path2 = download_file(
                 url2, cache=cache, show_progress=False, pkgname="starry"
             )
-        except Exception:
+        except Exception as e:
             logger.warning(
-                "Couldn't obtain data from NEXSCI. Do you have an internet connection?"
+                "Couldn't obtain data from NEXSCI. Do you have an internet connection?\n"
             )
-            return
+            raise e
+        if (not isinstance(path1, str)) | (not isinstance(path1, str)):
+            raise ValueError("Can not download NExSci files.")
+
         planets = pd.read_csv(
             path1,
             comment="#",
