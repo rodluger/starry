@@ -126,7 +126,7 @@ class FromNexsci:
                 r=r,
                 inc=d.pl_orbincl,
                 ecc=d.pl_eccen,
-                w=d.pl_orblper,
+                w=d.pl_orbper,
             )
             planets.append(planet)
         sys = System(star, *planets)
@@ -148,7 +148,7 @@ class FromNexsci:
 
         # Supplemental data for some planets
         sup = pd.read_csv(
-            "{}/extensions/nexsci/data/supplement.csv".format(_PACKAGEDIR)
+            "{}/extensions/nexsci/data/planetdata.csv".format(_PACKAGEDIR)
         )
         for label in [
             "pl_orbincl",
@@ -212,9 +212,13 @@ class FromNexsci:
             logger.warning(
                 "Couldn't obtain data from NEXSCI. Do you have an internet connection?\n"
             )
-            raise e
-        if (not isinstance(path1, str)) | (not isinstance(path1, str)):
-            raise ValueError("Can not download NExSci files.")
+            df = pd.read_csv(
+                f"{_PACKAGEDIR}/extensions/nexsci/data/planetdata.csv"
+            )
+            path1, path2 = [
+                f"{_PACKAGEDIR}/extensions/nexsci/data/planetdata.csv"
+            ] * 2
+            return df, path1, path2
 
         planets = pd.read_csv(
             path1,

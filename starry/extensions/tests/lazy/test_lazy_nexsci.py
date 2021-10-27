@@ -14,9 +14,6 @@ from starry.extensions import from_nexsci
 starry.config.lazy = True
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 8), reason="test requires python3.8 or higher"
-)
 def test_lazy_nexsci_query():
     """Tests if the nexsci query works."""
 
@@ -31,9 +28,6 @@ def test_lazy_nexsci_query():
     assert isinstance(df, pd.DataFrame)
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 8), reason="test requires python3.8 or higher"
-)
 def test_lazy_nexsci_local():
     """Tests if creating a system from the local csv file works"""
 
