@@ -171,8 +171,8 @@ class FromNexsci:
         nan = ~np.isfinite(df.pl_eccen)
         df.loc[nan, ["pl_eccen"]] = np.zeros(nan.sum())
 
-        nan = ~np.isfinite(df.pl_orblper)
-        df.loc[nan, ["pl_orblper"]] = np.zeros(nan.sum())
+        # nan = ~np.isfinite(df.pl_orblper)
+        # df.loc[nan, ["pl_orblper"]] = np.zeros(nan.sum())
 
         # Fill in missing trandep
         nan = ~np.isfinite(df.pl_trandep)
