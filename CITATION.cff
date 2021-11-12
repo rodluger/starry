@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Luger"
+  given-names: "Rodrigo"
+  orcid: "https://orcid.org/0000-0002-0296-3826"
+title: "starry"
+version: 1.2.0
+doi: 
+date-released: 2021-10-13
+url: "https://github.com/rodluger/starry"
+preferred-citation:
+  type: article
+  authors:
+  - family-names: "Luger"
+    given-names: "Rodrigo"
+    orcid: "https://orcid.org/0000-0002-0296-3826"
+  - family-names: "Agol"
+    given-names: "Eric"
+    orcid: "https://orcid.org/0000-0002-0802-9145"
+  - family-names: "Foreman-Mackey"
+    given-names: "Daniel"
+    orcid: "https://orcid.org/0000-0002-9328-5652"
+  - family-names: "Fleming"
+    given-names: "David"
+    orcid: "https://orcid.org/0000-0001-9293-4043"
+  - family-names: "Lustig-Yaeger"
+    given-names: "Jacob"
+    orcid: "https://orcid.org/0000-0002-0746-1980"
+  - family-names: "Deitrick"
+    given-names: "Russell"
+    orcid: "https://orcid.org/0000-0001-9423-8121"
+  doi: "10.3847/1538-3881/aae8e5"
+  journal: "Astronomical Journal"
+  month: 2
+  start: 64
+  title: "starry: Analytic Occultation Light Curves"
+  issue: 2
+  volume: 157
+  year: 2019
