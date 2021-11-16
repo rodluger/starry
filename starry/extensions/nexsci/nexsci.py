@@ -19,17 +19,16 @@ Kepler-10 system.
     flux = sys.flux(time).eval()
 
 """
-import pandas as pd
-import numpy as np
-import os
 import datetime
-import astropy.units as u
-from glob import glob
 import logging
+import os
 
-from ... import _PACKAGEDIR
-from ... import Secondary, Primary, System, Map
+import astropy.units as u
+import numpy as np
+import pandas as pd
+from astropy.utils.data import download_file
 
+from ... import _PACKAGEDIR, Map, Primary, Secondary, System
 
 logger = logging.getLogger("starry.nexsci")
 
@@ -58,25 +57,18 @@ class FromNexsci:
     """
 
     def __init__(self):
-        fname = glob(
-            "{}/extensions/nexsci/data/planets.csv".format(_PACKAGEDIR)
-        )
-        if len(fname) == 0:
-            self.stale = True
-        else:
-            st = os.stat(fname[0])
-            mtime = st.st_mtime
-            # If database is out of date, get it again.
-            if datetime.datetime.now() - datetime.datetime.fromtimestamp(
-                mtime
-            ) > datetime.timedelta(days=7):
-                self.stale = True
-            else:
-                self.stale = False
+        df, path1, path2 = self._get_nexsci_data(cache=True)
+        st = os.stat(path1)
+        mtime = st.st_mtime
+        # If database is out of date, get it again.
+        if datetime.datetime.now() - datetime.datetime.fromtimestamp(
+            mtime
+        ) > datetime.timedelta(days=7):
+            df, path1, path2 = self._get_nexsci_data(cache="update")
 
     def __call__(self, name, limb_darkening=[0.4, 0.2]):
 
-        df = self._get_nexsci_data()
+        df, path1, path2 = self._get_nexsci_data()
         if name == "random":
             system_list = (
                 df[
@@ -134,7 +126,7 @@ class FromNexsci:
                 r=r,
                 inc=d.pl_orbincl,
                 ecc=d.pl_eccen,
-                w=d.pl_orblper,
+                w=d.pl_orbper,
             )
             planets.append(planet)
         sys = System(star, *planets)
@@ -156,7 +148,7 @@ class FromNexsci:
 
         # Supplemental data for some planets
         sup = pd.read_csv(
-            "{}/extensions/nexsci/data/supplement.csv".format(_PACKAGEDIR)
+            "{}/extensions/nexsci/data/planetdata.csv".format(_PACKAGEDIR)
         )
         for label in [
             "pl_orbincl",
@@ -179,8 +171,8 @@ class FromNexsci:
         nan = ~np.isfinite(df.pl_eccen)
         df.loc[nan, ["pl_eccen"]] = np.zeros(nan.sum())
 
-        nan = ~np.isfinite(df.pl_orblper)
-        df.loc[nan, ["pl_orblper"]] = np.zeros(nan.sum())
+        # nan = ~np.isfinite(df.pl_orblper)
+        # df.loc[nan, ["pl_orblper"]] = np.zeros(nan.sum())
 
         # Fill in missing trandep
         nan = ~np.isfinite(df.pl_trandep)
@@ -191,62 +183,58 @@ class FromNexsci:
         df.loc[nan, ["pl_trandep"]] = trandep[nan]
         return df
 
-    def _retrieve_online_data(self, guess_masses=False):
+    def _get_nexsci_data(self, cache="update"):
         """Queries nexsci database and returns a dataframe of planet data."""
-        logger.warning("Database out of date. Redownloading...")
         NEXSCI_API = "http://exoplanetarchive.ipac.caltech.edu/cgi-bin/nstedAPI/nph-nstedAPI"
+        url1 = NEXSCI_API + (
+            "?table=planets&select=pl_hostname,pl_letter,"
+            "pl_disc,ra,dec,pl_trandep,pl_tranmid,pl_tranmiderr1,"
+            "pl_tranmiderr2,pl_tranflag,pl_trandur,pl_pnum,pl_k2flag,"
+            "pl_kepflag,pl_facility,pl_orbincl,pl_orbinclerr1,pl_orbinclerr2,"
+            "pl_orblper,st_mass,st_masserr1,st_masserr2,st_rad,st_raderr1,"
+            "st_raderr2,st_teff,st_tefferr1,st_tefferr2,st_optmag,st_j,st_h"
+        )
+        url2 = NEXSCI_API + (
+            "?table=compositepars&select=fpl_hostname,fpl_letter,"
+            "fpl_smax,fpl_smaxerr1,fpl_smaxerr2,fpl_radj,fpl_radjerr1,"
+            "fpl_radjerr2,fpl_bmassj,fpl_bmassjerr1,fpl_bmassjerr2,"
+            "fpl_bmassprov,fpl_eqt,fpl_orbper,fpl_orbpererr1,fpl_orbpererr2,"
+            "fpl_eccen,fpl_eccenerr1,fpl_eccenerr2,fst_spt"
+        )
         try:
-            # Planet table
-            planets = pd.read_csv(
-                NEXSCI_API + "?table=planets&select=pl_hostname,pl_letter,"
-                "pl_disc,ra,dec,pl_trandep,pl_tranmid,pl_tranmiderr1,"
-                "pl_tranmiderr2,pl_tranflag,pl_trandur,pl_pnum,pl_k2flag,"
-                "pl_kepflag,pl_facility,pl_orbincl,pl_orbinclerr1,pl_orbinclerr2,"
-                "pl_orblper,st_mass,st_masserr1,st_masserr2,st_rad,st_raderr1,"
-                "st_raderr2,st_teff,st_tefferr1,st_tefferr2,st_optmag,st_j,st_h",
-                comment="#",
-                skiprows=1,
+            path1 = download_file(
+                url1, cache=cache, show_progress=False, pkgname="starry"
             )
-            # Composite table
-            composite = pd.read_csv(
-                NEXSCI_API
-                + "?table=compositepars&select=fpl_hostname,fpl_letter,"
-                "fpl_smax,fpl_smaxerr1,fpl_smaxerr2,fpl_radj,fpl_radjerr1,"
-                "fpl_radjerr2,fpl_bmassj,fpl_bmassjerr1,fpl_bmassjerr2,"
-                "fpl_bmassprov,fpl_eqt,fpl_orbper,fpl_orbpererr1,fpl_orbpererr2,"
-                "fpl_eccen,fpl_eccenerr1,fpl_eccenerr2,fst_spt",
-                comment="#",
-                skiprows=1,
+            path2 = download_file(
+                url2, cache=cache, show_progress=False, pkgname="starry"
             )
-            # Rename columns
-            composite.columns = [
-                "pl_hostname",
-                "pl_letter",
-                "pl_orbsmax",
-                "pl_orbsmaxerr1",
-                "pl_orbsmaxerr2",
-                "pl_radj",
-                "pl_radjerr1",
-                "pl_radjerr2",
-                "pl_bmassj",
-                "pl_bmassjerr1",
-                "pl_bmassjerr2",
-                "pl_bmassprov",
-                "pl_eqt",
-                "pl_orbper",
-                "pl_orbpererr1",
-                "pl_orbpererr2",
-                "pl_eccen",
-                "pl_eccenerr1",
-                "pl_eccenerr2",
-                "st_spt",
-            ]
         except Exception as e:
-            print(e)
             logger.warning(
-                "Couldn't obtain data from NEXSCI. Do you have an internet connection?"
+                "Couldn't obtain data from NEXSCI. Do you have an internet connection?\n"
             )
-            return
+            df = pd.read_csv(
+                f"{_PACKAGEDIR}/extensions/nexsci/data/planetdata.csv"
+            )
+            path1, path2 = [
+                f"{_PACKAGEDIR}/extensions/nexsci/data/planetdata.csv"
+            ] * 2
+            return df, path1, path2
+
+        planets = pd.read_csv(
+            path1,
+            comment="#",
+            skiprows=1,
+        )
+        composite = pd.read_csv(
+            path2,
+            comment="#",
+            skiprows=1,
+        )
+        composite.rename(
+            {c: c[1:] for c in composite.columns if c.startswith("fpl")},
+            axis="columns",
+            inplace=True,
+        )
         df = pd.merge(
             left=planets,
             right=composite,
@@ -262,24 +250,8 @@ class FromNexsci:
             ]
         )
         df = df[df.pl_tranflag == 1].reset_index(drop=True)
-
         df = self._fill_data(df)
-
-        df = df.to_csv(
-            "{}/extensions/nexsci/data/planets.csv".format(_PACKAGEDIR),
-            index=False,
-        )
-
-        self.stale = False
-
-    def _get_nexsci_data(self):
-        """Returns pandas dataframe of all exoplanet data from nexsci"""
-        print(_PACKAGEDIR)
-        if self.stale:
-            self._retrieve_online_data()
-        return pd.read_csv(
-            "{}/extensions/nexsci/data/planets.csv".format(_PACKAGEDIR)
-        )
+        return df, path1, path2
 
 
 from_nexsci = FromNexsci()
