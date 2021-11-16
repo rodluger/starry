@@ -1584,6 +1584,89 @@ class YlmBase(legacy.YlmBase):
                 self.amp * I,
             )
 
+    def sht_matrix(
+        self,
+        inverse=False,
+        return_grid=False,
+        smoothing=None,
+        oversample=2,
+        lam=1e-6,
+    ):
+        """
+        Return the Spherical Harmonic Transform (SHT) matrix.
+
+        This matrix dots into a vector of pixel intensities defined on
+        a set of latitude-longitude points, resulting in a vector of spherical
+        harmonic coefficients that best approximates the image.
+
+        This can be useful for transforming between the spherical harmonic and
+        pixel representations of the surface map, such as when specifying
+        priors during inference or optimization.
+        For example, one application is when one wishes to sample in
+        the pixel intensities ``p`` instead of the spherical harmonic coefficients
+        ``y``. In this case,
+        one must compute the spherical harmonic coefficients ``y`` from
+        the vector of pixel intensities ``p`` so that
+        ``starry`` can compute the model for the flux:
+
+            .. code-block::python
+
+                A = map.sht_matrix()
+                y = np.dot(A, p)
+                map[:, :] = y
+
+        .. note::
+
+            This method is a thin wrapper of the ``get_pixel_transforms`` method.
+
+        Args:
+            inverse (bool, optional). If True, returns the inverse transform,
+                which transforms from spherical harmonic coefficients to
+                pixels. Default is False.
+            return_grid (bool, optional). If True, also returns an array of
+                shape ``(npix, 2)`` corresponding to the latitude-longitude
+                points (in units of :py:attr:`angle_unit`) on which the SHT is
+                evaluated. Default is False.
+            smoothing (float, optional): Gaussian smoothing strength.
+                Increase this value to suppress ringing (forward SHT only) or
+                explicitly set to zero to disable smoothing. Default is
+                ``2/self.ydeg``.
+            oversample (int, optional): Factor by which to oversample the
+                pixelization grid. Default `2`.
+            lam (float, optional): Regularization parameter for the inverse
+                pixel transform. Default `1e-6`.
+
+        Returns:
+            A matrix of shape (:py:attr:`Ny`, ``npix``) or
+            (:py:attr:`npix`, ``Ny``) (if ``inverse`` is True), where ``npix``
+            is the number of pixels on the grid. This number is determined
+            from the degree of the map and the ``oversample`` keyword. If
+            ``return_grid`` is True, also returns the latitude-longitude points
+            (in units of :py:attr:`angle_unit`) on which the SHT is
+            evaluated, a matrix of shape ``(npix, 2)``.
+
+        """
+        lat, lon, ISHT, SHT, _, _ = self.get_pixel_transforms(
+            oversample=oversample, lam=lam
+        )
+        if inverse:
+            matrix = ISHT
+        else:
+            matrix = SHT
+            if smoothing is None:
+                smoothing = 2.0 / self.ydeg
+            if smoothing > 0:
+                l = np.concatenate(
+                    [np.repeat(l, 2 * l + 1) for l in range(self.ydeg + 1)]
+                )
+                s = np.exp(-0.5 * l * (l + 1) * smoothing ** 2)
+                matrix *= s[:, None]
+        if return_grid:
+            grid = np.vstack((lat, lon)).T
+            return matrix, grid
+        else:
+            return matrix
+
     def get_pixel_transforms(self, oversample=2, lam=1e-6, eps=1e-6):
         """
         Return several linear operators for pixel transformations.
