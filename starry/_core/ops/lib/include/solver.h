@@ -676,8 +676,10 @@ public:
       res += coeff;
       ++n;
     }
+#ifndef STARRY_NO_EXCEPTIONS
     if (unlikely(n == STARRY_IJ_MAX_ITER))
       throw std::runtime_error("Primitive integral `I` did not converge.");
+#endif
 
     // This is I_{ivmax}
     I(ivmax) = pow_ksq(ivmax) * k * res;
@@ -740,8 +742,10 @@ public:
           res += coeff;
           ++n;
         }
+#ifndef STARRY_NO_EXCEPTIONS
         if (unlikely(n == STARRY_IJ_MAX_ITER))
           throw std::runtime_error("Primitive integral `J` did not converge.");
+#endif
         if (KSQLESSTHANONE)
           J(v) = pow_ksq(v) * k * res;
         else
@@ -916,15 +920,19 @@ public:
     }
 
     // Special case: no occultation
+#ifndef STARRY_NO_EXCEPTIONS
     if (unlikely(r == 0) || (b > r + 1)) {
       throw std::runtime_error(
           "No occultation, but occultation routine was called.");
     }
+#endif
 
+#ifndef STARRY_NO_EXCEPTIONS
     // Special case: negative radius
     if (unlikely(r < 0)) {
       throw std::runtime_error("Occultor radius is negative. Aborting.");
     }
+#endif
 
     // Compute the k^2 terms and angular variables
     computeKVariables(b, r, ksq, k, kc, kcsq, kkc, invksq, kite_area2, kap0,

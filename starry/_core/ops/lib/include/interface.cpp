@@ -50,8 +50,10 @@ PYBIND11_MODULE(_c_ops, m) {
       },
       [](py::tuple t) {
         // __setstate__
+#ifndef STARRY_NO_EXCEPTIONS
         if (t.size() != 3)
           throw std::runtime_error("Invalid state!");
+#endif
         starry::Ops<Scalar> ops(t[0].cast<int>(), t[1].cast<int>(),
                                 t[2].cast<int>());
         return ops;

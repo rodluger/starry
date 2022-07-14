@@ -77,6 +77,7 @@ inline Vector<T> el2(const Vector<T> &x_, const T &kc_, const T &a_,
   T a = a_;
   T b = b_;
 
+#ifndef STARRY_NO_EXCEPTIONS
   if (kc == 0) {
     std::stringstream args;
     args << "x_ = " << x_ << ", "
@@ -87,6 +88,7 @@ inline Vector<T> el2(const Vector<T> &x_, const T &kc_, const T &a_,
         "Elliptic integral el2 did not converge because k = 1.",
         "reflected/ellip.h", "el2", args.str());
   }
+#endif
 
   // We declare these params as vectors,
   // but operate on them as arrays (because Eigen...)
@@ -149,6 +151,7 @@ inline Vector<T> el2(const Vector<T> &x_, const T &kc_, const T &a_,
   }
 
   // Check for convergence
+#ifndef STARRY_NO_EXCEPTIONS
   if (n == STARRY_EL2_MAX_ITER - 1) {
     std::stringstream args;
     args << "x_ = " << x_ << ", "
@@ -158,6 +161,7 @@ inline Vector<T> el2(const Vector<T> &x_, const T &kc_, const T &a_,
     throw StarryException("Elliptic integral el2 did not converge.",
                           "reflected/ellip.h", "el2", args.str());
   }
+#endif
 
   l = (y < 0).select(1.0 + l, l);
   q = (atan(m / y) + pi<T>() * l) * a / m;
@@ -289,6 +293,7 @@ inline T rj(const T &x_, const T &y_, const T &z_, const T &p_) {
     pn = 0.25 * (pn + lam);
   }
 
+#ifndef STARRY_NO_EXCEPTIONS
   // Bad...
   std::stringstream args;
   args << "x_ = " << x_ << ", "
@@ -297,6 +302,7 @@ inline T rj(const T &x_, const T &y_, const T &z_, const T &p_) {
        << "p_ = " << p_;
   throw StarryException("Elliptic integral rj did not converge.",
                         "reflected/ellip.h", "rj", args.str());
+#endif
 }
 
 template <class T> class IncompleteEllipticIntegrals {

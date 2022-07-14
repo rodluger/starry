@@ -43,7 +43,7 @@ class LimbDarkBaseOp(COp):
         return dirs
 
     def c_compile_args(self, *args, **kwargs):
-        opts = ["-std=c++11", "-O2", "-DNDEBUG"]
+        opts = ["-std=c++11", "-O2", "-DNDEBUG", "-DSTARRY_NO_EXCEPTIONS"]
         if sys.platform == "darwin":
             opts += ["-stdlib=libc++", "-mmacosx-version-min=10.7"]
         return opts

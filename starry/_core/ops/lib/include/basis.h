@@ -236,9 +236,11 @@ void computeA1Inv(int lmax, const Eigen::SparseMatrix<T> &A1,
   int N = (lmax + 1) * (lmax + 1);
   Eigen::SparseLU<Eigen::SparseMatrix<T>> solver;
   solver.compute(A1);
+#ifndef STARRY_NO_EXCEPTIONS
   if (solver.info() != Eigen::Success)
     throw std::runtime_error(
         "Error computing the change of basis matrix `A1Inv`.");
+#endif
   Eigen::SparseMatrix<T> I = Matrix<T>::Identity(N, N).sparseView();
   A1Inv = solver.solve(I);
 
@@ -309,21 +311,27 @@ void computeA(int lmax, const Eigen::SparseMatrix<T> &A1,
   Eigen::SparseMatrix<T> A2Inv = A2InvDense.sparseView();
   Eigen::SparseLU<Eigen::SparseMatrix<T>> solver;
   solver.compute(A2Inv);
+#ifndef STARRY_NO_EXCEPTIONS
   if (solver.info() != Eigen::Success) {
     throw std::runtime_error(
         "Error computing the change of basis matrix `A2`.");
   }
+#endif
   Eigen::SparseMatrix<T> I = Matrix<T>::Identity(N, N).sparseView();
   A2 = solver.solve(I);
+#ifndef STARRY_NO_EXCEPTIONS
   if (solver.info() != Eigen::Success) {
     throw std::runtime_error(
         "Error computing the change of basis matrix `A2`.");
   }
+#endif
   A = solver.solve(A1);
+#ifndef STARRY_NO_EXCEPTIONS
   if (solver.info() != Eigen::Success) {
     throw std::runtime_error(
         "Error computing the change of basis matrix `A1`.");
   }
+#endif
 }
 
 /**
@@ -384,21 +392,24 @@ void computeA2(int lmax, Eigen::SparseMatrix<Scalar> &A2,
   A2Inv = A2InvDense.sparseView();
   Eigen::SparseLU<Eigen::SparseMatrix<Scalar>> solver;
   solver.compute(A2Inv);
+#ifndef STARRY_NO_EXCEPTIONS
   if (solver.info() != Eigen::Success) {
     std::stringstream args;
     args << "N = " << N;
     throw StarryException("Error computing the change of basis matrix `A2Inv`.",
                           "basis.h", "computeA2", args.str());
   }
+#endif
   Eigen::SparseMatrix<Scalar> Id = Matrix<Scalar>::Identity(N, N).sparseView();
   A2 = solver.solve(Id);
+#ifndef STARRY_NO_EXCEPTIONS
   if (solver.info() != Eigen::Success) {
     std::stringstream args;
     args << "N = " << N;
     throw StarryException("Error computing the change of basis matrix `A2`.",
                           "basis.h", "computeA2", args.str());
   }
-
+#endif
   A2Inv = A2InvDense.sparseView();
 }
 

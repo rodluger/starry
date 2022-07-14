@@ -1,5 +1,20 @@
 # -*- coding: utf-8 -*-
+import numpy.distutils
 import warnings
+
+
+# Monkeypatch for
+#   AttributeError: module 'numpy.distutils.__config__' has no attribute 'blas_opt_info'
+# See
+#   https://stackoverflow.com/a/72326831
+try:
+    numpy.distutils.__config__.blas_opt_info = (
+        numpy.distutils.__config__.blas_ilp64_opt_info
+    )
+except:
+    raise
+
+
 import aesara_theano_fallback
 from aesara_theano_fallback import aesara as theano
 import aesara_theano_fallback.tensor as tt

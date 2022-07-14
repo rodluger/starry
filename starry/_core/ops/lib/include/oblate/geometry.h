@@ -108,6 +108,7 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
                    (ro2 - xo2 - yo2) * (ro2 - xo2 - yo2));
   bool success = false;
   std::vector<Complex> roots = eigen_roots(coeffs, success);
+#ifndef STARRY_NO_EXCEPTIONS
   if (!success) {
     std::stringstream args;
     args << "b_ = " << b_ << ", "
@@ -119,6 +120,7 @@ get_roots(const ADScalar<Scalar, N> &b_, const ADScalar<Scalar, N> &theta_,
     throw StarryException("Root eigensolver did not converge.",
                           "oblate/geometry.h", "get_roots", args.str());
   }
+#endif
 
   // Apply Newton's method to polish the roots
   int nroots = 0;
@@ -330,8 +332,9 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
       phi2 = 2 * pi<Scalar>();
     }
 
-  } else if (nroots == 1) {
 
+  } else if (nroots == 1) {
+#ifndef STARRY_NO_EXCEPTIONS
     // Grazing configuration?
     // TODO: Perturb and repeat.
     std::stringstream args;
@@ -339,9 +342,10 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
          << "ro_ = " << ro_ << ", "
          << "f_ = " << f_ << ", "
          << "theta_ = " << theta_;
+
     throw StarryException("Unexpected branch.", "oblate/geometry.h",
                           "get_angles", args.str());
-
+#endif
   } else if (nroots == 2) {
 
     // Regular occultation
@@ -398,7 +402,7 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
     }
 
   } else {
-
+#ifndef STARRY_NO_EXCEPTIONS
     // Pathological case?
     std::stringstream args;
     args << "bo_ = " << bo_ << ", "
@@ -407,6 +411,7 @@ get_angles(const ADScalar<Scalar, N> &bo_, const ADScalar<Scalar, N> &ro_,
          << "theta_ = " << theta_;
     throw StarryException("Unexpected branch.", "oblate/geometry.h",
                           "get_angles", args.str());
+#endif
   }
 }
 

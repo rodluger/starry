@@ -365,8 +365,10 @@ template <class T> inline void GreensLimbDark<T>::downwardM() {
     }
 
   } else {
+#ifndef STARRY_NO_EXCEPTIONS
     throw std::runtime_error(
         "Downward recursion in `M` not implemented for `k^2` >= 1.");
+#endif
   }
 
   // Recurse downward
@@ -464,8 +466,10 @@ template <class T> inline void GreensLimbDark<T>::downwardN() {
     }
 
   } else {
+#ifndef STARRY_NO_EXCEPTIONS
     throw std::runtime_error(
         "Downward recursion in `N` not implemented for `k^2` >= 1.");
+#endif
   }
 
   // Recurse downward

@@ -233,6 +233,7 @@ inline Vector<T> get_roots(const T &b_, const T &theta_, const T &costheta_,
                      (ro2 - xo2 - yo2) * (ro2 - xo2 - yo2));
     bool success = false;
     std::vector<std::complex<Scalar>> roots = eigen_roots(coeffs, success);
+#ifndef STARRY_NO_EXCEPTIONS
     if (!success) {
       std::stringstream args;
       args << "b_ = " << b_ << ", "
@@ -244,6 +245,7 @@ inline Vector<T> get_roots(const T &b_, const T &theta_, const T &costheta_,
       throw StarryException("Root eigensolver did not converge.",
                             "reflected/geometry.h", "get_roots", args.str());
     }
+#endif
 
     // Polish the roots using Newton's method on the *original*
     // function, which is more stable than the quartic expression.
@@ -359,6 +361,7 @@ inline Vector<T> get_roots(const T &b_, const T &theta_, const T &costheta_,
   bool e2 = costheta * costheta + (sintheta + bo) * (sintheta + bo) <
             ro2 + STARRY_ROOT_TOL_HIGH;
 
+#ifndef STARRY_NO_EXCEPTIONS
   // One is occulted, the other is not.
   // Usually we should have a single root, but
   // pathological cases with 3 roots (and maybe 4?)
@@ -376,6 +379,7 @@ inline Vector<T> get_roots(const T &b_, const T &theta_, const T &costheta_,
                             "reflected/geometry.h", "get_roots", args.str());
     }
   }
+#endif
 
   // There is one root but none of the extrema are occulted.
   // This likely corresponds to a grazing occultation of the
@@ -912,6 +916,7 @@ inline int get_angles(const T &b, const T &theta_, const T &costheta_,
     }
 
   } else {
+#ifndef STARRY_NO_EXCEPTIONS
     std::stringstream args;
     args << "b = " << b << ", "
          << "theta_ = " << theta_ << ", "
@@ -924,6 +929,9 @@ inline int get_angles(const T &b, const T &theta_, const T &costheta_,
          << "xi = " << xi;
     throw StarryException("Unexpected branch.", "reflected/geometry.h",
                           "get_angles", args.str());
+#else
+  return FLUX_ZERO;
+#endif
   }
 }
 

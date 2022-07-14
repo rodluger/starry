@@ -289,7 +289,7 @@ public:
         sT = illuminate(b, theta, sTe(bo, ro, sigr) - PQT, sigr);
 
       } else {
-
+#ifndef STARRY_NO_EXCEPTIONS
         // ?!
         std::stringstream args;
         args << "b = " << b << ", "
@@ -299,6 +299,7 @@ public:
              << "sigr = " << sigr;
         throw StarryException("Unexpected branch.", "reflected/occultation.h",
                               "Occultation.compute", args.str());
+#endif      
       }
     }
   }

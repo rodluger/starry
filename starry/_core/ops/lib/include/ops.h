@@ -57,10 +57,14 @@ public:
         N((deg + 1) * (deg + 1)), B(ydeg, udeg, fdeg), W(ydeg, udeg, fdeg),
         G(deg), F(B), RP(deg, B), RO(deg, B), OBL(deg), OBLAD(deg) {
     // Bounds checks
+#ifndef STARRY_NO_EXCEPTIONS
     if ((ydeg < 0) || (ydeg > STARRY_MAX_LMAX))
       throw std::out_of_range("Spherical harmonic degree out of range.");
+#endif
+#ifndef STARRY_NO_EXCEPTIONS
     if ((deg > STARRY_MAX_LMAX))
       throw std::out_of_range("Total degree out of range.");
+#endif
   };
 
   // Compute the Ylm expansion of a gaussian spot at a

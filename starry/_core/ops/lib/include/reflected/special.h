@@ -38,12 +38,20 @@ template <typename T> inline T pairdiff(const Vector<T> &array) {
       }
       return result;
     } else {
+#ifndef STARRY_NO_EXCEPTIONS
       throw std::runtime_error(
           "Array length must be even in call to `pairdiff`.");
+#else
+      return T(NAN);
+#endif
     }
   } else if (K == 1) {
+#ifndef STARRY_NO_EXCEPTIONS
     throw std::runtime_error(
         "Array length must be even in call to `pairdiff`.");
+#else
+    return T(NAN);
+#endif
   } else {
     // Empty array
     return 0.0;
@@ -328,6 +336,7 @@ inline T hyp2f1(const T &a_, const T &b_, const T &c_, const T &z) {
     term *= a * b * z / c / n;
     value += term;
   }
+#ifndef STARRY_NO_EXCEPTIONS
   if ((n == STARRY_2F1_MAXITER) && (abs(term) > STARRY_2F1_MINTOL)) {
     std::stringstream args;
     args << "a_ = " << a_ << ", "
@@ -337,6 +346,7 @@ inline T hyp2f1(const T &a_, const T &b_, const T &c_, const T &z) {
     throw StarryException("Series for 2F1 did not converge.",
                           "reflected/special.h", "hyp2f1", args.str());
   }
+#endif
   return value;
 }
 

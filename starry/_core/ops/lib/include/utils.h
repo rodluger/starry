@@ -256,6 +256,7 @@ template <class T> inline void print_scalar(const Eigen::AutoDiffScalar<T> &x) {
   std::cout << x << ", " << x.derivatives().transpose() << std::endl;
 }
 
+#ifndef STARRY_NO_EXCEPTIONS
 class StarryException : public std::exception {
 
   std::string m_msg;
@@ -288,6 +289,7 @@ public:
 
   virtual const char *what() const throw() { return m_msg.c_str(); }
 };
+#endif
 
 } // namespace utils
 } // namespace starry
