@@ -22,6 +22,7 @@ Kepler-10 system.
 import datetime
 import logging
 import os
+import copy
 
 import astropy.units as u
 import numpy as np
@@ -254,4 +255,11 @@ class FromNexsci:
         return df, path1, path2
 
 
-from_nexsci = FromNexsci()
+try:
+    from_nexsci = FromNexsci()
+except Exception as e:
+    # Delay failure until function is called
+    error = copy.deepcopy(e)
+
+    def from_nexsci(*args, **kwargs):
+        raise error
