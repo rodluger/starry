@@ -12,7 +12,7 @@ try:
         numpy.distutils.__config__.blas_ilp64_opt_info
     )
 except:
-    raise
+    pass
 
 
 import aesara_theano_fallback
