@@ -206,7 +206,8 @@ setup(
     },
     install_requires=[
         "setuptools_scm",
-        "numpy>=1.19.2",
+        "numpy>=1.19.2,<1.22",
+        "xarray<2023.10.0",
         "scipy>=1.5.0",
         "astropy>=3.1",
         "pymc3",
