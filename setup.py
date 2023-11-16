@@ -1,9 +1,7 @@
 """Install script for `starry`."""
 from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
-import warnings
 import setuptools
-import subprocess
 import sys
 import os
 import glob
