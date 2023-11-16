@@ -2,8 +2,8 @@ name: tests
 
 on:
   push:
-  pull_request:
     branches: [master]
+  pull_request:
 
 jobs:
   tests:
@@ -12,92 +12,32 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - python-version: "3.7"
-            pymc-version: "pymc3==3.9.3"
-            arviz-version: "arviz==0.11.1"
-          - python-version: "3.8"
-            pymc-version: "pymc3==3.9.3"
-            arviz-version: "arviz==0.11.1"
-          - python-version: "3.8"
-            pymc-version: "pymc3==3.10"
-            arviz-version: "arviz==0.11.1"
-          - python-version: "3.8"
-            pymc-version: "pymc3==3.11"
-            arviz-version: ""
-          - python-version: "3.9"
-            pymc-version: "pymc3==3.11"
-            arviz-version: ""
-          # TODO:
-          # - python-version: "3.8"
-          #  pymc-version: "https://github.com/pymc-devs/pymc3/archive/main.zip"
-          #  arviz-version: ""
+        python-version: ["3.9", "3.10"]
+        pymc-version: ["3.11"]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: true
 
-      - uses: actions/cache@v2
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
-          path: ~/.theano
-          key: ${{ runner.os }}-${{ matrix.pymc-version }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.pymc-version }}-
-
-      - name: Set up Python
-        id: setup_python
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          auto-update-conda: true
-          activate-environment: starry
-          environment-file: environment.yml
           python-version: ${{ matrix.python-version }}
 
+      - uses: actions/cache@v3
+        with:
+          path: ~/.theano
+          key: ${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.pymc-version }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.pymc-version }}-
+
       - name: Install dependencies
-        id: install
-        if: steps.setup_python.outcome == 'success'
-        shell: bash -l {0}
         run: |
           python -m pip install -U pip
-          python -m pip install ${{ matrix.pymc-version }} ${{ matrix.arviz-version }}
+          python -m pip install ${{ matrix.pymc-version }}
           STARRY_UNIT_TESTS=1 python -m pip install -e ".[tests]"
 
       - name: Run tests
-        if: steps.install.outcome == 'success'
-        shell: bash -l {0}
-        run: python -m pytest -v --junitxml=junit/test-results.xml --cov=starry
-
-      - name: Get unique id
-        id: unique-id
-        if: always()
-        env:
-          STRATEGY_CONTEXT: ${{ toJson(strategy) }}
-        run: |
-          export JOB_ID=`echo $STRATEGY_CONTEXT | md5sum`
-          echo "::set-output name=id::$JOB_ID"
-
-      - name: Publish Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
-        if: always()
-        with:
-          files: junit/test-*.xml
-          comment_mode: off
-
-      - name: Coveralls
-        uses: AndreMiras/coveralls-python-action@develop
-        if: always()
-        with:
-          parallel: true
-          flag-name: Unit Test
-
-  coveralls_finish:
-    needs: tests
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-    - name: Coveralls Finished
-      uses: AndreMiras/coveralls-python-action@develop
-      with:
-        parallel-finished: true
+        run: python -m pytest -v
