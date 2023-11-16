@@ -1,9 +1,7 @@
 """Install script for `starry`."""
 from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
-import warnings
 import setuptools
-import subprocess
 import sys
 import os
 import glob
@@ -206,7 +204,8 @@ setup(
     },
     install_requires=[
         "setuptools_scm",
-        "numpy>=1.19.2",
+        "numpy>=1.19.2,<1.22",
+        "xarray<2023.10.0",
         "scipy>=1.5.0",
         "astropy>=3.1",
         "pymc3",

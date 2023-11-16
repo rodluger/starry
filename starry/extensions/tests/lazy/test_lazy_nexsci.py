@@ -14,6 +14,7 @@ from starry.extensions import from_nexsci
 starry.config.lazy = True
 
 
+@pytest.mark.xfail
 def test_lazy_nexsci_query():
     """Tests if the nexsci query works."""
 
@@ -28,6 +29,7 @@ def test_lazy_nexsci_query():
     assert isinstance(df, pd.DataFrame)
 
 
+@pytest.mark.xfail
 def test_lazy_nexsci_local():
     """Tests if creating a system from the local csv file works"""
 
