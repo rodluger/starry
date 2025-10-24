@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Test theano compiling."""
+"""Test pytensor compiling."""
 import starry
 import pytest
 from starry.compat import change_flags
@@ -10,7 +10,7 @@ def test_test_value_error():
     """
     Ensure that no error is raised when there
     are missing test values in our compiled
-    functions, as pymc3 forces theano errors when
+    functions, as pymc forces pytensor errors when
     test values are missing.
 
     """

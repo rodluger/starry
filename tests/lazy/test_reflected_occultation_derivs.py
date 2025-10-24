@@ -1,5 +1,5 @@
-from starry.compat import theano
-from starry.compat import tt
+from starry.compat import pytensor
+from starry.compat import pt
 import numpy as np
 import starry
 import matplotlib.pyplot as plt
@@ -11,20 +11,20 @@ def model():
     class Model:
         def __init__(self):
             self.map = starry.Map(ydeg=1, reflected=True)
-            _b = tt.dvector("b")
-            _theta = tt.dvector("theta")
-            _bo = tt.dvector("bo")
-            _ro = tt.dscalar("ro")
-            _sigr = tt.dscalar("sigr")
-            self._s = theano.function(
+            _b = pt.dvector("b")
+            _theta = pt.dvector("theta")
+            _bo = pt.dvector("bo")
+            _ro = pt.dscalar("ro")
+            _sigr = pt.dscalar("sigr")
+            self._s = pytensor.function(
                 [_b, _theta, _bo, _ro, _sigr],
                 self.map.ops.sT(_b, _theta, _bo, _ro, _sigr),
             )
 
             self._dsdb = [
-                theano.function(
+                pytensor.function(
                     [_b, _theta, _bo, _ro, _sigr],
-                    tt.grad(
+                    pt.grad(
                         self.map.ops.sT(_b, _theta, _bo, _ro, _sigr)[0, n], _b
                     ),
                 )
@@ -32,9 +32,9 @@ def model():
             ]
 
             self._dsdtheta = [
-                theano.function(
+                pytensor.function(
                     [_b, _theta, _bo, _ro, _sigr],
-                    tt.grad(
+                    pt.grad(
                         self.map.ops.sT(_b, _theta, _bo, _ro, _sigr)[0, n],
                         _theta,
                     ),
@@ -43,9 +43,9 @@ def model():
             ]
 
             self._dsdbo = [
-                theano.function(
+                pytensor.function(
                     [_b, _theta, _bo, _ro, _sigr],
-                    tt.grad(
+                    pt.grad(
                         self.map.ops.sT(_b, _theta, _bo, _ro, _sigr)[0, n], _bo
                     ),
                 )
@@ -53,9 +53,9 @@ def model():
             ]
 
             self._dsdro = [
-                theano.function(
+                pytensor.function(
                     [_b, _theta, _bo, _ro, _sigr],
-                    tt.grad(
+                    pt.grad(
                         self.map.ops.sT(_b, _theta, _bo, _ro, _sigr)[0, n], _ro
                     ),
                 )
@@ -63,9 +63,9 @@ def model():
             ]
 
             self._dsdsigr = [
-                theano.function(
+                pytensor.function(
                     [_b, _theta, _bo, _ro, _sigr],
-                    tt.grad(
+                    pt.grad(
                         self.map.ops.sT(_b, _theta, _bo, _ro, _sigr)[0, n],
                         _sigr,
                     ),
@@ -311,14 +311,14 @@ def test_derivs(model, n=1, npts=10000, atol=1e-5, plot=False, throw=True):
 
 def test_abs_b_one():
     """Check derivs are finite when b=+/-1."""
-    b = tt.dscalar()
+    b = pt.dscalar()
     b.tag.test_value = -1.0
     map = starry.Map(reflected=True)
 
     def flux(b):
         return map.flux(zs=-b, ys=0)
 
-    grad = theano.function([b], tt.grad(flux(b)[0], [b]))
+    grad = pytensor.function([b], pt.grad(flux(b)[0], [b]))
     assert not np.isnan(grad(-1.0)[0]) and not np.isnan(grad(1.0)[0])
 
 

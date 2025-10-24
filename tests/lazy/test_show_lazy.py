@@ -8,16 +8,16 @@ the code runs without raising errors.
 import starry
 import numpy as np
 import os
-import pymc3 as pm
+import pymc as pm
 import pytest
 
 
 @pytest.fixture(autouse=True)
-def theano_config():
+def pytensor_config():
     if starry.compat.USE_AESARA:
         return dict(aesara_config=dict(compute_test_value="ignore"))
     else:
-        return dict(theano_config=dict(compute_test_value="ignore"))
+        return dict(pytensor_config=dict(compute_test_value="ignore"))
 
 
 # TODO: Several tests segfault on CI. Investigate.
@@ -90,8 +90,8 @@ def test_system_rv_show():
         os.remove("tmp.mp4")
 
 
-def test_show_pymc3(theano_config):
-    with pm.Model(**theano_config) as model:
+def test_show_pymc(pytensor_config):
+    with pm.Model(**pytensor_config) as model:
         map = starry.Map()
         ncoeff = map.Ny
         mu = np.ones(ncoeff)
@@ -101,8 +101,8 @@ def test_show_pymc3(theano_config):
         os.remove("tmp.pdf")
 
 
-def test_show_reflected_pymc3(theano_config):
-    with pm.Model(**theano_config) as model:
+def test_show_reflected_pymc(pytensor_config):
+    with pm.Model(**pytensor_config) as model:
         map = starry.Map(ydeg=1, udeg=1, reflected=True)
         ncoeff = map.Ny
         mu = np.ones(ncoeff)
@@ -113,8 +113,8 @@ def test_show_reflected_pymc3(theano_config):
 
 
 @pytest.mark.skipif(STARRY_ON_CI, reason="Segfaults on CI")
-def test_show_rv_pymc3(theano_config):
-    with pm.Model(**theano_config) as model:
+def test_show_rv_pymc(pytensor_config):
+    with pm.Model(**pytensor_config) as model:
         map = starry.Map(ydeg=1, udeg=1, rv=True)
         ncoeff = map.Ny
         mu = np.ones(ncoeff)
@@ -124,16 +124,16 @@ def test_show_rv_pymc3(theano_config):
         os.remove("tmp.pdf")
 
 
-def test_show_ld_pymc3(theano_config):
-    with pm.Model(**theano_config) as model:
+def test_show_ld_pymc(pytensor_config):
+    with pm.Model(**pytensor_config) as model:
         map = starry.Map(udeg=2)
         map[1:] = pm.MvNormal("u", [0.5, 0.25], np.eye(2), shape=(2,))
         map.show(file="tmp.pdf", point=model.test_point)
         os.remove("tmp.pdf")
 
 
-def test_system_show_pymc3(theano_config):
-    with pm.Model(**theano_config) as model:
+def test_system_show_pymc(pytensor_config):
+    with pm.Model(**pytensor_config) as model:
         pri = starry.Primary(starry.Map())
         sec = starry.Secondary(starry.Map(), porb=1.0)
         sec.inc = pm.Uniform("inc", 0, 90)
@@ -145,8 +145,8 @@ def test_system_show_pymc3(theano_config):
 
 
 @pytest.mark.skipif(STARRY_ON_CI, reason="Segfaults on CI")
-def test_system_rv_show_pymc3(theano_config):
-    with pm.Model(**theano_config) as model:
+def test_system_rv_show_pymc(pytensor_config):
+    with pm.Model(**pytensor_config) as model:
         pri = starry.Primary(starry.Map(rv=True))
         sec = starry.Secondary(starry.Map(rv=True), porb=1.0)
         sec.inc = pm.Uniform("inc", 0, 90)

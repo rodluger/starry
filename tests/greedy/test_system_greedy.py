@@ -2,7 +2,7 @@
 """Test Keplerian system stuff."""
 import starry
 import pytest
-from starry.compat import theano
+from starry.compat import pytensor
 import numpy as np
 
 

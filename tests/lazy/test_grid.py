@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-There's a bug in tt.mgrid that causes different
+There's a bug in pt.mgrid that causes different
 behavior whether it's compiled or not. We implemented
 some hacks in `starry` to circumvent this.
 See docstring of `compute_ortho_grid` in "core.py"
@@ -8,7 +8,7 @@ See docstring of `compute_ortho_grid` in "core.py"
 """
 import starry
 import pytest
-from starry.compat import tt
+from starry.compat import pt
 import itertools
 import numpy as np
 
@@ -21,7 +21,7 @@ def test_ortho_grid(compile):
             (lat, lon), (x, y, z) = map.ops.compute_ortho_grid(res)
         else:
             latlon, xyz = map.ops.compute_ortho_grid(
-                tt.as_tensor_variable(res)
+                pt.as_tensor_variable(res)
             )
             x, y, z = xyz.eval()
         assert len(x) == res ** 2
