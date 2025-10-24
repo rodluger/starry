@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
-import numpy.distutils
 import warnings
+
+import numpy.distutils
+from inspect import getmro
 
 
 # Monkeypatch for
@@ -11,33 +13,25 @@ try:
     numpy.distutils.__config__.blas_opt_info = (
         numpy.distutils.__config__.blas_ilp64_opt_info
     )
-except:
+except Exception:
     pass
 
 
-import aesara_theano_fallback
-from aesara_theano_fallback import aesara as theano
-import aesara_theano_fallback.tensor as tt
-from aesara_theano_fallback import sparse as ts
-from aesara_theano_fallback import change_flags, ifelse, USE_AESARA
-from aesara_theano_fallback.tensor import slinalg
-from aesara_theano_fallback.graph import basic, op, params_type, fg
-from inspect import getmro
-
-
-if USE_AESARA:
-    from aesara.scan.utils import until as scan_until
-else:
-    try:
-        from theano.scan.utils import until as scan_until
-    except ModuleNotFoundError:
-        from theano.scan_module.scan_utils import until as scan_until
+import pytensor
+# TODO: Revert to tt and ts? pt and ps mark transition in a cleaner manner and more furture-proof
+import pytensor.tensor as pt
+from pytensor import sparse as ps
+from pytensor import change_flags, ifelse
+from pytensor.tensor import slinalg
+from pytensor.graph import basic, op, fg
+from pytensor.link.c import params_type
+from pytensor.scan.utils import until as scan_until
 
 
 __all__ = [
-    "theano",
-    "tt",
-    "ts",
+    "pytensor",
+    "pt",
+    "ps",
     "slinalg",
     "ifelse",
     "Apply",
@@ -50,13 +44,7 @@ __all__ = [
     "floatX",
     "evaluator",
     "scan_until",
-    "USE_AESARA",
 ]
-
-# Suppress third-party deprecation warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="pymc3")
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="theano")
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="aesara")
 
 # Set double precision
 floatX = "float64"
@@ -69,14 +57,14 @@ COp = op.ExternalCOp
 Params = params_type.Params
 ParamsType = params_type.ParamsType
 MissingInputError = fg.MissingInputError
-theano.config.floatX = floatX
+pytensor.config.floatX = floatX
 
 # This helps prevent defaulting to float32
-theano.config.cast_policy = "numpy+floatX"
+pytensor.config.cast_policy = "numpy+floatX"
 
 
 def is_tensor(*objs):
-    """Return ``True`` if any of ``objs`` is a ``Theano`` object."""
+    """Return ``True`` if any of ``objs`` is a ``pytensor`` object."""
     for obj in objs:
         for c in getmro(type(obj)):
             if c is Node:
@@ -86,10 +74,10 @@ def is_tensor(*objs):
 
 def evaluator(**kwargs):
     """
-    Return a function to evaluate theano tensors.
+    Return a function to evaluate pytensor tensors.
 
-    Works inside a `pymc3` model if a `point` is provided.
-    Lazily imports `pymc3` to minimize overhead.
+    Works inside a `pymc` model if a `point` is provided.
+    Lazily imports `pymc` to minimize overhead.
 
     """
     # Store the kwargs
@@ -100,8 +88,8 @@ def evaluator(**kwargs):
 
         # User provided a point
 
-        import pymc3 as pm
-        import pymc3_ext as pmx
+        import pymc as pm
+        import pymc_ext as pmx
 
         point = kwargs_point
         model = kwargs_model
@@ -133,8 +121,8 @@ def evaluator(**kwargs):
                     # That didn't work. Perhaps we are in a pymc3 model
                     # context, but the user didn't provide a point?
 
-                    import pymc3 as pm
-                    import pymc3_ext as pmx
+                    import pymc as pm
+                    import pymc_ext as pmx
 
                     try:
                         model = kwargs_model
@@ -149,7 +137,7 @@ def evaluator(**kwargs):
 
                     # Warn the user that we're using the test point
                     warnings.warn(
-                        "Detected pymc3 model context, but no point provided. "
+                        "Detected pymc model context, but no point provided. "
                         "Evaluating at test_point."
                     )
 

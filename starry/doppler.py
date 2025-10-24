@@ -5,7 +5,7 @@ from ._core import OpsDoppler, math
 from ._core.utils import is_tensor, CompileLogMessage
 from ._core.math import nadam
 from ._indices import integers, get_ylm_inds, get_ylmw_inds, get_ul_inds
-from .compat import evaluator, tt
+from .compat import evaluator, pt
 from .maps import YlmBase, MapBase, Map
 from .doppler_visualize import Visualize
 from .doppler_solve import Solve
@@ -345,7 +345,7 @@ class DopplerMap:
             self._nw0 = self._nw0_int
             self._nw = self._nw_int
 
-        # Instantiate the Theano ops classs
+        # Instantiate the pytensor ops classs
         self.ops = OpsDoppler(
             ydeg,
             udeg,
@@ -595,15 +595,15 @@ class DopplerMap:
             spectrum = self._math.sparse_dot(self._spectrum, self._S0i2eTr)
             if self._mask_unused_wavelength_bins:
                 if self._lazy:
-                    spectrum = tt.set_subtensor(
+                    spectrum = pt.set_subtensor(
                         spectrum[:, self._wav0_padding_left],
-                        tt.reshape(
+                        pt.reshape(
                             spectrum[:, self._wav0_extrapolate_left], (-1, 1)
                         ),
                     )
-                    spectrum = tt.set_subtensor(
+                    spectrum = pt.set_subtensor(
                         spectrum[:, self._wav0_padding_right],
-                        tt.reshape(
+                        pt.reshape(
                             spectrum[:, self._wav0_extrapolate_right], (-1, 1)
                         ),
                     )
@@ -1956,11 +1956,11 @@ class DopplerMap:
         **kwargs,
     ):
         """
-        Optimizes the log likelihood function within a `pymc3` model context
+        Optimizes the log likelihood function within a `pymc` model context
         using the ``Adam`` solver.
 
         Args:
-            model (optional): The `pymc3` model to optimize. Default is None,
+            model (optional): The `pymc` model to optimize. Default is None,
                 in which case the current model context is used.
             start (optional): The starting point for the optimization. Default
                 is ``model.test_point``.
@@ -1970,16 +1970,16 @@ class DopplerMap:
             quiet (bool, optional): If True, disables the progress bar. Default
                 is False.
             kwargs: Additional kwargs passed directly to
-                ``pymc3_ext.optim.Adam``.
+                ``pymc_ext.optim.Adam``.
 
         Below is an example of how to use this method.
 
         .. code-block:: python
 
-            import pymc3 as pm
+            import pymc as pm
             import starry
 
-            # Define a `pymc3` model
+            # Define a `pymc` model
             with pm.Model() as model:
 
                 # Instantiate a Doppler map
@@ -1993,7 +1993,7 @@ class DopplerMap:
                 # Prior on the map: intensity uniform in [0, 1]
                 p = pm.Uniform("pixels", lower=0.0, upper=1.0, shape=(npix,))
                 amp = pm.Uniform("amp", lower=0.0, upper=1.0)
-                map[:, :] = amp * tt.dot(A, p)
+                map[:, :] = amp * pt.dot(A, p)
 
                 # Prior on the spectrum: Gaussian about unity
                 map.spectrum = pm.Normal(
@@ -2010,7 +2010,7 @@ class DopplerMap:
                 # (scalar) uncertainty
                 pm.Normal(
                     "obs",
-                    mu=tt.reshape(flux_model, (-1,)),
+                    mu=pt.reshape(flux_model, (-1,)),
                     sd=flux_err,
                     observed=flux.reshape(-1,)
                 )
@@ -2019,8 +2019,8 @@ class DopplerMap:
                 map_soln, loss = map.optimize()
 
         """
-        import pymc3 as pm
-        import pymc3_ext as pmx
+        import pymc as pm
+        import pymc_ext as pmx
 
         # Get the model
         try:
@@ -2028,7 +2028,7 @@ class DopplerMap:
                 model = pm.Model.get_context()
         except TypeError:
             raise ValueError(
-                "This method must be run within a `pymc3` model context."
+                "This method must be run within a `pymc` model context."
             )
 
         # Get the starting point

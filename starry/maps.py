@@ -69,7 +69,7 @@ class MapBase(object):
             )
 
     def __init__(self, ydeg, udeg, fdeg, nw, **kwargs):
-        # Instantiate the Theano ops class
+        # Instantiate the PyTensor ops class
         self.ops = self._ops_class_(ydeg, udeg, fdeg, nw, **kwargs)
 
         # Dimensions
