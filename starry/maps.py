@@ -425,10 +425,10 @@ class MapBase(object):
 
         .. note::
             If calling this method on an instance of ``Map`` created within
-            a ``pymc3.Model()``, you may specify a ``point`` keyword with
+            a ``pymc.Model()``, you may specify a ``point`` keyword with
             the model point at which to evaluate the map. This method also
             accepts a ``model`` keyword, although this is inferred
-            automatically if called from within a ``pymc3.Model()`` context.
+            automatically if called from within a ``pymc.Model()`` context.
             If no point is provided, attempts to evaluate the map at
             ``model.test_point`` and raises a warning.
 

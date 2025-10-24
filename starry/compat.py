@@ -118,7 +118,7 @@ def evaluator(**kwargs):
 
                 except MissingInputError as e:
 
-                    # That didn't work. Perhaps we are in a pymc3 model
+                    # That didn't work. Perhaps we are in a pymc model
                     # context, but the user didn't provide a point?
 
                     import pymc as pm
@@ -130,7 +130,7 @@ def evaluator(**kwargs):
                             model = pm.Model.get_context()
                     except TypeError:
                         raise ValueError(
-                            "Missing input for variable {}, and no pymc3 model found.".format(
+                            "Missing input for variable {}, and no pymc model found.".format(
                                 x
                             )
                         )
