@@ -1,5 +1,5 @@
-#ifndef _STARRY_THEANO_HELPERS_H_
-#define _STARRY_THEANO_HELPERS_H_
+#ifndef _STARRY_PYTENSOR_HELPERS_H_
+#define _STARRY_PYTENSOR_HELPERS_H_
 
 #include <cmath>
 
@@ -160,4 +160,4 @@ DTYPE_INPUT_NUM *get_matrix_input(npy_intp *N1, npy_intp *N2,
 
 } // namespace starry
 
-#endif // _STARRY_THEANO_HELPERS_H_
+#endif // _STARRY_PYTENSOR_HELPERS_H_

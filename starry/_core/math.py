@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from .. import config
-from ..compat import theano, tt, ts, slinalg, floatX
+from ..compat import pytensor, pt, ps, slinalg, floatX
 from .._constants import *
 from .utils import *
 import numpy as np
@@ -17,13 +17,13 @@ try:
     _solve_lower = slinalg.Solve(A_structure="lower_triangular", lower=True)
     _solve_upper = slinalg.Solve(A_structure="upper_triangular", lower=False)
 except TypeError:
-    # aesara (TODO: Check me)
+    # aesara/pytensor (TODO: Check me)
     _solve_lower = slinalg.Solve(assume_a="sym", lower=True)
     _solve_upper = slinalg.Solve(assume_a="sym", lower=False)
 
 
 def _cho_solve(cho_A, b):
-    return _solve_upper(tt.transpose(cho_A), _solve_lower(cho_A, b))
+    return _solve_upper(pt.transpose(cho_A), _solve_lower(cho_A, b))
 
 
 def _get_covariance(math, linalg, C=None, cho_C=None, N=None):
@@ -102,7 +102,7 @@ def _get_covariance(math, linalg, C=None, cho_C=None, N=None):
 
 
 class MathType(type):
-    """Wrapper for theano/numpy functions."""
+    """Wrapper for pytensor/numpy functions."""
 
     def cholesky(cls, *args, **kwargs):
         if cls.lazy:
@@ -112,7 +112,7 @@ class MathType(type):
 
     def atleast_2d(cls, arg):
         if cls.lazy:
-            return arg * tt.ones((1, 1))
+            return arg * pt.ones((1, 1))
         else:
             return np.atleast_2d(arg)
 
@@ -124,9 +124,9 @@ class MathType(type):
         TODO: Add error catching if the dimensions don't agree.
         """
         if cls.lazy:
-            args = [arg * tt.ones(1) for arg in args]
-            size = tt.max([arg.shape[0] for arg in args])
-            args = [tt.repeat(arg, size // arg.shape[0], 0) for arg in args]
+            args = [arg * pt.ones(1) for arg in args]
+            size = pt.max([arg.shape[0] for arg in args])
+            args = [pt.repeat(arg, size // arg.shape[0], 0) for arg in args]
         else:
             args = [np.atleast_1d(arg) for arg in args]
             size = np.max([arg.shape[0] for arg in args])
@@ -153,7 +153,7 @@ class MathType(type):
             eijk = np.zeros((3, 3, 3))
             eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
             eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
-            return tt.as_tensor_variable(tt.dot(tt.dot(eijk, y), x))
+            return pt.as_tensor_variable(pt.dot(pt.dot(eijk, y), x))
         else:
             return np.cross(x, y)
 
@@ -177,47 +177,47 @@ class MathType(type):
 
     def to_array_or_tensor(cls, x):
         if cls.lazy:
-            return tt.as_tensor_variable(x)
+            return pt.as_tensor_variable(x)
         else:
             return np.array(x)
 
     def block_diag(cls, *mats):
         if cls.lazy:
             N = [mat.shape[0] for mat in mats]
-            Nsum = tt.sum(N)
-            res = tt.zeros((Nsum, Nsum), dtype=floatX)
+            Nsum = pt.sum(N)
+            res = pt.zeros((Nsum, Nsum), dtype=floatX)
             n = 0
             for mat in mats:
                 inds = slice(n, n + mat.shape[0])
-                res = tt.set_subtensor(res[tuple((inds, inds))], mat)
+                res = pt.set_subtensor(res[tuple((inds, inds))], mat)
                 n += mat.shape[0]
             return res
         else:
             return scipy_block_diag(*mats)
 
     def to_tensor(cls, *args):
-        """Convert all ``args`` to Theano tensor variables.
+        """Convert all ``args`` to PyTensor tensor variables.
 
         Converts to tensor regardless of whether `cls.lazy` is True or False.
         """
         if len(args) == 1:
-            return tt.as_tensor_variable(args[0]).astype(floatX)
+            return pt.as_tensor_variable(args[0]).astype(floatX)
         else:
-            return [tt.as_tensor_variable(arg).astype(floatX) for arg in args]
+            return [pt.as_tensor_variable(arg).astype(floatX) for arg in args]
 
     def to_sparse_tensor(cls, *args):
-        """Convert all ``args`` to Theano sparse tensor variables.
+        """Convert all ``args`` to PyTensor sparse tensor variables.
 
         Converts to tensor regardless of whether `cls.lazy` is True or False.
         """
         if len(args) == 1:
-            return ts.as_sparse_variable(args[0]).astype(floatX)
+            return ps.as_sparse_variable(args[0]).astype(floatX)
         else:
-            return [ts.as_sparse_variable(arg).astype(floatX) for arg in args]
+            return [ps.as_sparse_variable(arg).astype(floatX) for arg in args]
 
     def sparse_dot(cls, A, B):
         if cls.lazy:
-            return ts.dot(A, B)
+            return ps.dot(A, B)
         else:
             if issparse(A):
                 return A.dot(B)
@@ -265,31 +265,31 @@ class LinAlgType(type):
         if cho_C.ndim == 0:
             CInvX = X / cho_C ** 2
         elif cho_C.ndim == 1:
-            CInvX = tt.dot(tt.diag(1 / cho_C ** 2), X)
+            CInvX = pt.dot(pt.diag(1 / cho_C ** 2), X)
         else:
             CInvX = _cho_solve(cho_C, X)
 
         # Compute W = X^T . C^-1 . X + L^-1
-        W = tt.dot(tt.transpose(X), CInvX)
+        W = pt.dot(pt.transpose(X), CInvX)
         if LInv.ndim == 0:
-            W = tt.inc_subtensor(
-                W[tuple((tt.arange(W.shape[0]), tt.arange(W.shape[0])))], LInv
+            W = pt.inc_subtensor(
+                W[tuple((pt.arange(W.shape[0]), pt.arange(W.shape[0])))], LInv
             )
             LInvmu = mu * LInv
         elif LInv.ndim == 1:
-            W = tt.inc_subtensor(
-                W[tuple((tt.arange(W.shape[0]), tt.arange(W.shape[0])))], LInv
+            W = pt.inc_subtensor(
+                W[tuple((pt.arange(W.shape[0]), pt.arange(W.shape[0])))], LInv
             )
             LInvmu = mu * LInv
         else:
             W += LInv
-            LInvmu = tt.dot(LInv, mu)
+            LInvmu = pt.dot(LInv, mu)
 
         # Compute the max like y and its covariance matrix
         cho_W = slinalg.cholesky(W)
-        M = _cho_solve(cho_W, tt.transpose(CInvX))
-        yhat = tt.dot(M, flux) + _cho_solve(cho_W, LInvmu)
-        ycov = _cho_solve(cho_W, tt.eye(cho_W.shape[0]))
+        M = _cho_solve(cho_W, pt.transpose(CInvX))
+        yhat = pt.dot(M, flux) + _cho_solve(cho_W, LInvmu)
+        ycov = _cho_solve(cho_W, pt.eye(cho_W.shape[0]))
         cho_ycov = slinalg.cholesky(ycov)
 
         return yhat, cho_ycov
@@ -315,19 +315,19 @@ class LinAlgType(type):
 
         """
         # Compute the GP mean
-        gp_mu = tt.dot(X, mu)
+        gp_mu = pt.dot(X, mu)
 
         # Compute the GP covariance
         if L.ndim == 0:
-            XLX = tt.dot(X, tt.transpose(X)) * L
+            XLX = pt.dot(X, pt.transpose(X)) * L
         elif L.ndim == 1:
-            XLX = tt.dot(tt.dot(X, tt.diag(L)), tt.transpose(X))
+            XLX = pt.dot(pt.dot(X, pt.diag(L)), pt.transpose(X))
         else:
-            XLX = tt.dot(tt.dot(X, L), tt.transpose(X))
+            XLX = pt.dot(pt.dot(X, L), pt.transpose(X))
 
         if C.ndim == 0 or C.ndim == 1:
-            gp_cov = tt.inc_subtensor(
-                XLX[tuple((tt.arange(XLX.shape[0]), tt.arange(XLX.shape[0])))],
+            gp_cov = pt.inc_subtensor(
+                XLX[tuple((pt.arange(XLX.shape[0]), pt.arange(XLX.shape[0])))],
                 C,
             )
         else:
@@ -337,10 +337,10 @@ class LinAlgType(type):
 
         # Compute the marginal likelihood
         N = X.shape[0]
-        r = tt.reshape(flux - gp_mu, (-1, 1))
-        lnlike = -0.5 * tt.dot(tt.transpose(r), _cho_solve(cho_gp_cov, r))
-        lnlike -= tt.sum(tt.log(tt.diag(cho_gp_cov)))
-        lnlike -= 0.5 * N * tt.log(2 * np.pi)
+        r = pt.reshape(flux - gp_mu, (-1, 1))
+        lnlike = -0.5 * pt.dot(pt.transpose(r), _cho_solve(cho_gp_cov, r))
+        lnlike -= pt.sum(pt.log(pt.diag(cho_gp_cov)))
+        lnlike -= 0.5 * N * pt.log(2 * np.pi)
 
         return lnlike[0, 0]
 
@@ -366,47 +366,47 @@ class LinAlgType(type):
 
         """
         # Compute the GP mean
-        gp_mu = tt.dot(X, mu)
+        gp_mu = pt.dot(X, mu)
 
         # Residual vector
-        r = tt.reshape(flux - gp_mu, (-1, 1))
+        r = pt.reshape(flux - gp_mu, (-1, 1))
 
         # Inverse of GP covariance via Woodbury identity
         if CInv.ndim == 0:
             U = X * CInv
         elif CInv.ndim == 1:
-            U = tt.dot(tt.diag(CInv), X)
+            U = pt.dot(pt.diag(CInv), X)
         else:
-            U = tt.dot(CInv, X)
+            U = pt.dot(CInv, X)
 
         if LInv.ndim == 0:
-            W = tt.dot(tt.transpose(X), U) + LInv * tt.eye(U.shape[1])
+            W = pt.dot(pt.transpose(X), U) + LInv * pt.eye(U.shape[1])
         elif LInv.ndim == 1:
-            W = tt.dot(tt.transpose(X), U) + tt.diag(LInv)
+            W = pt.dot(pt.transpose(X), U) + pt.diag(LInv)
         else:
-            W = tt.dot(tt.transpose(X), U) + LInv
+            W = pt.dot(pt.transpose(X), U) + LInv
         cho_W = slinalg.cholesky(W)
 
         if CInv.ndim == 0:
-            SInv = CInv * tt.eye(U.shape[0]) - tt.dot(
-                U, _cho_solve(cho_W, tt.transpose(U))
+            SInv = CInv * pt.eye(U.shape[0]) - pt.dot(
+                U, _cho_solve(cho_W, pt.transpose(U))
             )
         elif CInv.ndim == 1:
-            SInv = tt.diag(CInv) - tt.dot(
-                U, _cho_solve(cho_W, tt.transpose(U))
+            SInv = pt.diag(CInv) - pt.dot(
+                U, _cho_solve(cho_W, pt.transpose(U))
             )
         else:
-            SInv = CInv - tt.dot(U, _cho_solve(cho_W, tt.transpose(U)))
+            SInv = CInv - pt.dot(U, _cho_solve(cho_W, pt.transpose(U)))
 
         # Determinant of GP covariance
-        lndetW = 2 * tt.sum(tt.log(tt.diag(cho_W)))
+        lndetW = 2 * pt.sum(pt.log(pt.diag(cho_W)))
         lndetS = lndetW + lndetC + lndetL
 
         # Compute the marginal likelihood
         N = X.shape[0]
-        lnlike = -0.5 * tt.dot(tt.transpose(r), tt.dot(SInv, r))
+        lnlike = -0.5 * pt.dot(pt.transpose(r), pt.dot(SInv, r))
         lnlike -= 0.5 * lndetS
-        lnlike -= 0.5 * N * tt.log(2 * np.pi)
+        lnlike -= 0.5 * N * pt.log(2 * np.pi)
 
         return lnlike[0, 0]
 
@@ -416,13 +416,13 @@ class LinAlgType(type):
 
 
 class lazy_math(metaclass=MathType):
-    """Alias for ``numpy`` or ``theano.tensor``."""
+    """Alias for ``numpy`` or ``pytensor.tensor``."""
 
     lazy = True
 
 
 class greedy_math(metaclass=MathType):
-    """Alias for ``numpy`` or ``theano.tensor``."""
+    """Alias for ``numpy`` or ``pytensor.tensor``."""
 
     lazy = False
 
@@ -478,27 +478,27 @@ def nadam(cost, params, lr=0.002, b1=0.9, b2=0.999, e=1e-8, sd=0.004):
 
     """
     updates = []
-    grads = tt.grad(cost, params)
-    i = theano.shared(np.array(0.0, dtype=theano.config.floatX))
+    grads = pt.grad(cost, params)
+    i = pytensor.shared(np.array(0.0, dtype=pytensor.config.floatX))
     i_t = i + 1.0
 
     # Warm up
-    m_schedule = theano.shared(np.array(1.0, dtype=theano.config.floatX))
-    momentum_cache_t = b1 * (1.0 - 0.5 * (tt.pow(0.96, i_t * sd)))
-    momentum_cache_t_1 = b1 * (1.0 - 0.5 * (tt.pow(0.96, (i_t + 1) * sd)))
+    m_schedule = pytensor.shared(np.array(1.0, dtype=pytensor.config.floatX))
+    momentum_cache_t = b1 * (1.0 - 0.5 * (pt.pow(0.96, i_t * sd)))
+    momentum_cache_t_1 = b1 * (1.0 - 0.5 * (pt.pow(0.96, (i_t + 1) * sd)))
     m_schedule_new = m_schedule * momentum_cache_t
     m_schedule_next = m_schedule * momentum_cache_t * momentum_cache_t_1
     updates.append((m_schedule, m_schedule_new))
 
     for p, g in zip(params, grads):
-        m = theano.shared(p.get_value() * 0.0)
-        v = theano.shared(p.get_value() * 0.0)
+        m = pytensor.shared(p.get_value() * 0.0)
+        v = pytensor.shared(p.get_value() * 0.0)
 
         g_prime = g / (1.0 - m_schedule_new)
         m_t = b1 * m + (1.0 - b1) * g
         m_t_prime = m_t / (1.0 - m_schedule_next)
-        v_t = b2 * v + (1.0 - b2) * tt.sqr(g)
-        v_t_prime = v_t / (1.0 - tt.pow(b2, i_t))
+        v_t = b2 * v + (1.0 - b2) * pt.sqr(g)
+        v_t_prime = v_t / (1.0 - pt.pow(b2, i_t))
         m_t_bar = (1.0 - momentum_cache_t) * g_prime + (
             momentum_cache_t_1 * m_t_prime
         )
@@ -506,7 +506,7 @@ def nadam(cost, params, lr=0.002, b1=0.9, b2=0.999, e=1e-8, sd=0.004):
         updates.append((m, m_t))
         updates.append((v, v_t))
 
-        p_t = p - lr * m_t_bar / (tt.sqrt(v_t_prime) + e)
+        p_t = p - lr * m_t_bar / (pt.sqrt(v_t_prime) + e)
         new_p = p_t
         updates.append((p, new_p))
 

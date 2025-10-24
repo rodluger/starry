@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ...compat import Apply, Op, tt, theano
+from ...compat import Apply, Op, pt, pytensor
 import numpy as np
 
 __all__ = ["setMatrixOp"]
@@ -20,7 +20,7 @@ def set_matrix(matrix, i, j, vals):
 
 class setMatrixOp(Op):
     def make_node(self, *inputs):
-        inputs = [tt.as_tensor_variable(i) for i in inputs]
+        inputs = [pt.as_tensor_variable(i) for i in inputs]
         outputs = [inputs[0].type()]
         return Apply(self, inputs, outputs)
 
@@ -37,7 +37,7 @@ class setMatrixOp(Op):
 
 class setMatrixGradientOp(Op):
     def make_node(self, *inputs):
-        inputs = [tt.as_tensor_variable(i) for i in inputs]
+        inputs = [pt.as_tensor_variable(i) for i in inputs]
         outputs = [i.type() for i in inputs[:-1]]
         return Apply(self, inputs, outputs)
 
@@ -50,6 +50,6 @@ class setMatrixGradientOp(Op):
         raise NotImplementedError("")
         matrix, i, j, vals, bf = inputs
         outputs[0][0] = None  # ??
-        outputs[1][0] = theano.gradient.grad_not_implemented()
-        outputs[2][0] = theano.gradient.grad_not_implemented()
+        outputs[1][0] = pytensor.gradient.grad_not_implemented()
+        outputs[2][0] = pytensor.gradient.grad_not_implemented()
         outputs[3][0] = None  # ??

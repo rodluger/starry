@@ -24,7 +24,7 @@ class LimbDarkBaseOp(COp):
 
     def c_headers(self, *args, **kwargs):
         return [
-            "theano_helpers.h",
+            "pytensor_helpers.h",
             "ellip.h",
             "limbdark.h",
             "utils.h",

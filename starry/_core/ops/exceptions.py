@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ...compat import Apply, Op, tt, floatX
+from ...compat import Apply, Op, pt, floatX
 import numpy as np
 
 __all__ = ["CheckBoundsOp", "RaiseValueErrorOp", "RaiseValueErrorIfOp"]
@@ -19,7 +19,7 @@ class CheckBoundsOp(Op):
             self.name = name
 
     def make_node(self, *inputs):
-        inputs = [tt.as_tensor_variable(inputs[0])]
+        inputs = [pt.as_tensor_variable(inputs[0])]
         outputs = [inputs[0].type()]
         return Apply(self, inputs, outputs)
 
@@ -58,8 +58,8 @@ class RaiseValueErrorIfOp(Op):
 
     def make_node(self, *inputs):
         condition = inputs
-        inputs = [tt.as_tensor_variable(condition)]
-        outputs = [tt.TensorType(floatX, ())()]
+        inputs = [pt.as_tensor_variable(condition)]
+        outputs = [pt.TensorType(floatX, ())()]
         return Apply(self, inputs, outputs)
 
     def infer_shape(self, *args):
@@ -75,4 +75,4 @@ class RaiseValueErrorIfOp(Op):
 
 
 def RaiseValueErrorOp(msg, shape=()):
-    return tt.zeros(shape) * RaiseValueErrorIfOp(msg)(True)
+    return pt.zeros(shape) * RaiseValueErrorIfOp(msg)(True)

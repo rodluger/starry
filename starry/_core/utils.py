@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from .. import config
-from ..compat import Node, change_flags, theano, tt, is_tensor
+from ..compat import Node, change_flags, pytensor, pt, is_tensor
 import numpy as np
 from functools import wraps
 import logging
@@ -48,15 +48,15 @@ class CompileLogMessage:
 
 def _get_type(arg):
     """
-    Get the theano tensor type corresponding to `arg`.
+    Get the pytensor tensor type corresponding to `arg`.
 
     Note that arg must be one of the following:
-        - a theano tensor
+        - a pytensor tensor
         - an integer (`int`, `np.int`, `np.int16`, `np.int32`, `np.int64`)
         - a numpy boolean (`np.array(True)`, `np.array(False)`)
         - a numpy float array with ndim equal to 0, 1, 2, or 3
 
-    TODO: We could just do `tt.as_tensor_variable(arg).type` and then upcast...
+    TODO: We could just do `pt.as_tensor_variable(arg).type` and then upcast...
 
     """
     ttype = type(arg)
@@ -77,40 +77,40 @@ def _get_type(arg):
 
         # Determine the type
         if ttype in booleans:
-            return tt.bscalar
+            return pt.bscalar
         if ttype in integers:
-            return tt.lscalar
+            return pt.lscalar
         elif ttype in floats:
-            return tt.dscalar
+            return pt.dscalar
         elif hasattr(arg, "ndim"):
             if arg.ndim == 0:
                 if arg.dtype in booleans:
-                    return tt.bscalar
+                    return pt.bscalar
                 elif arg.dtype in integers:
-                    return tt.lscalar
+                    return pt.lscalar
                 else:
-                    return tt.dscalar
+                    return pt.dscalar
             elif arg.ndim == 1:
                 if arg.dtype in booleans:
-                    return tt.bvector
+                    return pt.bvector
                 elif arg.dtype in integers:
-                    return tt.lvector
+                    return pt.lvector
                 else:
-                    return tt.dvector
+                    return pt.dvector
             elif arg.ndim == 2:
                 if arg.dtype in booleans:
-                    return tt.bmatrix
+                    return pt.bmatrix
                 elif arg.dtype in integers:
-                    return tt.lmatrix
+                    return pt.lmatrix
                 else:
-                    return tt.dmatrix
+                    return pt.dmatrix
             elif arg.ndim == 3:
                 if arg.dtype in booleans:
-                    return tt.btensor3
+                    return pt.btensor3
                 elif arg.dtype in integers:
-                    return tt.ltensor3
+                    return pt.ltensor3
                 else:
-                    return tt.dtensor3
+                    return pt.dtensor3
             else:
                 raise NotImplementedError(
                     "Invalid array dimension passed to @autocompile: {}.".format(
@@ -158,7 +158,7 @@ def autocompile(func):
                 # Compile the function
                 with CompileLogMessage(func.__name__):
                     with change_flags(compute_test_value="off"):
-                        compiled_func = theano.function(
+                        compiled_func = pytensor.function(
                             [*dummy_args],
                             func(instance, *dummy_args),
                             on_unused_input="ignore",

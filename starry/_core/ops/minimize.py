@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ...compat import Apply, Op, theano, tt, change_flags
+from ...compat import Apply, Op, pytensor, pt, change_flags
 import numpy as np
 from scipy.optimize import minimize
 
@@ -69,27 +69,27 @@ class minimizeOp(Op):
                 self.lon_grid = self.lon_grid[mask_com]
 
             self.P_grid = self.P(
-                tt.as_tensor_variable(self.lat_grid),
-                tt.as_tensor_variable(self.lon_grid),
+                pt.as_tensor_variable(self.lat_grid),
+                pt.as_tensor_variable(self.lon_grid),
             ).eval()
 
             # Set up the cost & grad function for the nonlinear solver
             u0 = np.zeros(self.udeg + 1)
             u0[0] = -1.0
-            u0 = tt.as_tensor_variable(u0)
+            u0 = pt.as_tensor_variable(u0)
             f0 = np.zeros((self.fdeg + 1) ** 2)
             f0[0] = np.pi
-            f0 = tt.as_tensor_variable(f0)
-            latlon = tt.dvector()
-            y = tt.dvector()
+            f0 = pt.as_tensor_variable(f0)
+            latlon = pt.dvector()
+            y = pt.dvector()
             with change_flags(compute_test_value="off"):
-                self.I = theano.function(
+                self.I = pytensor.function(
                     [latlon, y],
                     [
                         self.intensity(
                             latlon[0], latlon[1], y, u0, f0, 0.0, 0.0
                         )[0],
-                        *theano.grad(
+                        *pytensor.grad(
                             self.intensity(
                                 latlon[0], latlon[1], y, u0, f0, 0.0, 0.0
                             )[0],
@@ -100,11 +100,11 @@ class minimizeOp(Op):
             self._do_setup = False
 
     def make_node(self, *inputs):
-        inputs = [tt.as_tensor_variable(i) for i in inputs]
+        inputs = [pt.as_tensor_variable(i) for i in inputs]
         outputs = [
-            tt.TensorType(inputs[0].dtype, ())(),
-            tt.TensorType(inputs[0].dtype, ())(),
-            tt.TensorType(inputs[0].dtype, ())(),
+            pt.TensorType(inputs[0].dtype, ())(),
+            pt.TensorType(inputs[0].dtype, ())(),
+            pt.TensorType(inputs[0].dtype, ())(),
         ]
         return Apply(self, inputs, outputs)
 
@@ -152,8 +152,8 @@ class LDPhysicalOp(Op):
         self.nroots = nroots
 
     def make_node(self, *inputs):
-        inputs = [tt.as_tensor_variable(i) for i in inputs]
-        outputs = [tt.bscalar()]
+        inputs = [pt.as_tensor_variable(i) for i in inputs]
+        outputs = [pt.bscalar()]
         return Apply(self, inputs, outputs)
 
     def infer_shape(self, *args):

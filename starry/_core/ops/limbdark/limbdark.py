@@ -2,7 +2,7 @@
 
 __all__ = ["LimbDarkOp"]
 
-from ....compat import Apply, theano, tt
+from ....compat import Apply, pytensor, pt
 from .base_op import LimbDarkBaseOp
 
 
@@ -14,19 +14,19 @@ class LimbDarkOp(LimbDarkBaseOp):
 
     def make_node(self, c, b, r, los):
         in_args = []
-        dtype = theano.config.floatX
+        dtype = pytensor.config.floatX
         for a in [c, b, r, los]:
             try:
-                a = tt.as_tensor_variable(a)
-            except tt.AsTensorError:
+                a = pt.as_tensor_variable(a)
+            except pt.AsTensorError:
                 pass
             else:
-                dtype = theano.scalar.upcast(dtype, a.dtype)
+                dtype = pytensor.scalar.upcast(dtype, a.dtype)
             in_args.append(a)
 
         out_args = [
             in_args[1].type(),
-            tt.TensorType(
+            pt.TensorType(
                 dtype=dtype, broadcastable=[False] * (in_args[1].ndim + 1)
             )(),
             in_args[1].type(),
@@ -48,18 +48,18 @@ class LimbDarkOp(LimbDarkBaseOp):
         f, dfdcl, dfdb, dfdr = self(*inputs)
         bf = gradients[0]
         for i, g in enumerate(gradients[1:]):
-            if not isinstance(g.type, theano.gradient.DisconnectedType):
+            if not isinstance(g.type, pytensor.gradient.DisconnectedType):
                 raise ValueError(
                     "can't propagate gradients wrt parameter {0}".format(i + 1)
                 )
-        bc = tt.sum(
-            tt.reshape(bf, (1, bf.size))
-            * tt.reshape(dfdcl, (c.size, bf.size)),
+        bc = pt.sum(
+            pt.reshape(bf, (1, bf.size))
+            * pt.reshape(dfdcl, (c.size, bf.size)),
             axis=-1,
         )
         bb = bf * dfdb
         br = bf * dfdr
-        return bc, bb, br, tt.zeros_like(los)
+        return bc, bb, br, pt.zeros_like(los)
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
