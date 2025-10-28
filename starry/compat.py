@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import warnings
 
-import numpy.distutils
 from inspect import getmro
 
 
@@ -10,6 +9,7 @@ from inspect import getmro
 # See
 #   https://stackoverflow.com/a/72326831
 try:
+    import numpy.distutils
     numpy.distutils.__config__.blas_opt_info = (
         numpy.distutils.__config__.blas_ilp64_opt_info
     )
