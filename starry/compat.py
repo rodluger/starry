@@ -21,12 +21,13 @@ import pytensor
 # TODO: Revert to tt and ts? pt and ps mark transition in a cleaner manner and more furture-proof
 import pytensor.tensor as pt
 from pytensor import sparse as ps
-from pytensor import change_flags, ifelse
+from pytensor import ifelse
 from pytensor.tensor import slinalg
 from pytensor.graph import basic, op, fg
 from pytensor.link.c import params_type
 from pytensor.scan.utils import until as scan_until
 
+change_flags = pytensor.config.change_flags
 
 __all__ = [
     "pytensor",
@@ -53,7 +54,8 @@ floatX = "float64"
 Node = basic.Node
 Apply = basic.Apply
 Op = op.Op
-COp = op.ExternalCOp
+from pytensor.link.c.op import ExternalCOp
+COp = ExternalCOp
 Params = params_type.Params
 ParamsType = params_type.ParamsType
 MissingInputError = fg.MissingInputError
