@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from .. import config
-from ..compat import theano, tt, ts, ifelse, scan_until
+from ..compat import pytensor, pt, ps, ifelse, scan_until
+# TODO: Replace when PyTensor has better interface? Need to be careful with flipped kernels
+# See https://github.com/pymc-devs/pytensor/pull/1397 and related issues/PR
+from pytensor.tensor.conv.abstract_conv import conv2d, conv2d_grad_wrt_inputs
 from .._constants import *
 from .ops import (
     sTOp,
@@ -56,7 +59,7 @@ __all__ = [
 
 
 class OpsYlm(object):
-    """Class housing Theano operations for spherical harmonics maps."""
+    """Class housing PyTensor operations for spherical harmonics maps."""
 
     def __init__(
         self,
@@ -90,13 +93,13 @@ class OpsYlm(object):
 
         # Solution vectors
         self._sT = sTOp(self._c_ops.sT, self._c_ops.N)
-        self._rT = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rT))
-        self._rTA1 = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rTA1))
+        self._rT = pt.shape_padleft(pt.as_tensor_variable(self._c_ops.rT))
+        self._rTA1 = pt.shape_padleft(pt.as_tensor_variable(self._c_ops.rTA1))
 
         # Change of basis matrices
-        self._A = ts.as_sparse_variable(self._c_ops.A)
-        self._A1 = ts.as_sparse_variable(self._c_ops.A1)
-        self._A1Inv = ts.as_sparse_variable(self._c_ops.A1Inv)
+        self._A = ps.as_sparse_variable(self._c_ops.A)
+        self._A1 = ps.as_sparse_variable(self._c_ops.A1)
+        self._A1Inv = ps.as_sparse_variable(self._c_ops.A1Inv)
 
         # Rotation operations
         self._tensordotRz = tensordotRzOp(self._c_ops.tensordotRz)
@@ -196,14 +199,14 @@ class OpsYlm(object):
         # Determine shapes
         rows = theta.shape[0]
         cols = self.rTA1.shape[1]
-        X = tt.zeros((rows, cols))
+        X = pt.zeros((rows, cols))
 
         # Compute the occultation mask
-        b = tt.sqrt(xo ** 2 + yo ** 2)
-        b_rot = tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
-        b_occ = tt.invert(b_rot)
-        i_rot = tt.arange(b.size)[b_rot]
-        i_occ = tt.arange(b.size)[b_occ]
+        b = pt.sqrt(xo ** 2 + yo ** 2)
+        b_rot = pt.ge(b, 1.0 + ro) | pt.le(zo, 0.0) | pt.eq(ro, 0.0)
+        b_occ = pt.invert(b_rot)
+        i_rot = pt.arange(b.size)[b_rot]
+        i_occ = pt.arange(b.size)[b_occ]
 
         # Compute filter operator
         if self.filter:
@@ -211,24 +214,24 @@ class OpsYlm(object):
 
         # Rotation operator
         if self.filter:
-            rTA1 = ts.dot(tt.dot(self.rT, F), self.A1)
+            rTA1 = ps.dot(pt.dot(self.rT, F), self.A1)
         else:
             rTA1 = self.rTA1
-        rTA1 = tt.tile(rTA1, (theta[i_rot].shape[0], 1))
-        X = tt.set_subtensor(
+        rTA1 = pt.tile(rTA1, (theta[i_rot].shape[0], 1))
+        X = pt.set_subtensor(
             X[i_rot], self.right_project(rTA1, inc, obl, theta[i_rot])
         )
 
         # Occultation + rotation operator
         sT = self.sT(b[i_occ], ro)
-        sTA = ts.dot(sT, self.A)
-        theta_z = tt.arctan2(xo[i_occ], yo[i_occ])
+        sTA = ps.dot(sT, self.A)
+        theta_z = pt.arctan2(xo[i_occ], yo[i_occ])
         sTAR = self.tensordotRz(sTA, theta_z)
 
         if self.filter:
-            A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
-            sTAR = tt.dot(sTAR, A1InvFA1)
-        X = tt.set_subtensor(
+            A1InvFA1 = ps.dot(ps.dot(self.A1Inv, F), self.A1)
+            sTAR = pt.dot(sTAR, A1InvFA1)
+        X = pt.set_subtensor(
             X[i_occ], self.right_project(sTAR, inc, obl, theta[i_occ])
         )
 
@@ -237,7 +240,7 @@ class OpsYlm(object):
     @autocompile
     def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f):
         """Compute the light curve."""
-        return tt.dot(self.X(theta, xo, yo, zo, ro, inc, obl, u, f), y)
+        return pt.dot(self.X(theta, xo, yo, zo, ro, inc, obl, u, f), y)
 
     @autocompile
     def P(self, lat, lon):
@@ -249,7 +252,7 @@ class OpsYlm(object):
         pT = self.pT(xpt, ypt, zpt)[:, : (self.ydeg + 1) ** 2]
 
         # Transform to the Ylm basis
-        pTA1 = ts.dot(pT, self.A1)
+        pTA1 = ps.dot(pT, self.A1)
 
         # NOTE: The factor of `pi` ensures the correct normalization.
         # This is *different* from the derivation in the paper, but it's
@@ -275,28 +278,28 @@ class OpsYlm(object):
         pT = self.pT(xpt, ypt, zpt)
 
         # Transform the map to the polynomial basis
-        A1y = ts.dot(self.A1, y)
+        A1y = ps.dot(self.A1, y)
 
         # Apply the filter
         if self.filter:
-            u0 = tt.zeros_like(u)
-            u0 = tt.set_subtensor(u0[0], -1.0)
+            u0 = pt.zeros_like(u)
+            u0 = pt.set_subtensor(u0[0], -1.0)
             A1y = ifelse(
-                ld, tt.dot(self.F(u, f), A1y), tt.dot(self.F(u0, f), A1y)
+                ld, pt.dot(self.F(u, f), A1y), pt.dot(self.F(u0, f), A1y)
             )
 
         # Dot the polynomial into the basis
-        return tt.dot(pT, A1y)
+        return pt.dot(pT, A1y)
 
     @autocompile
     def render(self, res, projection, theta, inc, obl, y, u, f):
         """Render the map on a Cartesian grid."""
         # Compute the Cartesian grid
         xyz = ifelse(
-            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+            pt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
             self.compute_rect_grid(res)[-1],
             ifelse(
-                tt.eq(projection, STARRY_MOLLWEIDE_PROJECTION),
+                pt.eq(projection, STARRY_MOLLWEIDE_PROJECTION),
                 self.compute_moll_grid(res)[-1],
                 self.compute_ortho_grid(res)[-1],
             ),
@@ -308,39 +311,39 @@ class OpsYlm(object):
         # If orthographic, rotate the map to the correct frame
         if self.nw is None:
             Ry = ifelse(
-                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                pt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
                 self.left_project(
-                    tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+                    pt.transpose(pt.tile(y, [theta.shape[0], 1])),
                     inc,
                     obl,
                     theta,
                 ),
-                tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+                pt.transpose(pt.tile(y, [theta.shape[0], 1])),
             )
         else:
             Ry = ifelse(
-                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                self.left_project(y, inc, obl, tt.tile(theta[0], self.nw)),
+                pt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                self.left_project(y, inc, obl, pt.tile(theta[0], self.nw)),
                 y,
             )
 
         # Change basis to polynomials
-        A1Ry = ts.dot(self.A1, Ry)
+        A1Ry = ps.dot(self.A1, Ry)
 
         # Apply the filter *only if orthographic*
         if self.filter:
-            f0 = tt.zeros_like(f)
-            f0 = tt.set_subtensor(f0[0], np.pi)
-            u0 = tt.zeros_like(u)
-            u0 = tt.set_subtensor(u0[0], -1.0)
+            f0 = pt.zeros_like(f)
+            f0 = pt.set_subtensor(f0[0], np.pi)
+            u0 = pt.zeros_like(u)
+            u0 = pt.set_subtensor(u0[0], -1.0)
             A1Ry = ifelse(
-                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                tt.dot(self.F(u, f), A1Ry),
-                tt.dot(self.F(u0, f0), A1Ry),
+                pt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                pt.dot(self.F(u, f), A1Ry),
+                pt.dot(self.F(u0, f0), A1Ry),
             )
 
         # Dot the polynomial into the basis
-        res = tt.reshape(tt.dot(pT, A1Ry), [res, res, -1])
+        res = pt.reshape(pt.dot(pT, A1Ry), [res, res, -1])
 
         # We need the shape to be (nframes, npix, npix)
         return res.dimshuffle(2, 0, 1)
@@ -353,77 +356,77 @@ class OpsYlm(object):
     @autocompile
     def compute_ortho_grid(self, res):
         """Compute the polynomial basis on the plane of the sky."""
-        # NOTE: I think there's a bug in Theano related to
-        # tt.mgrid; I get different results depending on whether the
-        # function is compiled using `theano.function()` or if it
+        # NOTE: I think there's a bug in PyTensor related to
+        # pt.mgrid; I get different results depending on whether the
+        # function is compiled using `pytensor.function()` or if it
         # is evaluated using `.eval()`. The small perturbation to `res`
         # is a hacky fix that ensures that `y` and `x` are of the
         # correct length in all cases I've tested.
         dx = 2.0 / (res - 0.01)
-        y, x = tt.mgrid[-1:1:dx, -1:1:dx]
-        z = tt.sqrt(1 - x ** 2 - y ** 2)
-        y = tt.set_subtensor(y[tt.isnan(z)], np.nan)
-        x = tt.reshape(x, [1, -1])
-        y = tt.reshape(y, [1, -1])
-        z = tt.reshape(z, [1, -1])
-        lat = tt.reshape(0.5 * np.pi - tt.arccos(y), [1, -1])
-        lon = tt.reshape(tt.arctan(x / z), [1, -1])
-        return tt.concatenate((lat, lon)), tt.concatenate((x, y, z))
+        y, x = pt.mgrid[-1:1:dx, -1:1:dx]
+        z = pt.sqrt(1 - x ** 2 - y ** 2)
+        y = pt.set_subtensor(y[pt.isnan(z)], np.nan)
+        x = pt.reshape(x, [1, -1])
+        y = pt.reshape(y, [1, -1])
+        z = pt.reshape(z, [1, -1])
+        lat = pt.reshape(0.5 * np.pi - pt.arccos(y), [1, -1])
+        lon = pt.reshape(pt.arctan(x / z), [1, -1])
+        return pt.concatenate((lat, lon)), pt.concatenate((x, y, z))
 
     @autocompile
     def compute_ortho_grid_inc_obl(self, res, inc, obl):
         """Compute the polynomial basis on the plane of the sky, accounting
         for the map inclination and obliquity."""
-        # See NOTE on tt.mgrid bug in `compute_ortho_grid`
+        # See NOTE on pt.mgrid bug in `compute_ortho_grid`
         dx = 2.0 / (res - 0.01)
-        y, x = tt.mgrid[-1:1:dx, -1:1:dx]
-        z = tt.sqrt(1 - x ** 2 - y ** 2)
-        y = tt.set_subtensor(y[tt.isnan(z)], np.nan)
-        x = tt.reshape(x, [1, -1])
-        y = tt.reshape(y, [1, -1])
-        z = tt.reshape(z, [1, -1])
-        Robl = self.RAxisAngle(tt.as_tensor_variable([0.0, 0.0, 1.0]), -obl)
+        y, x = pt.mgrid[-1:1:dx, -1:1:dx]
+        z = pt.sqrt(1 - x ** 2 - y ** 2)
+        y = pt.set_subtensor(y[pt.isnan(z)], np.nan)
+        x = pt.reshape(x, [1, -1])
+        y = pt.reshape(y, [1, -1])
+        z = pt.reshape(z, [1, -1])
+        Robl = self.RAxisAngle(pt.as_tensor_variable([0.0, 0.0, 1.0]), -obl)
         Rinc = self.RAxisAngle(
-            tt.as_tensor_variable([tt.cos(obl), tt.sin(obl), 0.0]),
+            pt.as_tensor_variable([pt.cos(obl), pt.sin(obl), 0.0]),
             -(0.5 * np.pi - inc),
         )
-        R = tt.dot(Robl, Rinc)
-        xyz = tt.dot(R, tt.concatenate((x, y, z)))
-        x = tt.reshape(xyz[0], [1, -1])
-        y = tt.reshape(xyz[1], [1, -1])
-        z = tt.reshape(xyz[2], [1, -1])
-        lat = tt.reshape(0.5 * np.pi - tt.arccos(y), [1, -1])
-        lon = tt.reshape(tt.arctan2(x, z), [1, -1])
-        return tt.concatenate((lat, lon)), tt.concatenate((x, y, z))
+        R = pt.dot(Robl, Rinc)
+        xyz = pt.dot(R, pt.concatenate((x, y, z)))
+        x = pt.reshape(xyz[0], [1, -1])
+        y = pt.reshape(xyz[1], [1, -1])
+        z = pt.reshape(xyz[2], [1, -1])
+        lat = pt.reshape(0.5 * np.pi - pt.arccos(y), [1, -1])
+        lon = pt.reshape(pt.arctan2(x, z), [1, -1])
+        return pt.concatenate((lat, lon)), pt.concatenate((x, y, z))
 
     @autocompile
     def compute_rect_grid(self, res):
         """Compute the polynomial basis on a rectangular lat/lon grid."""
-        # See NOTE on tt.mgrid bug in `compute_ortho_grid`
+        # See NOTE on pt.mgrid bug in `compute_ortho_grid`
         dx = np.pi / (res - 0.01)
-        lat, lon = tt.mgrid[
+        lat, lon = pt.mgrid[
             -np.pi / 2 : np.pi / 2 : dx, -3 * np.pi / 2 : np.pi / 2 : 2 * dx
         ]
-        x = tt.reshape(tt.cos(lat) * tt.cos(lon), [1, -1])
-        y = tt.reshape(tt.cos(lat) * tt.sin(lon), [1, -1])
-        z = tt.reshape(tt.sin(lat), [1, -1])
-        R = self.RAxisAngle(tt.as_tensor_variable([1.0, 0.0, 0.0]), -np.pi / 2)
+        x = pt.reshape(pt.cos(lat) * pt.cos(lon), [1, -1])
+        y = pt.reshape(pt.cos(lat) * pt.sin(lon), [1, -1])
+        z = pt.reshape(pt.sin(lat), [1, -1])
+        R = self.RAxisAngle(pt.as_tensor_variable([1.0, 0.0, 0.0]), -np.pi / 2)
         return (
-            tt.concatenate(
+            pt.concatenate(
                 (
-                    tt.reshape(lat, [1, -1]),
-                    tt.reshape(lon + 0.5 * np.pi, [1, -1]),
+                    pt.reshape(lat, [1, -1]),
+                    pt.reshape(lon + 0.5 * np.pi, [1, -1]),
                 )
             ),
-            tt.dot(R, tt.concatenate((x, y, z))),
+            pt.dot(R, pt.concatenate((x, y, z))),
         )
 
     @autocompile
     def compute_moll_grid(self, res):
         """Compute the polynomial basis on a Mollweide grid."""
-        # See NOTE on tt.mgrid bug in `compute_ortho_grid`
+        # See NOTE on pt.mgrid bug in `compute_ortho_grid`
         dx = 2 * np.sqrt(2) / (res - 0.01)
-        y, x = tt.mgrid[
+        y, x = pt.mgrid[
             -np.sqrt(2) : np.sqrt(2) : dx,
             -2 * np.sqrt(2) : 2 * np.sqrt(2) : 2 * dx,
         ]
@@ -431,27 +434,27 @@ class OpsYlm(object):
         # Make points off-grid nan
         a = np.sqrt(2)
         b = 2 * np.sqrt(2)
-        y = tt.where((y / a) ** 2 + (x / b) ** 2 <= 1, y, np.nan)
+        y = pt.where((y / a) ** 2 + (x / b) ** 2 <= 1, y, np.nan)
 
         # https://en.wikipedia.org/wiki/Mollweide_projection
-        theta = tt.arcsin(y / np.sqrt(2))
-        lat = tt.arcsin((2 * theta + tt.sin(2 * theta)) / np.pi)
+        theta = pt.arcsin(y / np.sqrt(2))
+        lat = pt.arcsin((2 * theta + pt.sin(2 * theta)) / np.pi)
         lon0 = 3 * np.pi / 2
-        lon = lon0 + np.pi * x / (2 * np.sqrt(2) * tt.cos(theta))
+        lon = lon0 + np.pi * x / (2 * np.sqrt(2) * pt.cos(theta))
 
         # Back to Cartesian, this time on the *sky*
-        x = tt.reshape(tt.cos(lat) * tt.cos(lon), [1, -1])
-        y = tt.reshape(tt.cos(lat) * tt.sin(lon), [1, -1])
-        z = tt.reshape(tt.sin(lat), [1, -1])
-        R = self.RAxisAngle(tt.as_tensor_variable([1.0, 0.0, 0.0]), -np.pi / 2)
+        x = pt.reshape(pt.cos(lat) * pt.cos(lon), [1, -1])
+        y = pt.reshape(pt.cos(lat) * pt.sin(lon), [1, -1])
+        z = pt.reshape(pt.sin(lat), [1, -1])
+        R = self.RAxisAngle(pt.as_tensor_variable([1.0, 0.0, 0.0]), -np.pi / 2)
         return (
-            tt.concatenate(
+            pt.concatenate(
                 (
-                    tt.reshape(lat, (1, -1)),
-                    tt.reshape(lon - 1.5 * np.pi, (1, -1)),
+                    pt.reshape(lat, (1, -1)),
+                    pt.reshape(lon - 1.5 * np.pi, (1, -1)),
                 )
             ),
-            tt.dot(R, tt.concatenate((x, y, z))),
+            pt.dot(R, pt.concatenate((x, y, z))),
         )
 
     @autocompile
@@ -469,8 +472,8 @@ class OpsYlm(object):
             self.dotR(
                 self.dotR(
                     M,
-                    -tt.cos(obl),
-                    -tt.sin(obl),
+                    -pt.cos(obl),
+                    -pt.sin(obl),
                     math.to_tensor(0.0),
                     -(0.5 * np.pi - inc),
                 ),
@@ -520,7 +523,7 @@ class OpsYlm(object):
 
         """
         # Note that here we are using the fact that R . M = (M^T . R^T)^T
-        MT = tt.transpose(M)
+        MT = pt.transpose(M)
 
         # Rotate to the polar frame
         MT = self.dotR(
@@ -559,38 +562,38 @@ class OpsYlm(object):
                 math.to_tensor(1.0),
                 -obl,
             ),
-            -tt.cos(obl),
-            -tt.sin(obl),
+            -pt.cos(obl),
+            -pt.sin(obl),
             math.to_tensor(0.0),
             (0.5 * np.pi - inc),
         )
 
-        return tt.transpose(MT)
+        return pt.transpose(MT)
 
     @autocompile
     def set_vector(self, vector, i, vals):
-        """Set the elements of the theano vector."""
-        i = tt.cast(i, "int16")
-        res = tt.set_subtensor(vector[i], vals * tt.ones_like(vector[i]))
+        """Set the elements of the pytensor vector."""
+        i = pt.cast(i, "int16")
+        res = pt.set_subtensor(vector[i], vals * pt.ones_like(vector[i]))
         return res
 
     @autocompile
     def set_matrix(self, matrix, i, j, vals):
-        """Set the elements of the theano matrix."""
+        """Set the elements of the pytensor matrix."""
         # TODO: Implement this Op if necessary.
         # The current method *may* still be a bit buggy.
         # return setMatrixOp()(matrix, i, j, vals)
-        i = tt.as_tensor_variable(i)
-        j = tt.as_tensor_variable(j)
-        i = tt.cast(tt.addbroadcast(i, 1), "int16")
-        j = tt.cast(tt.addbroadcast(j, 0), "int16")
+        i = pt.as_tensor_variable(i)
+        j = pt.as_tensor_variable(j)
+        i = pt.cast(pt.specify_broadcastable(i, 1), "int16")
+        j = pt.cast(pt.specify_broadcastable(j, 0), "int16")
         if vals.ndim == 0:
-            res = tt.set_subtensor(
-                matrix[i, j], vals * tt.ones_like(matrix[i, j])
+            res = pt.set_subtensor(
+                matrix[i, j], vals * pt.ones_like(matrix[i, j])
             )
         else:
-            res = tt.set_subtensor(
-                matrix[i, j], tt.reshape(vals, tt.shape(matrix[i, j]))
+            res = pt.set_subtensor(
+                matrix[i, j], pt.reshape(vals, pt.shape(matrix[i, j]))
             )
         return res
 
@@ -598,13 +601,13 @@ class OpsYlm(object):
     def latlon_to_xyz(self, lat, lon):
         """Convert lat-lon points to Cartesian points."""
         if lat.ndim == 0:
-            lat = tt.shape_padleft(lat, 1)
+            lat = pt.shape_padleft(lat, 1)
         if lon.ndim == 0:
-            lon = tt.shape_padleft(lon, 1)
+            lon = pt.shape_padleft(lon, 1)
         R1 = self.RAxisAngle([1.0, 0.0, 0.0], -lat)
         R2 = self.RAxisAngle([0.0, 1.0, 0.0], lon)
-        R = tt.batched_dot(R2, R1)
-        xyz = tt.transpose(tt.dot(R, [0.0, 0.0, 1.0]))
+        R = pt.batched_dot(R2, R1)
+        xyz = pt.transpose(pt.dot(R, [0.0, 0.0, 1.0]))
         return xyz[0], xyz[1], xyz[2]
 
     @autocompile
@@ -612,13 +615,13 @@ class OpsYlm(object):
         """Wigner axis-angle rotation matrix."""
 
         def compute(axis=[0, 1, 0], theta=0):
-            axis = tt.as_tensor_variable(axis)
+            axis = pt.as_tensor_variable(axis)
             axis /= axis.norm(2)
-            cost = tt.cos(theta)
-            sint = tt.sin(theta)
+            cost = pt.cos(theta)
+            sint = pt.sin(theta)
 
-            return tt.reshape(
-                tt.as_tensor_variable(
+            return pt.reshape(
+                pt.as_tensor_variable(
                     [
                         cost + axis[0] * axis[0] * (1 - cost),
                         axis[0] * axis[1] * (1 - cost) - axis[2] * sint,
@@ -637,7 +640,7 @@ class OpsYlm(object):
         # If theta is a vector, this is a tensor!
         if hasattr(theta, "ndim") and theta.ndim > 0:
             fn = lambda theta, axis: compute(axis=axis, theta=theta)
-            R, _ = theano.scan(fn=fn, sequences=[theta], non_sequences=[axis])
+            R, _ = pytensor.scan(fn=fn, sequences=[theta], non_sequences=[axis])
             return R
         else:
             return compute(axis=axis, theta=theta)
@@ -696,9 +699,9 @@ class OpsYlm(object):
 
         # Compute unit-intensity spot at (0, 0)
         z = self._spot_fac * (self._spot_theta - radius)
-        b = 1.0 / (1.0 + tt.exp(-z)) - 1.0
-        yT = tt.zeros((1, self.Ny))
-        yT = tt.set_subtensor(yT[:, self._spot_idx], tt.dot(self._spot_Bp, b))
+        b = 1.0 / (1.0 + pt.exp(-z)) - 1.0
+        yT = pt.zeros((1, self.Ny))
+        yT = pt.set_subtensor(yT[:, self._spot_idx], pt.dot(self._spot_Bp, b))
 
         # Rotate in latitude then in longitude
         yT = self.dotR(yT, np.array(1.0), np.array(0.0), np.array(0.0), lat)
@@ -708,13 +711,13 @@ class OpsYlm(object):
         if self.nw is None:
             y = yT.reshape((-1,)) * contrast
         else:
-            y = yT.reshape((-1, 1)) * tt.reshape(contrast, (1, -1))
+            y = yT.reshape((-1, 1)) * pt.reshape(contrast, (1, -1))
 
         return y
 
 
 class OpsLD(object):
-    """Class housing Theano operations for limb-darkened maps."""
+    """Class housing PyTensor operations for limb-darkened maps."""
 
     def __init__(self, ydeg, udeg, fdeg, nw, **kwargs):
         # Sanity checks
@@ -738,24 +741,24 @@ class OpsLD(object):
     def intensity(self, mu, u):
         """Compute the intensity at a set of points."""
         if self.udeg == 0:
-            mu_f = tt.reshape(mu, (-1,))
-            intensity = tt.ones_like(mu_f)
-            intensity = tt.set_subtensor(intensity[tt.isnan(mu_f)], np.nan)
+            mu_f = pt.reshape(mu, (-1,))
+            intensity = pt.ones_like(mu_f)
+            intensity = pt.set_subtensor(intensity[pt.isnan(mu_f)], np.nan)
             return intensity
         else:
-            basis = tt.reshape(1.0 - mu, (-1, 1)) ** np.arange(self.udeg + 1)
-            return -tt.dot(basis, u)
+            basis = pt.reshape(1.0 - mu, (-1, 1)) ** np.arange(self.udeg + 1)
+            return -pt.dot(basis, u)
 
     @autocompile
     def flux(self, xo, yo, zo, ro, u):
         """Compute the light curve."""
         # Initialize flat light curve
-        flux = tt.ones_like(xo)
+        flux = pt.ones_like(xo)
 
         # Compute the occultation mask
-        b = tt.sqrt(xo ** 2 + yo ** 2)
-        b_occ = tt.invert(tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0))
-        i_occ = tt.arange(b.size)[b_occ]
+        b = pt.sqrt(xo ** 2 + yo ** 2)
+        b_occ = pt.invert(pt.ge(b, 1.0 + ro) | pt.le(zo, 0.0) | pt.eq(ro, 0.0))
+        i_occ = pt.arange(b.size)[b_occ]
 
         # Get the Agol `c` coefficients
         c = self._get_cl(u)
@@ -766,8 +769,8 @@ class OpsLD(object):
 
         # Compute the occultation flux
         los = zo[i_occ]
-        r = ro * tt.ones_like(los)
-        flux = tt.set_subtensor(
+        r = ro * pt.ones_like(los)
+        flux = pt.set_subtensor(
             flux[i_occ], self._limbdark(c_norm, b[i_occ], r, los)[0]
         )
         return flux
@@ -782,15 +785,15 @@ class OpsLD(object):
 
         """
         flux = self.flux(xo, yo, zo, ro, u)
-        X = tt.reshape(flux, (-1, 1))
+        X = pt.reshape(flux, (-1, 1))
         return X
 
     @autocompile
     def render(self, res, projection, theta, inc, obl, y, u, f):
         """Render the map on a Cartesian grid."""
-        nframes = tt.shape(theta)[0]
+        nframes = pt.shape(theta)[0]
         image = self.render_ld(res, u)
-        return tt.tile(image, (nframes, 1, 1))
+        return pt.tile(image, (nframes, 1, 1))
 
     @autocompile
     def render_ld(self, res, u):
@@ -800,45 +803,45 @@ class OpsLD(object):
         compatibility with the `System` class. This method is a
         convenience method for use in the `Map` class.
         """
-        # See NOTE on tt.mgrid bug in `compute_ortho_grid`
+        # See NOTE on pt.mgrid bug in `compute_ortho_grid`
         dx = 2.0 / (res - 0.01)
-        y, x = tt.mgrid[-1:1:dx, -1:1:dx]
+        y, x = pt.mgrid[-1:1:dx, -1:1:dx]
 
-        x = tt.reshape(x, [1, -1])
-        y = tt.reshape(y, [1, -1])
-        mu = tt.sqrt(1 - x ** 2 - y ** 2)
+        x = pt.reshape(x, [1, -1])
+        y = pt.reshape(y, [1, -1])
+        mu = pt.sqrt(1 - x ** 2 - y ** 2)
 
         # Compute the intensity
         intensity = self.intensity(mu, u)
 
         # We need the shape to be (nframes, npix, npix)
-        return tt.reshape(intensity, (1, res, res))
+        return pt.reshape(intensity, (1, res, res))
 
     @autocompile
     def set_vector(self, vector, inds, vals):
-        """Set the elements of the theano map coefficient tensor."""
-        res = tt.set_subtensor(vector[inds], vals * tt.ones_like(vector[inds]))
+        """Set the elements of the PyTensor map coefficient tensor."""
+        res = pt.set_subtensor(vector[inds], vals * pt.ones_like(vector[inds]))
         return res
 
 
 class OpsRV(OpsYlm):
-    """Class housing Theano operations for radial velocity maps."""
+    """Class housing PyTensor operations for radial velocity maps."""
 
     @autocompile
     def compute_rv_filter(self, inc, obl, veq, alpha):
         """Compute the radial velocity field Ylm multiplicative filter."""
         # Define some angular quantities
-        cosi = tt.cos(inc)
-        sini = tt.sin(inc)
-        cosl = tt.cos(obl)
-        sinl = tt.sin(obl)
+        cosi = pt.cos(inc)
+        sini = pt.sin(inc)
+        cosl = pt.cos(obl)
+        sinl = pt.sin(obl)
         A = sini * cosl
         B = sini * sinl
         C = cosi
 
         # Compute the Ylm expansion of the RV field
         return (
-            tt.reshape(
+            pt.reshape(
                 [
                     0,
                     veq
@@ -894,24 +897,24 @@ class OpsRV(OpsYlm):
         Iv = self.flux(theta, xo, yo, zo, ro, inc, obl, y, u, f)
 
         # Compute the inverse of the intensity
-        f0 = tt.zeros_like(f)
-        f0 = tt.set_subtensor(f0[0], np.pi)
+        f0 = pt.zeros_like(f)
+        f0 = pt.set_subtensor(f0[0], np.pi)
         I = self.flux(theta, xo, yo, zo, ro, inc, obl, y, u, f0)
-        invI = tt.ones((1,)) / I
-        invI = tt.where(tt.isinf(invI), 0.0, invI)
+        invI = pt.ones((1,)) / I
+        invI = pt.where(pt.isinf(invI), 0.0, invI)
 
         # The RV signal is just the product
         return Iv * invI
 
 
 class OpsReflected(OpsYlm):
-    """Class housing Theano operations for reflected light maps."""
+    """Class housing PyTensor operations for reflected light maps."""
 
     def __init__(self, *args, **kwargs):
         super(OpsReflected, self).__init__(*args, reflected=True, **kwargs)
         self._rT = rTReflectedOp(self._c_ops.rTReflected, self._c_ops.N)
         self._sT = sTReflectedOp(self._c_ops.sTReflected, self._c_ops.N)
-        self._A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
+        self._A1Big = ps.as_sparse_variable(self._c_ops.A1Big)
 
         # Compute grid on unit disk with ~source_npts points
         source_npts = kwargs.get("source_npts", 1)
@@ -932,9 +935,9 @@ class OpsReflected(OpsYlm):
 
         # NOTE: dz is *negative*, since the source is actually
         # *closer* to the body than in the point approximation
-        self.source_dx = tt.as_tensor_variable(self.source_dx)
-        self.source_dy = tt.as_tensor_variable(self.source_dy)
-        self.source_dz = tt.as_tensor_variable(-self.source_dz)
+        self.source_dx = pt.as_tensor_variable(self.source_dx)
+        self.source_dy = pt.as_tensor_variable(self.source_dy)
+        self.source_dz = pt.as_tensor_variable(-self.source_dz)
 
         # Oren-Nayar (1994) intensity profile (for rendering)
         self._OrenNayar = OrenNayarOp(self._c_ops.OrenNayarPolynomial)
@@ -978,32 +981,32 @@ class OpsReflected(OpsYlm):
         pT = self.pT(xpt, ypt, zpt)
 
         # Transform the map to the polynomial basis
-        A1y = ts.dot(self.A1, y)
+        A1y = ps.dot(self.A1, y)
 
         # Apply the filter
         if self.filter:
-            u0 = tt.zeros_like(u)
-            u0 = tt.set_subtensor(u0[0], -1.0)
+            u0 = pt.zeros_like(u)
+            u0 = pt.set_subtensor(u0[0], -1.0)
             A1y = ifelse(
-                ld, tt.dot(self.F(u, f), A1y), tt.dot(self.F(u0, f), A1y)
+                ld, pt.dot(self.F(u, f), A1y), pt.dot(self.F(u0, f), A1y)
             )
 
         # Dot the polynomial into the basis
-        intensity = tt.shape_padright(tt.dot(pT, A1y))
+        intensity = pt.shape_padright(pt.dot(pT, A1y))
 
         # Weight the intensity by the illumination
-        xyz = tt.concatenate(
+        xyz = pt.concatenate(
             (
-                tt.reshape(xpt, [1, -1]),
-                tt.reshape(ypt, [1, -1]),
-                tt.reshape(zpt, [1, -1]),
+                pt.reshape(xpt, [1, -1]),
+                pt.reshape(ypt, [1, -1]),
+                pt.reshape(zpt, [1, -1]),
             )
         )
         I = self.compute_illumination(xyz, xs, ys, zs, Rs, sigr, on94_exact)
 
         # Add an extra dimension for the wavelength
         if self.nw is not None:
-            I = tt.shape_padaxis(I, 1)
+            I = pt.shape_padaxis(I, 1)
 
         # Weight the image by the illumination
         # NOTE: The factor of `pi` ensures the correct normalization.
@@ -1014,11 +1017,11 @@ class OpsReflected(OpsYlm):
         # This is useful for thermal light maps, where the flux from a map
         # with Y_{0,0} = 1 is *unity*. But it messes up things for reflected
         # light maps, so we need to account for that here.
-        intensity = tt.switch(
-            tt.isnan(intensity),
+        intensity = pt.switch(
+            pt.isnan(intensity),
             intensity,
             ifelse(
-                illuminate, intensity * I, np.pi * intensity * tt.ones_like(I)
+                illuminate, intensity * I, np.pi * intensity * pt.ones_like(I)
             ),
         )
 
@@ -1038,14 +1041,14 @@ class OpsReflected(OpsYlm):
         pT = self.pT(xpt, ypt, zpt)
 
         # Transform the map to the polynomial basis
-        A1y = ts.dot(self.A1, y)
+        A1y = ps.dot(self.A1, y)
 
         # Apply the filter
         if self.filter:
-            u0 = tt.zeros_like(u)
-            u0 = tt.set_subtensor(u0[0], -1.0)
+            u0 = pt.zeros_like(u)
+            u0 = pt.set_subtensor(u0[0], -1.0)
             A1y = ifelse(
-                ld, tt.dot(self.F(u, f), A1y), tt.dot(self.F(u0, f), A1y)
+                ld, pt.dot(self.F(u, f), A1y), pt.dot(self.F(u0, f), A1y)
             )
 
         # Dot the polynomial into the basis.
@@ -1057,7 +1060,7 @@ class OpsReflected(OpsYlm):
         # This is useful for thermal light maps, where the flux from a map
         # with Y_{0,0} = 1 is *unity*. But it messes up things for reflected
         # light maps, so we need to account for that here.
-        return np.pi * tt.dot(pT, A1y)
+        return np.pi * pt.dot(pT, A1y)
 
     @autocompile
     def X_point_source(
@@ -1067,14 +1070,14 @@ class OpsReflected(OpsYlm):
         # Determine shapes
         rows = theta.shape[0]
         cols = (self.ydeg + 1) ** 2
-        X = tt.zeros((rows, cols))
+        X = pt.zeros((rows, cols))
 
         # Compute the occultation mask
-        bo = tt.sqrt(xo ** 2 + yo ** 2)
-        b_rot = tt.ge(bo, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
-        b_occ = tt.invert(b_rot)
-        i_rot = tt.arange(bo.size)[b_rot]
-        i_occ = tt.arange(bo.size)[b_occ]
+        bo = pt.sqrt(xo ** 2 + yo ** 2)
+        b_rot = pt.ge(bo, 1.0 + ro) | pt.le(zo, 0.0) | pt.eq(ro, 0.0)
+        b_occ = pt.invert(b_rot)
+        i_rot = pt.arange(bo.size)[b_rot]
+        i_occ = pt.arange(bo.size)[b_occ]
 
         # Compute filter operator
         if self.filter:
@@ -1082,30 +1085,30 @@ class OpsReflected(OpsYlm):
 
         # Terminator
         r2 = xs ** 2 + ys ** 2 + zs ** 2
-        b_term = -zs / tt.sqrt(r2)
-        theta_term = tt.arctan2(xo, yo) - tt.arctan2(xs, ys)
+        b_term = -zs / pt.sqrt(r2)
+        theta_term = pt.arctan2(xo, yo) - pt.arctan2(xs, ys)
 
         # Rotation operator
         rT = self.rT(b_term[i_rot], sigr)
         if self.filter:
-            rTA1 = ts.dot(tt.dot(rT, F), self.A1)
+            rTA1 = ps.dot(pt.dot(rT, F), self.A1)
         else:
-            rTA1 = ts.dot(rT, self.A1)
-        theta_z = tt.arctan2(xs[i_rot], ys[i_rot])
+            rTA1 = ps.dot(rT, self.A1)
+        theta_z = pt.arctan2(xs[i_rot], ys[i_rot])
         rTA1Rz = self.tensordotRz(rTA1, theta_z)
-        X = tt.set_subtensor(
+        X = pt.set_subtensor(
             X[i_rot], self.right_project(rTA1Rz, inc, obl, theta[i_rot])
         )
 
         # Occultation + rotation operator
         sT = self.sT(b_term[i_occ], theta_term[i_occ], bo[i_occ], ro, sigr)
-        sTA = ts.dot(sT, self.A)
-        theta_z = tt.arctan2(xo[i_occ], yo[i_occ])
+        sTA = ps.dot(sT, self.A)
+        theta_z = pt.arctan2(xo[i_occ], yo[i_occ])
         sTAR = self.tensordotRz(sTA, theta_z)
         if self.filter:
-            A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
-            sTAR = tt.dot(sTAR, A1InvFA1)
-        X = tt.set_subtensor(
+            A1InvFA1 = ps.dot(ps.dot(self.A1Inv, F), self.A1)
+            sTAR = pt.dot(sTAR, A1InvFA1)
+        X = pt.set_subtensor(
             X[i_occ], self.right_project(sTAR, inc, obl, theta[i_occ])
         )
 
@@ -1113,7 +1116,7 @@ class OpsReflected(OpsYlm):
         # NOTE: In the paper, we divide by `pi` at this step. But the way
         # we coded things up, starry maps are already implicitly pi-normalized
         # (via the change-of-basis matrix A1), so we don't need to do that here.
-        X /= tt.shape_padright(r2)
+        X /= pt.shape_padright(r2)
 
         # We're done
         return X
@@ -1133,24 +1136,24 @@ class OpsReflected(OpsYlm):
             # The effective size of the star as seen by the planet
             # is smaller. Only include points
             # that fall on this smaller disk.
-            rs = tt.sqrt(xs ** 2 + ys ** 2 + zs ** 2)
-            Reff = Rs * tt.sqrt(1 - ((Rs - 1) / rs) ** 2)
-            dx = tt.shape_padright(Reff) * self.source_dx
-            dy = tt.shape_padright(Reff) * self.source_dy
+            rs = pt.sqrt(xs ** 2 + ys ** 2 + zs ** 2)
+            Reff = Rs * pt.sqrt(1 - ((Rs - 1) / rs) ** 2)
+            dx = pt.shape_padright(Reff) * self.source_dx
+            dy = pt.shape_padright(Reff) * self.source_dy
             # Note that the star is *closer* to the planet, hence the - sign
-            dz = -tt.sqrt(Rs ** 2 - dx ** 2 - dy ** 2)
+            dz = -pt.sqrt(Rs ** 2 - dx ** 2 - dy ** 2)
 
             # Compute the illumination for each point on the source disk
             X = self.X_point_source(
-                tt.reshape(
-                    tt.shape_padright(theta) + tt.zeros_like(dx), (-1,)
+                pt.reshape(
+                    pt.shape_padright(theta) + pt.zeros_like(dx), (-1,)
                 ),
-                tt.reshape(tt.shape_padright(xs) + dx, (-1,)),
-                tt.reshape(tt.shape_padright(ys) + dy, (-1,)),
-                tt.reshape(tt.shape_padright(zs) + dz, (-1,)),
-                tt.reshape(tt.shape_padright(xo) + tt.zeros_like(dx), (-1,)),
-                tt.reshape(tt.shape_padright(yo) + tt.zeros_like(dx), (-1,)),
-                tt.reshape(tt.shape_padright(zo) + tt.zeros_like(dx), (-1,)),
+                pt.reshape(pt.shape_padright(xs) + dx, (-1,)),
+                pt.reshape(pt.shape_padright(ys) + dy, (-1,)),
+                pt.reshape(pt.shape_padright(zs) + dz, (-1,)),
+                pt.reshape(pt.shape_padright(xo) + pt.zeros_like(dx), (-1,)),
+                pt.reshape(pt.shape_padright(yo) + pt.zeros_like(dx), (-1,)),
+                pt.reshape(pt.shape_padright(zo) + pt.zeros_like(dx), (-1,)),
                 ro,
                 inc,
                 obl,
@@ -1158,29 +1161,29 @@ class OpsReflected(OpsYlm):
                 f,
                 sigr,
             )
-            X = tt.reshape(X, (X.shape[0], -1))
+            X = pt.reshape(X, (X.shape[0], -1))
 
             # Point source approximation
             X0 = self.X_point_source(
                 theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, sigr
             )
-            X0 = tt.reshape(X0, (X0.shape[0], -1))
+            X0 = pt.reshape(X0, (X0.shape[0], -1))
 
             # Average over each profile if Rs != 0
             return ifelse(
                 Rs > 0,
                 ifelse(
-                    tt.shape(theta)[0] > 0,
+                    pt.shape(theta)[0] > 0,
                     (
-                        tt.sum(
-                            tt.reshape(
-                                X, (tt.shape(theta)[0], self.source_npts, -1)
+                        pt.sum(
+                            pt.reshape(
+                                X, (pt.shape(theta)[0], self.source_npts, -1)
                             ),
                             axis=1,
                         )
                         / self.source_npts
                     ),
-                    tt.zeros_like(X),
+                    pt.zeros_like(X),
                 ),
                 X0,
             )
@@ -1190,7 +1193,7 @@ class OpsReflected(OpsYlm):
         self, theta, xs, ys, zs, Rs, xo, yo, zo, ro, inc, obl, y, u, f, sigr
     ):
         """Compute the reflected light curve."""
-        return tt.dot(
+        return pt.dot(
             self.X(
                 theta, xs, ys, zs, Rs, xo, yo, zo, ro, inc, obl, u, f, sigr
             ),
@@ -1202,7 +1205,7 @@ class OpsReflected(OpsYlm):
         self, theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, y, u, f, sigr
     ):
         """Compute the reflected light curve for a point source."""
-        return tt.dot(
+        return pt.dot(
             self.X_point_source(
                 theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, sigr
             ),
@@ -1231,10 +1234,10 @@ class OpsReflected(OpsYlm):
         """Render the map on a Cartesian grid."""
         # Compute the Cartesian grid
         xyz = ifelse(
-            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+            pt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
             self.compute_rect_grid(res)[-1],
             ifelse(
-                tt.eq(projection, STARRY_MOLLWEIDE_PROJECTION),
+                pt.eq(projection, STARRY_MOLLWEIDE_PROJECTION),
                 self.compute_moll_grid(res)[-1],
                 self.compute_ortho_grid(res)[-1],
             ),
@@ -1243,46 +1246,46 @@ class OpsReflected(OpsYlm):
         # If orthographic, rotate the map to the correct frame
         if self.nw is None:
             Ry = ifelse(
-                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                pt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
                 self.left_project(
-                    tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+                    pt.transpose(pt.tile(y, [theta.shape[0], 1])),
                     inc,
                     obl,
                     theta,
                 ),
-                tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+                pt.transpose(pt.tile(y, [theta.shape[0], 1])),
             )
         else:
             Ry = ifelse(
-                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                self.left_project(y, inc, obl, tt.tile(theta[0], self.nw)),
+                pt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                self.left_project(y, inc, obl, pt.tile(theta[0], self.nw)),
                 y,
             )
 
         # Transform to polynomials
-        A1Ry = ts.dot(self.A1, Ry)
+        A1Ry = ps.dot(self.A1, Ry)
 
         # Apply the filter *only if orthographic*
-        f0 = tt.zeros_like(f)
-        f0 = tt.set_subtensor(f0[0], np.pi)
-        u0 = tt.zeros_like(u)
-        u0 = tt.set_subtensor(u0[0], -1.0)
+        f0 = pt.zeros_like(f)
+        f0 = pt.set_subtensor(f0[0], np.pi)
+        u0 = pt.zeros_like(u)
+        u0 = pt.set_subtensor(u0[0], -1.0)
         A1Ry = ifelse(
-            tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-            tt.dot(self.F(u, f), A1Ry),
-            tt.dot(self.F(u0, f0), A1Ry),
+            pt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+            pt.dot(self.F(u, f), A1Ry),
+            pt.dot(self.F(u0, f0), A1Ry),
         )
 
         # Dot the polynomial into the basis
         pT = self.pT(xyz[0], xyz[1], xyz[2])
-        image = tt.dot(pT, A1Ry)
+        image = pt.dot(pT, A1Ry)
 
         # Compute the illumination profile
         I = self.compute_illumination(xyz, xs, ys, zs, Rs, sigr, on94_exact)
 
         # Add an extra dimension for the wavelength
         if self.nw is not None:
-            I = tt.repeat(I, self.nw, 1)
+            I = pt.repeat(I, self.nw, 1)
 
         # Weight the image by the illumination
         # NOTE: The factor of `pi` ensures the correct normalization.
@@ -1295,12 +1298,12 @@ class OpsReflected(OpsYlm):
         # light maps, so we need to account for that here.
         image = ifelse(
             illuminate,
-            tt.switch(tt.isnan(image), image, image * I),
+            pt.switch(pt.isnan(image), image, image * I),
             np.pi * image,
         )
 
         # We need the shape to be (nframes, npix, npix)
-        return tt.reshape(image, [res, res, -1]).dimshuffle(2, 0, 1)
+        return pt.reshape(image, [res, res, -1]).dimshuffle(2, 0, 1)
 
     @autocompile
     def compute_illumination_point_source(
@@ -1308,30 +1311,30 @@ class OpsReflected(OpsYlm):
     ):
         """Compute the illumination profile for a point source."""
         # Get cos(theta_i)
-        x = tt.shape_padright(xyz[0])
-        y = tt.shape_padright(xyz[1])
-        z = tt.shape_padright(xyz[2])
+        x = pt.shape_padright(xyz[0])
+        y = pt.shape_padright(xyz[1])
+        z = pt.shape_padright(xyz[2])
         r2 = xs ** 2 + ys ** 2 + zs ** 2
-        b = -zs / tt.sqrt(r2)  # semi-minor axis of terminator
-        invsr = 1.0 / tt.sqrt(xs ** 2 + ys ** 2)
+        b = -zs / pt.sqrt(r2)  # semi-minor axis of terminator
+        invsr = 1.0 / pt.sqrt(xs ** 2 + ys ** 2)
         cosw = ys * invsr
         sinw = -xs * invsr
         xrot = x * cosw + y * sinw
         yrot = -x * sinw + y * cosw
-        bc = tt.sqrt(1.0 - b ** 2)
+        bc = pt.sqrt(1.0 - b ** 2)
         cos_thetai = bc * yrot - b * z
 
         # Check for special cases
-        cos_thetai = tt.switch(
-            tt.eq(tt.abs_(b), 1.0),
-            tt.switch(
-                tt.eq(b, 1.0), tt.zeros_like(cos_thetai), z  # midnight  # noon
+        cos_thetai = pt.switch(
+            pt.eq(pt.abs(b), 1.0),
+            pt.switch(
+                pt.eq(b, 1.0), pt.zeros_like(cos_thetai), z  # midnight  # noon
             ),
             cos_thetai,
         )
         # Set night to zero
-        cos_thetai = tt.switch(
-            tt.gt(cos_thetai, 0.0), cos_thetai, tt.zeros_like(cos_thetai)
+        cos_thetai = pt.switch(
+            pt.gt(cos_thetai, 0.0), cos_thetai, pt.zeros_like(cos_thetai)
         )
 
         # Lambertian intensity
@@ -1340,17 +1343,17 @@ class OpsReflected(OpsYlm):
         # Polynomial approximation to the Oren-Nayar (1994)
         # intensity with the nightside masked
         pT = self._pTON94(xyz[0], xyz[1], xyz[2])
-        theta = -tt.arctan2(xs, ys)
+        theta = -pt.arctan2(xs, ys)
         p = self._OrenNayar(b, theta, sigr)
-        I_on94_approx = tt.dot(pT, p)
-        I_on94_approx = tt.switch(
-            tt.gt(cos_thetai, 0.0), I_on94_approx, tt.zeros_like(I_on94_approx)
+        I_on94_approx = pt.dot(pT, p)
+        I_on94_approx = pt.switch(
+            pt.gt(cos_thetai, 0.0), I_on94_approx, pt.zeros_like(I_on94_approx)
         )
 
         # "Exact" Oren-Nayar (1994) intensity from their Equation (30)
         f1 = -b / z - cos_thetai
         f2 = -b / cos_thetai - z
-        f = cos_thetai * tt.maximum(0, tt.minimum(f1, f2))
+        f = cos_thetai * pt.maximum(0, pt.minimum(f1, f2))
         sig2 = sigr ** 2
         A = 1.0 - 0.5 * sig2 / (sig2 + 0.33)
         B = 0.45 * sig2 / (sig2 + 0.09)
@@ -1365,7 +1368,7 @@ class OpsReflected(OpsYlm):
         # NOTE: In the paper, we divide by `pi` at this step. But the way
         # we coded things up, starry maps are already implicitly pi-normalized
         # (via the change-of-basis matrix A1), so we don't need to do that here.
-        I /= tt.shape_padleft(r2)
+        I /= pt.shape_padleft(r2)
         return I
 
     @autocompile
@@ -1383,26 +1386,26 @@ class OpsReflected(OpsYlm):
             # The effective size of the star as seen by the planet
             # is smaller. Only include points
             # that fall on this smaller disk.
-            rs = tt.sqrt(xs ** 2 + ys ** 2 + zs ** 2)
-            Reff = Rs * tt.sqrt(1 - ((Rs - 1) / rs) ** 2)
-            dx = tt.shape_padright(Reff) * self.source_dx
-            dy = tt.shape_padright(Reff) * self.source_dy
+            rs = pt.sqrt(xs ** 2 + ys ** 2 + zs ** 2)
+            Reff = Rs * pt.sqrt(1 - ((Rs - 1) / rs) ** 2)
+            dx = pt.shape_padright(Reff) * self.source_dx
+            dy = pt.shape_padright(Reff) * self.source_dy
             # Note that the star is *closer* to the planet, hence the - sign
-            dz = -tt.sqrt(Rs ** 2 - dx ** 2 - dy ** 2)
+            dz = -pt.sqrt(Rs ** 2 - dx ** 2 - dy ** 2)
 
             # Compute the illumination for each point on the source disk
             I = self.compute_illumination_point_source(
                 xyz,
-                tt.reshape(tt.shape_padright(xs) + dx, (-1,)),
-                tt.reshape(tt.shape_padright(ys) + dy, (-1,)),
-                tt.reshape(tt.shape_padright(zs) + dz, (-1,)),
+                pt.reshape(pt.shape_padright(xs) + dx, (-1,)),
+                pt.reshape(pt.shape_padright(ys) + dy, (-1,)),
+                pt.reshape(pt.shape_padright(zs) + dz, (-1,)),
                 sigr,
                 on94_exact,
             )
-            I = tt.reshape(I, (-1, tt.shape(xs)[0], self.source_npts))
+            I = pt.reshape(I, (-1, pt.shape(xs)[0], self.source_npts))
 
             # Average over each profile
-            return tt.sum(I, axis=2) / self.source_npts
+            return pt.sum(I, axis=2) / self.source_npts
 
 
 class OpsOblate(OpsYlm):
@@ -1425,8 +1428,8 @@ class OpsOblate(OpsYlm):
         l = np.arange(self.fdeg + 1)
         idx = l * (l + 1)
         S = np.exp(-0.5 * idx * smoothing ** 2)
-        self.SHT = tt.as_tensor_variable(S[:, None] * A)
-        self.z = tt.as_tensor_variable(z)
+        self.SHT = pt.as_tensor_variable(S[:, None] * A)
+        self.z = pt.as_tensor_variable(z)
         self.idx = idx
 
         # We need to instantiate custom versions of the C++ ops
@@ -1434,7 +1437,7 @@ class OpsOblate(OpsYlm):
         # Several steps in `render` and `X` require operators with
         # different dimensions. Some day it would make sense to
         # handle this logic on the C++ side so we don't have to
-        # instantiate so many Ops objects.
+        # instantiate so many Ops objecps.
         if self.fdeg == 0 and self.udeg == 0:
             ops_y_0_f = self._c_ops
             ops_yf_0_0 = self._c_ops
@@ -1466,10 +1469,10 @@ class OpsOblate(OpsYlm):
         if self.ydeg == 0 and self.fdeg == 0:
             self.A1Inv_Nyf_x_Nyf = csc_matrix([[np.pi]])
         else:
-            self.A1Inv_Nyf_x_Nyf = ts.as_sparse_variable(
+            self.A1Inv_Nyf_x_Nyf = ps.as_sparse_variable(
                 sparse_inv(ops_y_0_f.A1Big)
             )
-        self.A1_Nyf_x_Nyf = ts.as_sparse_variable(ops_y_0_f.A1Big)
+        self.A1_Nyf_x_Nyf = ps.as_sparse_variable(ops_y_0_f.A1Big)
 
         # Rotation operator (gravity-darkened map)
         self._dotR = dotROp(ops_yf_0_0.dotR)
@@ -1488,7 +1491,7 @@ class OpsOblate(OpsYlm):
         )
 
         # Greens-to-poly change of basis
-        self.A2_Nyuf_x_Nyuf = ts.as_sparse_variable(ops_yuf_0_0.A2)
+        self.A2_Nyuf_x_Nyuf = ps.as_sparse_variable(ops_yuf_0_0.A2)
 
     @autocompile
     def tensordotRz(self, matrix, theta):
@@ -1509,10 +1512,10 @@ class OpsOblate(OpsYlm):
         """Render the map on a Cartesian grid."""
         # Compute the Cartesian grid
         xyz = ifelse(
-            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+            pt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
             self.compute_rect_grid(res)[-1],
             ifelse(
-                tt.eq(projection, STARRY_MOLLWEIDE_PROJECTION),
+                pt.eq(projection, STARRY_MOLLWEIDE_PROJECTION),
                 self.compute_moll_grid(res)[-1],
                 self.compute_ortho_grid_fproj(res, obl, fproj)[-1],
             ),
@@ -1528,13 +1531,13 @@ class OpsOblate(OpsYlm):
                 y = f
             else:
                 if self.nw is None:
-                    F = self.Fg(tt.as_tensor_variable([-1.0]), f)
-                    A1InvFA1 = ts.dot(ts.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1)
-                    y = tt.dot(A1InvFA1, y)
+                    F = self.Fg(pt.as_tensor_variable([-1.0]), f)
+                    A1InvFA1 = ps.dot(ps.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1)
+                    y = pt.dot(A1InvFA1, y)
                 else:
                     # We need to compute the filter for each wavelength bin.
                     # We could speed this up by vectorization on the C++ side
-                    A1InvFA1 = tt.zeros(
+                    A1InvFA1 = pt.zeros(
                         (
                             self.nw,
                             (self.ydeg + self.fdeg + 1) ** 2,
@@ -1542,35 +1545,35 @@ class OpsOblate(OpsYlm):
                         )
                     )
                     for i in range(self.nw):
-                        F = self.Fg(tt.as_tensor_variable([-1.0]), f[:, i])
-                        A1InvFA1 = tt.set_subtensor(
+                        F = self.Fg(pt.as_tensor_variable([-1.0]), f[:, i])
+                        A1InvFA1 = pt.set_subtensor(
                             A1InvFA1[i],
-                            ts.dot(ts.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1),
+                            ps.dot(ps.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1),
                         )
-                    y = tt.transpose(tt.batched_dot(A1InvFA1, tt.transpose(y)))
+                    y = pt.transpose(pt.batched_dot(A1InvFA1, pt.transpose(y)))
 
         # If orthographic, rotate the map to the correct frame
         if self.nw is None:
             Ry = ifelse(
-                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                pt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
                 self.left_project(
-                    tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+                    pt.transpose(pt.tile(y, [theta.shape[0], 1])),
                     inc,
                     obl * 0,  # We already account for the obliquity in `pT`
                     theta,
                 ),
-                tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+                pt.transpose(pt.tile(y, [theta.shape[0], 1])),
             )
         else:
             Ry = ifelse(
-                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                tt.reshape(
+                pt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                pt.reshape(
                     self.left_project(
                         y,
                         inc,
                         obl
                         * 0,  # We already account for the obliquity in `pT`
-                        tt.tile(theta[0], self.nw),
+                        pt.tile(theta[0], self.nw),
                     ),
                     (-1, self.nw),
                 ),
@@ -1578,18 +1581,18 @@ class OpsOblate(OpsYlm):
             )
 
         # Change basis to polynomials
-        A1Ry = ts.dot(self.A1_Nyf_x_Nyf, Ry)
+        A1Ry = ps.dot(self.A1_Nyf_x_Nyf, Ry)
 
         # Apply the limb darkening *only if orthographic*
         if self.udeg > 0:
             A1Ry = ifelse(
-                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                tt.dot(self.Fu(u, tt.as_tensor_variable([np.pi])), A1Ry),
+                pt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                pt.dot(self.Fu(u, pt.as_tensor_variable([np.pi])), A1Ry),
                 A1Ry,
             )
 
         # Dot the polynomial into the basis
-        res = tt.reshape(tt.dot(pT, A1Ry), [res, res, -1])
+        res = pt.reshape(pt.dot(pT, A1Ry), [res, res, -1])
 
         # We need the shape to be (nframes, npix, npix)
         return res.dimshuffle(2, 0, 1)
@@ -1597,19 +1600,19 @@ class OpsOblate(OpsYlm):
     @autocompile
     def compute_ortho_grid_fproj(self, res, obl, fproj):
         dx = 2.0 / (res - 0.01)
-        y, x = tt.mgrid[-1:1:dx, -1:1:dx]
-        xp = x * tt.cos(obl) + y * tt.sin(obl)
-        yp = -x * tt.sin(obl) + y * tt.cos(obl)
+        y, x = pt.mgrid[-1:1:dx, -1:1:dx]
+        xp = x * pt.cos(obl) + y * pt.sin(obl)
+        yp = -x * pt.sin(obl) + y * pt.cos(obl)
         x = xp
         y = yp / (1 - fproj)
-        z = tt.sqrt(1 - x ** 2 - y ** 2)
-        y = tt.set_subtensor(y[tt.isnan(z)], np.nan)
-        x = tt.reshape(x, [1, -1])
-        y = tt.reshape(y, [1, -1])
-        z = tt.reshape(z, [1, -1])
-        lat = tt.reshape(0.5 * np.pi - tt.arccos(y), [1, -1])
-        lon = tt.reshape(tt.arctan2(x, z), [1, -1])
-        return tt.concatenate((lat, lon)), tt.concatenate((x, y, z))
+        z = pt.sqrt(1 - x ** 2 - y ** 2)
+        y = pt.set_subtensor(y[pt.isnan(z)], np.nan)
+        x = pt.reshape(x, [1, -1])
+        y = pt.reshape(y, [1, -1])
+        z = pt.reshape(z, [1, -1])
+        lat = pt.reshape(0.5 * np.pi - pt.arccos(y), [1, -1])
+        lon = pt.reshape(pt.arctan2(x, z), [1, -1])
+        return pt.concatenate((lat, lon)), pt.concatenate((x, y, z))
 
     @autocompile
     def sT(self, f, theta, bo, ro):
@@ -1621,32 +1624,32 @@ class OpsOblate(OpsYlm):
         # Determine shapes
         rows = theta.shape[0]
         cols = self.Ny
-        X = tt.zeros((rows, cols))
+        X = pt.zeros((rows, cols))
 
         # Compute the occultation mask
-        bo = tt.sqrt(xo ** 2 + yo ** 2)
-        thetao = tt.arctan2(xo, yo)
+        bo = pt.sqrt(xo ** 2 + yo ** 2)
+        thetao = pt.arctan2(xo, yo)
 
         # Occultation + phase curve operator
         sT = self.sT(fproj, thetao, bo, ro)
 
         # Limb darkening
         if self.udeg > 0:
-            sTA2 = ts.dot(sT, self.A2_Nyuf_x_Nyuf)
-            F = self.Fu(u, tt.as_tensor_variable([np.pi]))
-            FA1 = ts.dot(F, self.A1_Nyf_x_Nyf)
-            sTA = tt.dot(sTA2, FA1)
+            sTA2 = ps.dot(sT, self.A2_Nyuf_x_Nyuf)
+            F = self.Fu(u, pt.as_tensor_variable([np.pi]))
+            FA1 = ps.dot(F, self.A1_Nyf_x_Nyf)
+            sTA = pt.dot(sTA2, FA1)
         else:
-            sTA = ts.dot(sT, self.A)
+            sTA = ps.dot(sT, self.A)
 
         # Projection onto the sky
         sTAR = self.right_project(sTA, inc, obl, theta)
 
         # Gravity darkening
         if self.nw is None and self.fdeg > 0:
-            F = self.Fg(tt.as_tensor_variable([-1.0]), f)
-            A1InvFA1 = ts.dot(ts.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1)
-            sTAR = tt.dot(sTAR, A1InvFA1)
+            F = self.Fg(pt.as_tensor_variable([-1.0]), f)
+            A1InvFA1 = ps.dot(ps.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1)
+            sTAR = pt.dot(sTAR, A1InvFA1)
 
         return sTAR
 
@@ -1654,14 +1657,14 @@ class OpsOblate(OpsYlm):
     def flux(self, theta, xo, yo, zo, ro, inc, obl, fproj, y, u, f):
         """Compute the light curve."""
         if self.nw is None or self.fdeg == 0:
-            return tt.dot(
+            return pt.dot(
                 self.X(theta, xo, yo, zo, ro, inc, obl, fproj, u, f), y
             )
         else:
 
             if self.ydeg == 0:
                 # Trivial!
-                return tt.dot(
+                return pt.dot(
                     self.X(theta, xo, yo, zo, ro, inc, obl, fproj, u, f), f
                 )
             else:
@@ -1669,7 +1672,7 @@ class OpsOblate(OpsYlm):
                 # We need to pre-weight the spherical harmonic vector by
                 # the filter in each wavelength bin
                 y = self.weight_ylms_by_grav_dark_filter(y, f)
-                return tt.dot(
+                return pt.dot(
                     self.X(theta, xo, yo, zo, ro, inc, obl, fproj, u, f), y
                 )
 
@@ -1677,15 +1680,15 @@ class OpsOblate(OpsYlm):
     def weight_ylms_by_grav_dark_filter(self, y, f):
         # We need to compute the filter for each wavelength bin.
         # We could speed this up by vectorization on the C++ side
-        A1InvFA1 = tt.zeros(
+        A1InvFA1 = pt.zeros(
             (self.nw, (self.ydeg + self.fdeg + 1) ** 2, (self.ydeg + 1) ** 2)
         )
         for i in range(self.nw):
-            F = self.Fg(tt.as_tensor_variable([-1.0]), f[:, i])
-            A1InvFA1 = tt.set_subtensor(
-                A1InvFA1[i], ts.dot(ts.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1)
+            F = self.Fg(pt.as_tensor_variable([-1.0]), f[:, i])
+            A1InvFA1 = pt.set_subtensor(
+                A1InvFA1[i], ps.dot(ps.dot(self.A1Inv_Nyf_x_Nyf, F), self.A1)
             )
-        y = tt.transpose(tt.batched_dot(A1InvFA1, tt.transpose(y)))
+        y = pt.transpose(pt.batched_dot(A1InvFA1, pt.transpose(y)))
         return y
 
     @autocompile
@@ -1699,21 +1702,21 @@ class OpsOblate(OpsYlm):
             * ((-z2 * b ** 2 + (z2 - 1) * term) / (-z2 * b ** 2 + z2 - 1) ** 3)
             ** (0.5 * beta)
         )
-        return 1.0 / (tt.exp(1.0 / (wavnorm * temp)) - 1.0)
+        return 1.0 / (pt.exp(1.0 / (wavnorm * temp)) - 1.0)
 
     @autocompile
     def compute_grav_dark_filter(self, wavnorm, omega, fobl, beta, tpole):
 
         # Compute the map expansion in the polar frame
         nw = 1 if self.nw is None else self.nw
-        y = tt.zeros(((self.fdeg + 1) ** 2, nw))
-        y = tt.set_subtensor(
+        y = pt.zeros(((self.fdeg + 1) ** 2, nw))
+        y = pt.set_subtensor(
             y[self.idx],
-            tt.dot(
+            pt.dot(
                 self.SHT,
                 self.grav_dark(
-                    tt.reshape(self.z, (-1, 1)),
-                    tt.reshape(wavnorm, (1, -1)),
+                    pt.reshape(self.z, (-1, 1)),
+                    pt.reshape(wavnorm, (1, -1)),
                     omega,
                     fobl,
                     beta,
@@ -1723,10 +1726,10 @@ class OpsOblate(OpsYlm):
         )
 
         # Rotate down to the standard frame
-        y = tt.reshape(
-            tt.transpose(
+        y = pt.reshape(
+            pt.transpose(
                 self._dotR_Nf_x_Nf(
-                    tt.transpose(y),
+                    pt.transpose(y),
                     math.to_tensor(1.0),
                     math.to_tensor(0.0),
                     math.to_tensor(0.0),
@@ -1792,13 +1795,13 @@ class OpsDoppler(OpsYlm):
         self.shape = np.array([self.nw, self.Ny * self.nwp])
 
         # Change of basis matrix (ydeg + udeg)
-        self._A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
+        self._A1Big = ps.as_sparse_variable(self._c_ops.A1Big)
 
     @autocompile
     def enforce_shape(self, tensor, shape):
         return tensor + RaiseValueErrorIfOp(
-            "Incorrect shape for one of the inputs."
-        )(tt.sum(tt.neq(tt.shape(tensor), shape)))
+            "Incorrect shape for one of the inpups."
+        )(pt.sum(pt.neq(pt.shape(tensor), shape)))
 
     @autocompile
     def enforce_bounds(self, tensor, lower, upper):
@@ -1808,49 +1811,49 @@ class OpsDoppler(OpsYlm):
     def get_x(self, vsini):
         """The `x` coordinate of lines of constant Doppler shift."""
         # Prevent division by zero: min vsini is 1 m/s
-        return self.xamp / tt.maximum(tt.as_tensor_variable(1.0), vsini)
+        return self.xamp / pt.maximum(pt.as_tensor_variable(1.0), vsini)
 
     @autocompile
     def get_rT(self, x):
         """The `rho^T` solution vector."""
         deg = self.ydeg + self.udeg
-        sijk = tt.zeros((deg + 1, deg + 1, 2, tt.shape(x)[0]))
+        sijk = pt.zeros((deg + 1, deg + 1, 2, pt.shape(x)[0]))
 
         # Initial conditions
-        r2 = tt.maximum(1 - x ** 2, tt.zeros_like(x))
+        r2 = pt.maximum(1 - x ** 2, pt.zeros_like(x))
 
         # Silly hack to prevent issues with the undefined derivative at x = 1
         # This just computes the square root of r2, zeroing out values very
         # close to zero.
-        r = tt.maximum(1 - x ** 2, tt.zeros_like(x) + 1e-100) ** 0.5
-        r = tt.switch(tt.gt(r, 1e-49), r, tt.zeros_like(r))
+        r = pt.maximum(1 - x ** 2, pt.zeros_like(x) + 1e-100) ** 0.5
+        r = pt.switch(pt.gt(r, 1e-49), r, pt.zeros_like(r))
 
-        sijk = tt.set_subtensor(sijk[0, 0, 0], 2 * r)
-        sijk = tt.set_subtensor(sijk[0, 0, 1], 0.5 * np.pi * r2)
+        sijk = pt.set_subtensor(sijk[0, 0, 0], 2 * r)
+        sijk = pt.set_subtensor(sijk[0, 0, 1], 0.5 * np.pi * r2)
 
         # Upward recursion in j
         for j in range(2, deg + 1, 2):
-            sijk = tt.set_subtensor(
+            sijk = pt.set_subtensor(
                 sijk[0, j, 0], ((j - 1.0) / (j + 1.0)) * r2 * sijk[0, j - 2, 0]
             )
-            sijk = tt.set_subtensor(
+            sijk = pt.set_subtensor(
                 sijk[0, j, 1], ((j - 1.0) / (j + 2.0)) * r2 * sijk[0, j - 2, 1]
             )
 
         # Upward recursion in i
         for i in range(1, deg + 1):
-            sijk = tt.set_subtensor(sijk[i], sijk[i - 1] * x)
+            sijk = pt.set_subtensor(sijk[i], sijk[i - 1] * x)
 
         # Full vector
         N = (deg + 1) ** 2
-        s = tt.zeros((N, tt.shape(x)[0]))
+        s = pt.zeros((N, pt.shape(x)[0]))
         n = np.arange(N)
         LAM = np.floor(np.sqrt(n))
         DEL = 0.5 * (n - LAM ** 2)
         i = np.array(np.floor(LAM - DEL), dtype=int)
         j = np.array(np.floor(DEL), dtype=int)
         k = np.array(np.ceil(DEL) - np.floor(DEL), dtype=int)
-        s = tt.set_subtensor(s[n], sijk[i, j, k])
+        s = pt.set_subtensor(s[n], sijk[i, j, k])
         return s
 
     @autocompile
@@ -1862,9 +1865,9 @@ class OpsDoppler(OpsYlm):
         for each term in the  spherical harmonic decomposition of the
         surface.
         """
-        kT0 = ts.dot(ts.transpose(self._A1Big), rT)
+        kT0 = ps.dot(ps.transpose(self._A1Big), rT)
         # Normalize to preserve the unit baseline
-        return kT0 / tt.sum(kT0[0])
+        return kT0 / pt.sum(kT0[0])
 
     @autocompile
     def get_kT0_matrix(self, veq, inc):
@@ -1873,7 +1876,7 @@ class OpsDoppler(OpsYlm):
 
         """
         # Get the kernel
-        vsini = self.enforce_bounds(veq * tt.sin(inc), 0.0, self.vsini_max)
+        vsini = self.enforce_bounds(veq * pt.sin(inc), 0.0, self.vsini_max)
         x = self.get_x(vsini)
         rT = self.get_rT(x)
         kT0 = self.get_kT0(rT)[0]
@@ -1884,11 +1887,11 @@ class OpsDoppler(OpsYlm):
         i2 = np.arange(self.nw).reshape(1, -1)
         indices = np.transpose(i0 + i2).reshape(-1)
         shape = np.array([self.nw, self.nwp])
-        data = tt.tile(tt.reshape(kT0, (-1,)), self.nw)
-        A = ts.basic.CSR(data, indices, indptr, shape)
+        data = pt.tile(pt.reshape(kT0, (-1,)), self.nw)
+        A = ps.basic.CSR(data, indices, indptr, shape)
 
         # Return a dense version
-        return ts.DenseFromSparse()(A)
+        return ps.DenseFromSparse()(A)
 
     @autocompile
     def get_kT(self, inc, theta, veq, u):
@@ -1897,7 +1900,7 @@ class OpsDoppler(OpsYlm):
 
         """
         # Compute the convolution kernels
-        vsini = self.enforce_bounds(veq * tt.sin(inc), 0.0, self.vsini_max)
+        vsini = self.enforce_bounds(veq * pt.sin(inc), 0.0, self.vsini_max)
         x = self.get_x(vsini)
         rT = self.get_rT(x)
         kT0 = self.get_kT0(rT)
@@ -1905,21 +1908,21 @@ class OpsDoppler(OpsYlm):
         # Compute the limb darkening operator
         if self.udeg > 0:
             F = self.F(
-                tt.as_tensor_variable(u), tt.as_tensor_variable([np.pi])
+                pt.as_tensor_variable(u), pt.as_tensor_variable([np.pi])
             )
-            L = ts.dot(ts.dot(self.A1Inv, F), self.A1)
-            kT0 = tt.dot(tt.transpose(L), kT0)
+            L = ps.dot(ps.dot(self.A1Inv, F), self.A1)
+            kT0 = pt.dot(pt.transpose(L), kT0)
 
         # Compute the kernels at each epoch
-        kT = tt.zeros((self.nt, self.Ny, self.nk))
+        kT = pt.zeros((self.nt, self.Ny, self.nk))
         for m in range(self.nt):
-            kT = tt.set_subtensor(
+            kT = pt.set_subtensor(
                 kT[m],
-                tt.transpose(
+                pt.transpose(
                     self.right_project(
-                        tt.transpose(kT0),
+                        pt.transpose(kT0),
                         inc,
-                        tt.as_tensor_variable(0.0),
+                        pt.as_tensor_variable(0.0),
                         theta[m],
                     )
                 ),
@@ -1933,15 +1936,15 @@ class OpsDoppler(OpsYlm):
 
         """
         # Rotate the kernels
-        kT = tt.transpose(
+        kT = pt.transpose(
             self.right_project(
-                tt.transpose(kT0),
+                pt.transpose(kT0),
                 inc,
-                tt.as_tensor_variable(0.0),
+                pt.as_tensor_variable(0.0),
                 theta_scalar,
             )
         )
-        return tt.tile(tt.reshape(kT, (-1,)), self.nw)
+        return pt.tile(pt.reshape(kT, (-1,)), self.nw)
 
     @autocompile
     def get_D(self, inc, theta, veq, u):
@@ -1956,7 +1959,7 @@ class OpsDoppler(OpsYlm):
         a good idea: it's very slow, and can consume a ton of memory!
         """
         # Compute the convolution kernels
-        vsini = self.enforce_bounds(veq * tt.sin(inc), 0.0, self.vsini_max)
+        vsini = self.enforce_bounds(veq * pt.sin(inc), 0.0, self.vsini_max)
         x = self.get_x(vsini)
         rT = self.get_rT(x)
         kT0 = self.get_kT0(rT)
@@ -1964,15 +1967,15 @@ class OpsDoppler(OpsYlm):
         # Compute the limb darkening operator
         if self.udeg > 0:
             F = self.F(
-                tt.as_tensor_variable(u), tt.as_tensor_variable([np.pi])
+                pt.as_tensor_variable(u), pt.as_tensor_variable([np.pi])
             )
-            L = ts.dot(ts.dot(self.A1Inv, F), self.A1)
-            kT0 = tt.dot(tt.transpose(L), kT0)
+            L = ps.dot(ps.dot(self.A1Inv, F), self.A1)
+            kT0 = pt.dot(pt.transpose(L), kT0)
 
         # Stack to get the full matrix
-        return ts.vstack(
+        return ps.vstack(
             [
-                ts.basic.CSR(
+                ps.basic.CSR(
                     self.get_D_data(kT0, inc, theta[m]),
                     self.indices,
                     self.indptr,
@@ -1995,18 +1998,20 @@ class OpsDoppler(OpsYlm):
         kT = self.get_kT(inc, theta, veq, u)
 
         # The dot product is just a 2d convolution!
-        product = tt.nnet.conv2d(
-            tt.reshape(spectrum, (self.nc, 1, 1, self.nwp)),
-            tt.reshape(kT, (self.nt * self.Ny, 1, 1, self.nk)),
+        # TODO: 2D convolution efficient impl removed by accident (!!) from pytensor. See PRs and isues there.
+        # Best solution is probably to copy old function in starry until merged
+        product = conv2d(
+            pt.reshape(spectrum, (self.nc, 1, 1, self.nwp)),
+            pt.reshape(kT, (self.nt * self.Ny, 1, 1, self.nk)),
             border_mode="valid",
             filter_flip=False,
             input_shape=(self.nc, 1, 1, self.nwp),
             filter_shape=(self.nt * self.Ny, 1, 1, self.nk),
         )
-        product = tt.reshape(product, (self.nc, self.nt, self.Ny, self.nw))
-        product = tt.swapaxes(product, 1, 2)
-        product = tt.reshape(product, (self.Ny * self.nc, self.nt * self.nw))
-        product = tt.transpose(product)
+        product = pt.reshape(product, (self.nc, self.nt, self.Ny, self.nw))
+        product = pt.swapaxes(product, 1, 2)
+        product = pt.reshape(product, (self.Ny * self.nc, self.nt * self.nw))
+        product = pt.transpose(product)
         return product
 
     @autocompile
@@ -2020,21 +2025,21 @@ class OpsDoppler(OpsYlm):
 
         """
         D = self.get_D(inc, theta, veq, u)
-        I = ts.as_sparse_variable(sparse_eye(self.nwp, format="csr"))
-        Y = ts.hstack(
+        I = ps.as_sparse_variable(sparse_eye(self.nwp, format="csr"))
+        Y = ps.hstack(
             [
-                ts.vstack([y[n, k] * I for n in range(self.Ny)])
+                ps.vstack([y[n, k] * I for n in range(self.Ny)])
                 for k in range(self.nc)
             ]
         )
-        return ts.dot(D, Y)
+        return ps.dot(D, Y)
 
     @autocompile
     def dot_design_matrix_fixed_map_into(self, inc, theta, veq, u, y, matrix):
         """
         Dot the Doppler design matrix for a fixed Ylm map
         into an arbitrary dense `matrix`. This is equivalent to
-        ``tt.dot(get_D_fixed_map(), matrix)``, but computes the
+        ``pt.dot(get_D_fixed_map(), matrix)``, but computes the
         product with a single `conv2d` operation.
 
         """
@@ -2043,22 +2048,22 @@ class OpsDoppler(OpsYlm):
 
         # Dot them into the Ylms
         # kTy has shape (nt, nc, nk)
-        kTy = tt.swapaxes(tt.dot(tt.transpose(y), kT), 0, 1)
+        kTy = pt.swapaxes(pt.dot(pt.transpose(y), kT), 0, 1)
 
         # Ensure we have a matrix, not a vector
         if matrix.ndim == 1:
-            matrix = tt.shape_padright(matrix)
+            matrix = pt.shape_padright(matrix)
 
         # The dot product is just a 2d convolution!
-        product = tt.nnet.conv2d(
-            tt.reshape(tt.transpose(matrix), (-1, self.nc, 1, self.nwp)),
-            tt.reshape(kTy, (self.nt, self.nc, 1, self.nk)),
+        product = conv2d(
+            pt.reshape(pt.transpose(matrix), (-1, self.nc, 1, self.nwp)),
+            pt.reshape(kTy, (self.nt, self.nc, 1, self.nk)),
             border_mode="valid",
             filter_flip=False,
             input_shape=(None, self.nc, 1, self.nwp),
             filter_shape=(self.nt, self.nc, 1, self.nk),
         )
-        return tt.transpose(tt.reshape(product, (-1, self.nt * self.nw)))
+        return pt.transpose(pt.reshape(product, (-1, self.nt * self.nw)))
 
     @autocompile
     def dot_design_matrix_fixed_map_transpose_into(
@@ -2067,7 +2072,7 @@ class OpsDoppler(OpsYlm):
         """
         Dot the transpose of the Doppler design matrix for a fixed Ylm map
         into an arbitrary dense `matrix`. This is equivalent to
-        ``tt.dot(get_D_fixed_map().transpose(), matrix)``, but computes the
+        ``pt.dot(get_D_fixed_map().transpose(), matrix)``, but computes the
         product with a single `conv2d_transpose` operation.
 
         """
@@ -2076,30 +2081,30 @@ class OpsDoppler(OpsYlm):
 
         # Dot them into the Ylms
         # kTy has shape (nt, nc, nk)
-        kTy = tt.swapaxes(tt.dot(tt.transpose(y), kT), 0, 1)
+        kTy = pt.swapaxes(pt.dot(pt.transpose(y), kT), 0, 1)
 
         # Ensure we have a matrix, not a vector
         if matrix.ndim == 1:
-            matrix = tt.shape_padright(matrix)
+            matrix = pt.shape_padright(matrix)
 
         # The dot product is just a 2d convolution!
-        product = tt.nnet.conv2d_transpose(
-            tt.reshape(tt.transpose(matrix), (-1, self.nt, 1, self.nw)),
-            tt.reshape(kTy, (self.nt, 1, self.nc, self.nk)),
+        product = conv2d_grad_wrt_inputs(
+            pt.reshape(pt.transpose(matrix), (-1, self.nt, 1, self.nw)),
+            pt.reshape(kTy, (self.nt, 1, self.nc, self.nk)),
             border_mode="valid",
             filter_flip=False,
-            output_shape=(None, 1, self.nc, self.nwp),
+            input_shape=(None, 1, self.nc, self.nwp),
             filter_shape=(self.nt, 1, self.nc, self.nk),
         )
-        product = tt.swapaxes(product, 2, 3)
-        product = tt.swapaxes(product, 0, 3)
-        return tt.reshape(product, (self.nc * self.nwp, -1))
+        product = pt.swapaxes(product, 2, 3)
+        product = pt.swapaxes(product, 0, 3)
+        return pt.reshape(product, (self.nc * self.nwp, -1))
 
     @autocompile
     def dot_design_matrix_into(self, inc, theta, veq, u, matrix):
         """
         Dot the full Doppler design matrix into an arbitrary dense `matrix`.
-        This is equivalent to ``tt.dot(get_D(), matrix)``, but computes the
+        This is equivalent to ``pt.dot(get_D(), matrix)``, but computes the
         product with a single `conv2d` operation.
 
         """
@@ -2108,25 +2113,25 @@ class OpsDoppler(OpsYlm):
 
         # Ensure we have a matrix, not a vector
         if matrix.ndim == 1:
-            matrix = tt.shape_padright(matrix)
+            matrix = pt.shape_padright(matrix)
 
         # The dot product is just a 2d convolution!
-        product = tt.nnet.conv2d(
-            tt.reshape(tt.transpose(matrix), (-1, self.Ny, 1, self.nwp)),
-            tt.reshape(kT, (self.nt, self.Ny, 1, self.nk)),
+        product = conv2d(
+            pt.reshape(pt.transpose(matrix), (-1, self.Ny, 1, self.nwp)),
+            pt.reshape(kT, (self.nt, self.Ny, 1, self.nk)),
             border_mode="valid",
             filter_flip=False,
             input_shape=(None, self.Ny, 1, self.nwp),
             filter_shape=(self.nt, self.Ny, 1, self.nk),
         )
-        return tt.transpose(tt.reshape(product, (-1, self.nt * self.nw)))
+        return pt.transpose(pt.reshape(product, (-1, self.nt * self.nw)))
 
     @autocompile
     def dot_design_matrix_transpose_into(self, inc, theta, veq, u, matrix):
         """
         Dot the transpose of the full Doppler design matrix into an arbitrary
         dense `matrix`. This is equivalent to
-        ``tt.dot(get_D().transpose(), matrix)``, but computes the product with
+        ``pt.dot(get_D().transpose(), matrix)``, but computes the product with
         a single `conv2d` operation.
 
         """
@@ -2135,20 +2140,20 @@ class OpsDoppler(OpsYlm):
 
         # Ensure we have a matrix, not a vector
         if matrix.ndim == 1:
-            matrix = tt.shape_padright(matrix)
+            matrix = pt.shape_padright(matrix)
 
         # The dot product is just a 2d convolution!
-        product = tt.nnet.conv2d_transpose(
-            tt.reshape(tt.transpose(matrix), (-1, self.nt, 1, self.nw)),
-            tt.reshape(kT, (self.nt, 1, self.Ny, self.nk)),
+        product = conv2d_grad_wrt_inputs(
+            pt.reshape(pt.transpose(matrix), (-1, self.nt, 1, self.nw)),
+            pt.reshape(kT, (self.nt, 1, self.Ny, self.nk)),
             border_mode="valid",
             filter_flip=False,
-            output_shape=(None, 1, self.Ny, self.nwp),
+            input_shape=(None, 1, self.Ny, self.nwp),
             filter_shape=(self.nt, 1, self.Ny, self.nk),
         )
-        product = tt.swapaxes(product, 2, 3)
-        product = tt.swapaxes(product, 0, 3)
-        return tt.reshape(product, (self.Ny * self.nwp, -1))
+        product = pt.swapaxes(product, 2, 3)
+        product = pt.swapaxes(product, 0, 3)
+        return pt.reshape(product, (self.Ny * self.nwp, -1))
 
     @autocompile
     def get_flux_from_design(self, inc, theta, veq, u, a):
@@ -2159,8 +2164,8 @@ class OpsDoppler(OpsYlm):
 
         """
         D = self.get_D(inc, theta, veq, u)
-        flux = ts.dot(D, a)
-        return tt.reshape(flux, (self.nt, self.nw))
+        flux = ps.dot(D, a)
+        return pt.reshape(flux, (self.nt, self.nw))
 
     @autocompile
     def get_flux_from_conv(self, inc, theta, veq, u, a):
@@ -2173,9 +2178,9 @@ class OpsDoppler(OpsYlm):
         kT = self.get_kT(inc, theta, veq, u)
 
         # The flux is just a 2d convolution!
-        flux = tt.nnet.conv2d(
-            tt.reshape(a, (1, self.Ny, 1, self.nwp)),
-            tt.reshape(kT, (self.nt, self.Ny, 1, self.nk)),
+        flux = conv2d(
+            pt.reshape(a, (1, self.Ny, 1, self.nwp)),
+            pt.reshape(kT, (self.nt, self.Ny, 1, self.nk)),
             border_mode="valid",
             filter_flip=False,
             input_shape=(1, self.Ny, 1, self.nwp),
@@ -2191,9 +2196,9 @@ class OpsDoppler(OpsYlm):
 
         """
         flux = self.dot_design_matrix_fixed_map_into(
-            inc, theta, veq, u, y, tt.reshape(spectrum, (-1,))
+            inc, theta, veq, u, y, pt.reshape(spectrum, (-1,))
         )
-        return tt.reshape(flux, (self.nt, self.nw))
+        return pt.reshape(flux, (self.nt, self.nw))
 
     @autocompile
     def get_flux_from_convdot(self, inc, theta, veq, u, y, spectrum):
@@ -2204,8 +2209,8 @@ class OpsDoppler(OpsYlm):
 
         """
         D = self.get_D_fixed_spectrum(inc, theta, veq, u, spectrum)
-        flux = tt.dot(D, tt.reshape(tt.transpose(y), (-1,)))
-        return tt.reshape(flux, (self.nt, self.nw))
+        flux = pt.dot(D, pt.reshape(pt.transpose(y), (-1,)))
+        return pt.reshape(flux, (self.nt, self.nw))
 
     @autocompile
     def L1(self, ATA, ATy, lam, maxiter, eps, tol):
@@ -2221,23 +2226,23 @@ class OpsDoppler(OpsYlm):
         TODO: Use `non_sequences`.
 
         """
-        N = tt.shape(ATA)[0]
-        didx = (tt.arange(N), tt.arange(N))
-        w = tt.ones_like(ATA[0])
+        N = pt.shape(ATA)[0]
+        didx = (pt.arange(N), pt.arange(N))
+        w = pt.ones_like(ATA[0])
 
         def step(w_prev):
-            absw = tt.abs_(w_prev)
-            absw = tt.switch(
-                tt.gt(absw, lam * eps), absw, lam * eps * tt.ones_like(absw)
+            absw = pt.abs(w_prev)
+            absw = pt.switch(
+                pt.gt(absw, lam * eps), absw, lam * eps * pt.ones_like(absw)
             )
-            KInv = tt.as_tensor_variable(ATA)
-            KInv = tt.inc_subtensor(KInv[didx], lam / absw)
+            KInv = pt.as_tensor_variable(ATA)
+            KInv = pt.inc_subtensor(KInv[didx], lam / absw)
             choK = cho_factor(KInv)
             w_new = cho_solve(choK, ATy)
-            chisq = tt.sum((w_prev - w_new) ** 2)
+            chisq = pt.sum((w_prev - w_new) ** 2)
             return w_new, scan_until(chisq < tol)
 
-        w, _ = theano.scan(step, outputs_info=w, n_steps=maxiter)
+        w, _ = pytensor.scan(step, outputs_info=w, n_steps=maxiter)
         return w[-1]
 
 
@@ -2296,18 +2301,18 @@ class OpsSystem(object):
         )
         # Position of the primary
         if len(self.secondaries) > 1:
-            xyz = tt.sum(orbit.get_star_position(t), axis=-1)
-            x_pri = tt.reshape(xyz[0], (-1, 1))
-            y_pri = tt.reshape(xyz[1], (-1, 1))
-            z_pri = tt.reshape(xyz[2], (-1, 1))
+            xyz = pt.sum(orbit.get_star_position(t), axis=-1)
+            x_pri = pt.reshape(xyz[0], (-1, 1))
+            y_pri = pt.reshape(xyz[1], (-1, 1))
+            z_pri = pt.reshape(xyz[2], (-1, 1))
         else:
             x_pri, y_pri, z_pri = orbit.get_star_position(t)
 
         # The shape of `x`, `y`, `z` in `exoplanet` is unreliable!
         if x_pri.ndim == 1:
-            x_pri = tt.reshape(x_pri, (-1, 1))
-            y_pri = tt.reshape(y_pri, (-1, 1))
-            z_pri = tt.reshape(z_pri, (-1, 1))
+            x_pri = pt.reshape(x_pri, (-1, 1))
+            y_pri = pt.reshape(y_pri, (-1, 1))
+            z_pri = pt.reshape(z_pri, (-1, 1))
 
         # Positions of the secondaries
         try:
@@ -2323,14 +2328,14 @@ class OpsSystem(object):
 
         # The shape of `x`, `y`, `z` in `exoplanet` is unreliable!
         if x_sec.ndim == 1:
-            x_sec = tt.reshape(x_sec, (-1, 1))
-            y_sec = tt.reshape(y_sec, (-1, 1))
-            z_sec = tt.reshape(z_sec, (-1, 1))
+            x_sec = pt.reshape(x_sec, (-1, 1))
+            y_sec = pt.reshape(y_sec, (-1, 1))
+            z_sec = pt.reshape(z_sec, (-1, 1))
 
         # Concatenate them
-        x = tt.transpose(tt.concatenate((x_pri, x_sec), axis=-1))
-        y = tt.transpose(tt.concatenate((y_pri, y_sec), axis=-1))
-        z = tt.transpose(tt.concatenate((z_pri, z_sec), axis=-1))
+        x = pt.transpose(pt.concatenate((x_pri, x_sec), axis=-1))
+        y = pt.transpose(pt.concatenate((y_pri, y_sec), axis=-1))
+        z = pt.transpose(pt.concatenate((z_pri, z_sec), axis=-1))
 
         return x, y, z
 
@@ -2370,7 +2375,7 @@ class OpsSystem(object):
         # Exposure time integration?
         if self.texp != 0.0:
 
-            texp = tt.as_tensor_variable(self.texp)
+            texp = pt.as_tensor_variable(self.texp)
             oversample = int(self.oversample)
             oversample += 1 - oversample % 2
             stencil = np.ones(oversample)
@@ -2392,9 +2397,9 @@ class OpsSystem(object):
             if texp.ndim == 0:
                 dt = texp * dt
             else:
-                dt = tt.shape_padright(texp) * dt
-            t = tt.shape_padright(t) + dt
-            t = tt.reshape(t, (-1,))
+                dt = pt.shape_padright(texp) * dt
+            t = pt.shape_padright(t) + dt
+            t = pt.reshape(t, (-1,))
 
         # Compute the relative positions of all bodies
         orbit = exoplanet.orbits.KeplerianOrbit(
@@ -2421,29 +2426,29 @@ class OpsSystem(object):
 
         # The shape of `x`, `y`, `z` in `exoplanet` is unreliable!
         if x.ndim == 1:
-            x = tt.reshape(x, (-1, 1))
-            y = tt.reshape(y, (-1, 1))
-            z = tt.reshape(z, (-1, 1))
+            x = pt.reshape(x, (-1, 1))
+            y = pt.reshape(y, (-1, 1))
+            z = pt.reshape(z, (-1, 1))
 
         # Get all rotational phases
         pri_prot = ifelse(
-            tt.eq(pri_prot, 0.0), math.to_tensor(np.inf), pri_prot
+            pt.eq(pri_prot, 0.0), math.to_tensor(np.inf), pri_prot
         )
         theta_pri = (2 * np.pi) / pri_prot * (t - pri_t0) + pri_theta0
-        sec_prot = tt.switch(
-            tt.eq(sec_prot, 0.0), math.to_tensor(np.inf), sec_prot
+        sec_prot = pt.switch(
+            pt.eq(sec_prot, 0.0), math.to_tensor(np.inf), sec_prot
         )
-        theta_sec = (2 * np.pi) / tt.shape_padright(sec_prot) * (
-            tt.shape_padleft(t) - tt.shape_padright(sec_t0)
-        ) + tt.shape_padright(sec_theta0)
+        theta_sec = (2 * np.pi) / pt.shape_padright(sec_prot) * (
+            pt.shape_padleft(t) - pt.shape_padright(sec_t0)
+        ) + pt.shape_padright(sec_theta0)
 
         # Compute all the phase curves
         if self._oblate:
             phase_pri = pri_amp * self.primary.map.ops.X(
                 theta_pri,
-                tt.zeros_like(t),
-                tt.zeros_like(t),
-                tt.zeros_like(t),
+                pt.zeros_like(t),
+                pt.zeros_like(t),
+                pt.zeros_like(t),
                 math.to_tensor(0.0),
                 pri_inc,
                 pri_obl,
@@ -2454,9 +2459,9 @@ class OpsSystem(object):
         else:
             phase_pri = pri_amp * self.primary.map.ops.X(
                 theta_pri,
-                tt.zeros_like(t),
-                tt.zeros_like(t),
-                tt.zeros_like(t),
+                pt.zeros_like(t),
+                pt.zeros_like(t),
+                pt.zeros_like(t),
                 math.to_tensor(0.0),
                 pri_inc,
                 pri_obl,
@@ -2473,9 +2478,9 @@ class OpsSystem(object):
                     -y[:, i] / sec_r[i],
                     -z[:, i] / sec_r[i],
                     pri_r / sec_r[i],  # scaled source radius
-                    tt.zeros_like(x[:, i]),
-                    tt.zeros_like(x[:, i]),
-                    tt.zeros_like(x[:, i]),
+                    pt.zeros_like(x[:, i]),
+                    pt.zeros_like(x[:, i]),
+                    pt.zeros_like(x[:, i]),
                     math.to_tensor(0.0),  # occultor of zero radius
                     sec_inc[i],
                     sec_obl[i],
@@ -2503,12 +2508,12 @@ class OpsSystem(object):
             ]
 
         # Compute any occultations
-        occ_pri = tt.zeros_like(phase_pri)
-        occ_sec = [tt.zeros_like(ps) for ps in phase_sec]
+        occ_pri = pt.zeros_like(phase_pri)
+        occ_sec = [pt.zeros_like(ps) for ps in phase_sec]
 
         # Compute the period if we were given a semi-major axis
-        sec_porb = tt.switch(
-            tt.eq(sec_porb, 0.0),
+        sec_porb = pt.switch(
+            pt.eq(sec_porb, 0.0),
             (G_grav * (pri_m + sec_m) * sec_porb ** 2 / (4 * np.pi ** 2))
             ** (1.0 / 3),
             sec_porb,
@@ -2520,13 +2525,13 @@ class OpsSystem(object):
             yo = y[:, i] / pri_r
             zo = z[:, i] / pri_r
             ro = sec_r[i] / pri_r
-            b = tt.sqrt(xo ** 2 + yo ** 2)
-            b_occ = tt.invert(
-                tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
+            b = pt.sqrt(xo ** 2 + yo ** 2)
+            b_occ = pt.invert(
+                pt.ge(b, 1.0 + ro) | pt.le(zo, 0.0) | pt.eq(ro, 0.0)
             )
-            idx = tt.arange(b.shape[0])[b_occ]
+            idx = pt.arange(b.shape[0])[b_occ]
             if self._oblate:
-                occ_pri = tt.set_subtensor(
+                occ_pri = pt.set_subtensor(
                     occ_pri[idx],
                     occ_pri[idx]
                     + pri_amp
@@ -2545,7 +2550,7 @@ class OpsSystem(object):
                     - phase_pri[idx],
                 )
             else:
-                occ_pri = tt.set_subtensor(
+                occ_pri = pt.set_subtensor(
                     occ_pri[idx],
                     occ_pri[idx]
                     + pri_amp
@@ -2570,17 +2575,17 @@ class OpsSystem(object):
             yo = -y[:, i] / sec_r[i]
             zo = -z[:, i] / sec_r[i]
             ro = pri_r / sec_r[i]
-            b = tt.sqrt(xo ** 2 + yo ** 2)
-            b_occ = tt.invert(
-                tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
+            b = pt.sqrt(xo ** 2 + yo ** 2)
+            b_occ = pt.invert(
+                pt.ge(b, 1.0 + ro) | pt.le(zo, 0.0) | pt.eq(ro, 0.0)
             )
-            idx = tt.arange(b.shape[0])[b_occ]
+            idx = pt.arange(b.shape[0])[b_occ]
             if self._oblate:
                 # TODO: Occultations *by* an oblate occultor are not
                 # currently supported. The following code ignores any
                 # oblateness and instead treats the body as a spherical
                 # occultor with radius equal to its equatorial radius.
-                occ_sec[i] = tt.set_subtensor(
+                occ_sec[i] = pt.set_subtensor(
                     occ_sec[i][idx],
                     occ_sec[i][idx]
                     + sec_amp[i]
@@ -2598,7 +2603,7 @@ class OpsSystem(object):
                     - phase_sec[i][idx],
                 )
             elif self._reflected:
-                occ_sec[i] = tt.set_subtensor(
+                occ_sec[i] = pt.set_subtensor(
                     occ_sec[i][idx],
                     occ_sec[i][idx]
                     + pri_amp
@@ -2622,7 +2627,7 @@ class OpsSystem(object):
                     - phase_sec[i][idx],
                 )
             else:
-                occ_sec[i] = tt.set_subtensor(
+                occ_sec[i] = pt.set_subtensor(
                     occ_sec[i][idx],
                     occ_sec[i][idx]
                     + sec_amp[i]
@@ -2649,16 +2654,16 @@ class OpsSystem(object):
                 yo = (-y[:, i] + y[:, j]) / sec_r[i]
                 zo = (-z[:, i] + z[:, j]) / sec_r[i]
                 ro = sec_r[j] / sec_r[i]
-                b = tt.sqrt(xo ** 2 + yo ** 2)
-                b_occ = tt.invert(
-                    tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
+                b = pt.sqrt(xo ** 2 + yo ** 2)
+                b_occ = pt.invert(
+                    pt.ge(b, 1.0 + ro) | pt.le(zo, 0.0) | pt.eq(ro, 0.0)
                 )
-                idx = tt.arange(b.shape[0])[b_occ]
+                idx = pt.arange(b.shape[0])[b_occ]
                 if self._reflected:
                     xs = -x[:, i] / sec_r[i]
                     ys = -y[:, i] / sec_r[i]
                     zs = -z[:, i] / sec_r[i]
-                    occ_sec[i] = tt.set_subtensor(
+                    occ_sec[i] = pt.set_subtensor(
                         occ_sec[i][idx],
                         occ_sec[i][idx]
                         + sec_amp[i]
@@ -2682,7 +2687,7 @@ class OpsSystem(object):
                         - phase_sec[i][idx],
                     )
                 else:
-                    occ_sec[i] = tt.set_subtensor(
+                    occ_sec[i] = pt.set_subtensor(
                         occ_sec[i][idx],
                         occ_sec[i][idx]
                         + sec_amp[i]
@@ -2703,7 +2708,7 @@ class OpsSystem(object):
         # Concatenate the design matrices
         X_pri = phase_pri + occ_pri
         X_sec = [ps + os for ps, os in zip(phase_sec, occ_sec)]
-        X = tt.horizontal_stack(X_pri, *X_sec)
+        X = pt.horizontal_stack(X_pri, *X_sec)
 
         # Sum and return
         if self.texp == 0.0:
@@ -2712,9 +2717,9 @@ class OpsSystem(object):
 
         else:
 
-            stencil = tt.shape_padright(tt.shape_padleft(stencil, 1), 1)
-            return tt.sum(
-                stencil * tt.reshape(X, (-1, self.oversample, X.shape[1])),
+            stencil = pt.shape_padright(pt.shape_padleft(stencil, 1), 1)
+            return pt.sum(
+                stencil * pt.reshape(X, (-1, self.oversample, X.shape[1])),
                 axis=1,
             )
 
@@ -2765,7 +2770,7 @@ class OpsSystem(object):
         pri_f = self.primary.map.ops.compute_rv_filter(
             pri_inc, pri_obl, pri_veq, pri_alpha
         )
-        sec_f = tt.as_tensor_variable(
+        sec_f = pt.as_tensor_variable(
             [
                 sec.map.ops.compute_rv_filter(
                     sec_inc[k], sec_obl[k], sec_veq[k], sec_alpha[k]
@@ -2775,9 +2780,9 @@ class OpsSystem(object):
         )
 
         # Compute the identity filter
-        pri_f0 = tt.zeros_like(pri_f)
-        pri_f0 = tt.set_subtensor(pri_f0[0], np.pi)
-        sec_f0 = tt.as_tensor_variable([pri_f0 for sec in self.secondaries])
+        pri_f0 = pt.zeros_like(pri_f)
+        pri_f0 = pt.set_subtensor(pri_f0[0], np.pi)
+        sec_f0 = pt.as_tensor_variable([pri_f0 for sec in self.secondaries])
 
         # Compute the two design matrices
         X = self.X(
@@ -2851,23 +2856,23 @@ class OpsSystem(object):
             n += sec.map.Ny
 
         # Compute the integral of the velocity-weighted intensity
-        Iv = tt.as_tensor_variable(
-            [tt.dot(X[:, pri_inds], pri_y)]
+        Iv = pt.as_tensor_variable(
+            [pt.dot(X[:, pri_inds], pri_y)]
             + [
-                tt.dot(X[:, sec_inds[n]], sec_y[n])
+                pt.dot(X[:, sec_inds[n]], sec_y[n])
                 for n in range(len(self.secondaries))
             ]
         )
 
         # Compute the inverse of the integral of the intensity
-        invI = tt.as_tensor_variable(
-            [tt.ones((1,)) / tt.dot(X0[:, pri_inds], pri_y)]
+        invI = pt.as_tensor_variable(
+            [pt.ones((1,)) / pt.dot(X0[:, pri_inds], pri_y)]
             + [
-                tt.ones((1,)) / tt.dot(X0[:, sec_inds[n]], sec_y[n])
+                pt.ones((1,)) / pt.dot(X0[:, sec_inds[n]], sec_y[n])
                 for n in range(len(self.secondaries))
             ]
         )
-        invI = tt.where(tt.isinf(invI), 0.0, invI)
+        invI = pt.where(pt.isinf(invI), 0.0, invI)
 
         # The RV anomaly is just the product
         rv = Iv * invI
@@ -2886,11 +2891,11 @@ class OpsSystem(object):
         )
         return ifelse(
             keplerian,
-            tt.inc_subtensor(
+            pt.inc_subtensor(
                 rv[1:],
-                tt.transpose(
+                pt.transpose(
                     orbit.get_radial_velocity(
-                        t, output_units=units.m / units.s
+                        t, output_units=unips.m / unips.s
                     )
                 ),
             ),
@@ -2956,21 +2961,21 @@ class OpsSystem(object):
 
         # The shape of `x`, `y`, `z` in `exoplanet` is unreliable!
         if x.ndim == 1:
-            x = tt.reshape(x, (-1, 1))
-            y = tt.reshape(y, (-1, 1))
-            z = tt.reshape(z, (-1, 1))
+            x = pt.reshape(x, (-1, 1))
+            y = pt.reshape(y, (-1, 1))
+            z = pt.reshape(z, (-1, 1))
 
         # Get all rotational phases
         pri_prot = ifelse(
-            tt.eq(pri_prot, 0.0), math.to_tensor(np.inf), pri_prot
+            pt.eq(pri_prot, 0.0), math.to_tensor(np.inf), pri_prot
         )
         theta_pri = (2 * np.pi) / pri_prot * (t - pri_t0) + pri_theta0
-        sec_prot = tt.switch(
-            tt.eq(sec_prot, 0.0), math.to_tensor(np.inf), sec_prot
+        sec_prot = pt.switch(
+            pt.eq(sec_prot, 0.0), math.to_tensor(np.inf), sec_prot
         )
-        theta_sec = (2 * np.pi) / tt.shape_padright(sec_prot) * (
-            tt.shape_padleft(t) - tt.shape_padright(sec_t0)
-        ) + tt.shape_padright(sec_theta0)
+        theta_sec = (2 * np.pi) / pt.shape_padright(sec_prot) * (
+            pt.shape_padleft(t) - pt.shape_padright(sec_t0)
+        ) + pt.shape_padright(sec_theta0)
 
         # Compute all the maps
         if self._oblate:
@@ -2997,7 +3002,7 @@ class OpsSystem(object):
                 pri_f,
             )
         if self._reflected:
-            img_sec = tt.as_tensor_variable(
+            img_sec = pt.as_tensor_variable(
                 [
                     sec.map.ops.render(
                         res,
@@ -3020,7 +3025,7 @@ class OpsSystem(object):
                 ]
             )
         else:
-            img_sec = tt.as_tensor_variable(
+            img_sec = pt.as_tensor_variable(
                 [
                     sec.map.ops.render(
                         res,

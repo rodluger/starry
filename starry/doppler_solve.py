@@ -2,7 +2,7 @@
 from ._core.math import greedy_linalg, lazy_linalg
 from ._core.math import greedy_math, lazy_math
 from ._core.math import nadam
-from .compat import theano, tt, ts
+from .compat import pytensor, pt, ps
 import numpy as np
 from tqdm.auto import tqdm
 from scipy.linalg import block_diag
@@ -39,29 +39,29 @@ class Solve:
             # TODO: Untested!
 
             # Temporarily disable test values
-            compute_test_value = theano.config.compute_test_value
-            theano.config.compute_test_value = "off"
+            compute_test_value = pytensor.config.compute_test_value
+            pytensor.config.compute_test_value = "off"
 
             # Dummy variables for compiling
-            veq = tt.dscalar()
-            inc = tt.dscalar()
-            spectrum_ = tt.dmatrix()
-            theta = tt.dvector()
-            x = tt.dmatrix()
-            y = tt.dmatrix()
-            u = tt.dvector()
-            ATA = tt.dmatrix()
-            ATy = tt.dvector()
-            lam = tt.dscalar()
-            maxiter = tt.iscalar()
-            eps = tt.dscalar()
-            tol = tt.dscalar()
+            veq = pt.dscalar()
+            inc = pt.dscalar()
+            spectrum_ = pt.dmatrix()
+            theta = pt.dvector()
+            x = pt.dmatrix()
+            y = pt.dmatrix()
+            u = pt.dvector()
+            ATA = pt.dmatrix()
+            ATy = pt.dvector()
+            lam = pt.dscalar()
+            maxiter = pt.iscalar()
+            eps = pt.dscalar()
+            tol = pt.dscalar()
 
             # Design matrix conditioned on current spectrum
             f = map.ops.get_D_fixed_spectrum(inc, theta, veq, u, spectrum_)
             if map._interp:
-                f = ts.dot(map._Si2eBlk, f)
-            _get_S = theano.function(
+                f = ps.dot(map._Si2eBlk, f)
+            _get_S = pytensor.function(
                 [inc, theta, veq, u, spectrum_], f, on_unused_input="ignore"
             )
             self._get_S = lambda: _get_S(
@@ -73,8 +73,8 @@ class Solve:
                 inc, theta, veq, u, y, x
             )
             if map._interp:
-                f = ts.dot(map._Si2eBlk, f)
-            _dotM = theano.function(
+                f = ps.dot(map._Si2eBlk, f)
+            _dotM = pytensor.function(
                 [inc, theta, veq, u, y, x], f, on_unused_input="ignore"
             )
             self.dotM = lambda x: _dotM(
@@ -86,8 +86,8 @@ class Solve:
                 inc, theta, veq, u, y, x
             )
             if map._interp:
-                f = ts.dot(map._Si2eBlk, f)
-            _dotMT = theano.function(
+                f = ps.dot(map._Si2eBlk, f)
+            _dotMT = pytensor.function(
                 [inc, theta, veq, u, y, x], f, on_unused_input="ignore"
             )
             self.dotMT = lambda x: _dotMT(
@@ -96,11 +96,11 @@ class Solve:
 
             # Line broadening matrix
             f = map.ops.get_kT0_matrix(veq, inc)
-            _get_KT0 = theano.function([veq, inc], f)
+            _get_KT0 = pytensor.function([veq, inc], f)
             self._get_KT0 = lambda: _get_KT0(self.veq, self.inc)
 
             # LASSO solver
-            self.L1 = theano.function(
+            self.L1 = pytensor.function(
                 [ATA, ATy, lam, maxiter, eps, tol],
                 map.ops.L1(ATA, ATy, lam, maxiter, eps, tol),
             )
@@ -116,7 +116,7 @@ class Solve:
                 self.Si2eTr = np.eye(map.nw)
 
             # Restore test value config
-            theano.config.compute_test_value = compute_test_value
+            pytensor.config.compute_test_value = compute_test_value
 
         else:
 
@@ -812,8 +812,8 @@ class Solve:
         self.process_inputs(flux, **kwargs)
 
         # The variables we're optimizing
-        tt_y = theano.shared(y)
-        tt_spectrum_ = theano.shared(spectrum_)
+        tt_y = pytensor.shared(y)
+        tt_spectrum_ = pytensor.shared(spectrum_)
         tt_vars = []
         if not self.fix_map:
             tt_vars += [tt_y]
@@ -827,51 +827,51 @@ class Solve:
 
         # Interpolate to the output grid
         if self.interp:
-            tt_model = ts.dot(tt_model, self.Si2eTr)
+            tt_model = ps.dot(tt_model, self.Si2eTr)
 
         # Remove the baseline?
         if self.normalized:
             if self.baseline is None:
-                tt_model /= tt.reshape(
+                tt_model /= pt.reshape(
                     tt_model[:, self.continuum_idx], (self.nt, 1)
                 )
             else:
-                tt_model /= tt.reshape(self.baseline, (self.nt, 1))
+                tt_model /= pt.reshape(self.baseline, (self.nt, 1))
 
         # The likelihood term
-        tt_loss = tt.sum((self.flux - tt_model) ** 2 / self.flux_err ** 2)
+        tt_loss = pt.sum((self.flux - tt_model) ** 2 / self.flux_err ** 2)
 
         # The spatial prior
-        tt_x = tt.reshape(tt.transpose(tt_y), (-1, 1))
+        tt_x = pt.reshape(pt.transpose(tt_y), (-1, 1))
         mu = self.spatial_mean.T.reshape(-1, 1)
         tt_r = tt_x - mu
         if self.spatial_cov.ndim == 2:
             invL = np.reshape(np.transpose(self.spatial_inv_cov), (-1, 1))
-            tt_loss += tt.dot(tt.transpose(tt_r), tt_r * invL)[0, 0]
+            tt_loss += pt.dot(pt.transpose(tt_r), tt_r * invL)[0, 0]
         else:
             L = block_diag(
                 *[self.spatial_cov[:, :, n] for n in range(self.nc)]
             )
-            tt_loss += tt.dot(
-                tt.transpose(tt_r), tt_cho_solve(tt_cho_factor(L), tt_r)
+            tt_loss += pt.dot(
+                pt.transpose(tt_r), tt_cho_solve(tt_cho_factor(L), tt_r)
             )[0, 0]
 
         # The spectral prior
-        tt_x = tt.reshape(tt_spectrum_, (-1, 1))
+        tt_x = pt.reshape(tt_spectrum_, (-1, 1))
         mu = self.spectral_mean.reshape(-1, 1)
         tt_r = tt_x - mu
         if self.spectral_cov.ndim == 2:
             invL = np.reshape(self.spectral_inv_cov, (-1, 1))
-            tt_loss += tt.dot(tt.transpose(tt_r), tt_r * invL)[0, 0]
+            tt_loss += pt.dot(pt.transpose(tt_r), tt_r * invL)[0, 0]
         else:
             L = block_diag(*[cov for cov in self.spectral_cov])
-            tt_loss += tt.dot(
-                tt.transpose(tt_r), tt_cho_solve(tt_cho_factor(L), tt_r)
+            tt_loss += pt.dot(
+                pt.transpose(tt_r), tt_cho_solve(tt_cho_factor(L), tt_r)
             )[0, 0]
 
         # Compile the NAdam optimizer and iterate
         tt_updates = nadam(tt_loss, tt_vars, lr=lr)
-        train = theano.function(
+        train = pytensor.function(
             [], [tt_y, tt_spectrum_, tt_loss], updates=tt_updates
         )
 

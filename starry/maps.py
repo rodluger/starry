@@ -53,7 +53,7 @@ class Amplitude(object):
         return instance._amp
 
     def __set__(self, instance, value):
-        instance._amp = instance._math.cast(np.ones(instance.nw) * value)
+        instance._amp = instance._math.cast(np.ones(instance.nw or ()) * value)
 
 
 class MapBase(object):
@@ -69,7 +69,7 @@ class MapBase(object):
             )
 
     def __init__(self, ydeg, udeg, fdeg, nw, **kwargs):
-        # Instantiate the Theano ops class
+        # Instantiate the PyTensor ops class
         self.ops = self._ops_class_(ydeg, udeg, fdeg, nw, **kwargs)
 
         # Dimensions
@@ -365,7 +365,7 @@ class MapBase(object):
         f[0] = np.pi
         self._f = self._math.cast(f)
 
-        self._amp = self._math.cast(kwargs.get("amp", np.ones(self.nw)))
+        self._amp = self._math.cast(kwargs.get("amp", np.ones(self.nw or ())))
 
         # Reset data and priors
         self._flux = None
@@ -425,10 +425,10 @@ class MapBase(object):
 
         .. note::
             If calling this method on an instance of ``Map`` created within
-            a ``pymc3.Model()``, you may specify a ``point`` keyword with
+            a ``pymc.Model()``, you may specify a ``point`` keyword with
             the model point at which to evaluate the map. This method also
             accepts a ``model`` keyword, although this is inferred
-            automatically if called from within a ``pymc3.Model()`` context.
+            automatically if called from within a ``pymc.Model()`` context.
             If no point is provided, attempts to evaluate the map at
             ``model.test_point`` and raises a warning.
 

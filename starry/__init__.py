@@ -8,7 +8,7 @@ import os
 _PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
 
 
-# Theano compatibility hacks
+# PyTensor compatibility hacks
 from . import compat
 
 

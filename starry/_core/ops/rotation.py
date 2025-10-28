@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ...compat import Apply, Op, tt
+from ...compat import Apply, Op, pt
 import numpy as np
 
 __all__ = ["dotROp", "tensordotRzOp"]
@@ -11,8 +11,8 @@ class dotROp(Op):
         self._grad_op = dotRGradientOp(self)
 
     def make_node(self, *inputs):
-        inputs = [tt.as_tensor_variable(i) for i in inputs]
-        outputs = [tt.TensorType(inputs[0].dtype, (False, False))()]
+        inputs = [pt.as_tensor_variable(i) for i in inputs]
+        outputs = [pt.TensorType(inputs[0].dtype, (False, False))()]
         return Apply(self, inputs, outputs)
 
     def infer_shape(self, *args):
@@ -36,7 +36,7 @@ class dotRGradientOp(Op):
         self.base_op = base_op
 
     def make_node(self, *inputs):
-        inputs = [tt.as_tensor_variable(i) for i in inputs]
+        inputs = [pt.as_tensor_variable(i) for i in inputs]
         outputs = [i.type() for i in inputs[:-1]]
         return Apply(self, inputs, outputs)
 
@@ -59,8 +59,8 @@ class tensordotRzOp(Op):
         self._grad_op = tensordotRzGradientOp(self)
 
     def make_node(self, *inputs):
-        inputs = [tt.as_tensor_variable(i) for i in inputs]
-        outputs = [tt.TensorType(inputs[0].dtype, (False, False))()]
+        inputs = [pt.as_tensor_variable(i) for i in inputs]
+        outputs = [pt.TensorType(inputs[0].dtype, (False, False))()]
         return Apply(self, inputs, outputs)
 
     def infer_shape(self, *args):
@@ -84,7 +84,7 @@ class tensordotRzGradientOp(Op):
         self.base_op = base_op
 
     def make_node(self, *inputs):
-        inputs = [tt.as_tensor_variable(i) for i in inputs]
+        inputs = [pt.as_tensor_variable(i) for i in inputs]
         outputs = [i.type() for i in inputs[:-1]]
         return Apply(self, inputs, outputs)
 

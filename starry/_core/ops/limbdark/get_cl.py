@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ....compat import Apply, tt
+from ....compat import Apply, pt
 from .base_op import LimbDarkBaseOp
 from .get_cl_rev import GetClRevOp
 
@@ -18,7 +18,7 @@ class GetClOp(LimbDarkBaseOp):
         super(GetClOp, self).__init__()
 
     def make_node(self, arg):
-        return Apply(self, [tt.as_tensor_variable(arg)], [arg.type()])
+        return Apply(self, [pt.as_tensor_variable(arg)], [arg.type()])
 
     def infer_shape(self, *args):
         shapes = args[-1]

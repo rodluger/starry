@@ -11,13 +11,12 @@ import warnings
 matplotlib.font_manager._log.setLevel(50)
 
 
-# Disable theano deprecation warnings
+# Disable deprecation warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings(
     "ignore", category=matplotlib.MatplotlibDeprecationWarning
 )
 warnings.filterwarnings("ignore", category=FutureWarning)
-warnings.filterwarnings("ignore", category=UserWarning, module="theano")
 
 
 # Style

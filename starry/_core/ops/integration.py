@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ...compat import Apply, Op, tt, floatX
+from ...compat import Apply, Op, pt, floatX
 import numpy as np
 
 
@@ -13,13 +13,13 @@ class sTOp(Op):
         self._grad_op = sTGradientOp(self)
 
     def make_node(self, *inputs):
-        inputs = [tt.as_tensor_variable(i) for i in inputs]
-        outputs = [tt.TensorType(inputs[-1].dtype, (False, False))()]
+        inputs = [pt.as_tensor_variable(i) for i in inputs]
+        outputs = [pt.TensorType(inputs[-1].dtype, (False, False))()]
         return Apply(self, inputs, outputs)
 
     def infer_shape(self, *args):
         shapes = args[-1]
-        return [shapes[0] + (tt.as_tensor(self.N),)]
+        return [shapes[0] + (pt.as_tensor(self.N),)]
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -38,7 +38,7 @@ class sTGradientOp(Op):
         self.base_op = base_op
 
     def make_node(self, *inputs):
-        inputs = [tt.as_tensor_variable(i) for i in inputs]
+        inputs = [pt.as_tensor_variable(i) for i in inputs]
         outputs = [i.type() for i in inputs[:-1]]
         return Apply(self, inputs, outputs)
 
@@ -59,20 +59,20 @@ class rTReflectedOp(Op):
         self._grad_op = rTReflectedGradientOp(self)
 
     def make_node(self, *inputs):
-        inputs = [tt.as_tensor_variable(i) for i in inputs]
+        inputs = [pt.as_tensor_variable(i) for i in inputs]
         outputs = [
-            tt.TensorType(inputs[-1].dtype, (False, False))(),
-            tt.TensorType(inputs[-1].dtype, (False, False))(),
-            tt.TensorType(inputs[-1].dtype, (False, False))(),
+            pt.TensorType(inputs[-1].dtype, (False, False))(),
+            pt.TensorType(inputs[-1].dtype, (False, False))(),
+            pt.TensorType(inputs[-1].dtype, (False, False))(),
         ]
         return Apply(self, inputs, outputs)
 
     def infer_shape(self, *args):
         shapes = args[-1]
         return [
-            shapes[0] + (tt.as_tensor(self.N),),
-            shapes[0] + (tt.as_tensor(self.N),),
-            shapes[0] + (tt.as_tensor(self.N),),
+            shapes[0] + (pt.as_tensor(self.N),),
+            shapes[0] + (pt.as_tensor(self.N),),
+            shapes[0] + (pt.as_tensor(self.N),),
         ]
 
     def R_op(self, inputs, eval_points):
@@ -98,7 +98,7 @@ class rTReflectedGradientOp(Op):
         self.base_op = base_op
 
     def make_node(self, *inputs):
-        inputs = [tt.as_tensor_variable(i) for i in inputs]
+        inputs = [pt.as_tensor_variable(i) for i in inputs]
         outputs = [i.type() for i in inputs[:2]]
         return Apply(self, inputs, outputs)
 
@@ -121,26 +121,26 @@ class sTReflectedOp(Op):
         self._grad_op = sTReflectedGradientOp(self)
 
     def make_node(self, *inputs):
-        inputs = [tt.as_tensor_variable(i) for i in inputs]
+        inputs = [pt.as_tensor_variable(i) for i in inputs]
         outputs = [
-            tt.TensorType(inputs[-1].dtype, (False, False))(),
-            tt.TensorType(inputs[-1].dtype, (False, False))(),
-            tt.TensorType(inputs[-1].dtype, (False, False))(),
-            tt.TensorType(inputs[-1].dtype, (False, False))(),
-            tt.TensorType(inputs[-1].dtype, (False, False))(),
-            tt.TensorType(inputs[-1].dtype, (False, False))(),
+            pt.TensorType(inputs[-1].dtype, (False, False))(),
+            pt.TensorType(inputs[-1].dtype, (False, False))(),
+            pt.TensorType(inputs[-1].dtype, (False, False))(),
+            pt.TensorType(inputs[-1].dtype, (False, False))(),
+            pt.TensorType(inputs[-1].dtype, (False, False))(),
+            pt.TensorType(inputs[-1].dtype, (False, False))(),
         ]
         return Apply(self, inputs, outputs)
 
     def infer_shape(self, *args):
         shapes = args[-1]
         return [
-            shapes[0] + (tt.as_tensor(self.N),),
-            shapes[0] + (tt.as_tensor(self.N),),
-            shapes[0] + (tt.as_tensor(self.N),),
-            shapes[0] + (tt.as_tensor(self.N),),
-            shapes[0] + (tt.as_tensor(self.N),),
-            shapes[0] + (tt.as_tensor(self.N),),
+            shapes[0] + (pt.as_tensor(self.N),),
+            shapes[0] + (pt.as_tensor(self.N),),
+            shapes[0] + (pt.as_tensor(self.N),),
+            shapes[0] + (pt.as_tensor(self.N),),
+            shapes[0] + (pt.as_tensor(self.N),),
+            shapes[0] + (pt.as_tensor(self.N),),
         ]
 
     def R_op(self, inputs, eval_points):
@@ -171,7 +171,7 @@ class sTReflectedGradientOp(Op):
         self.base_op = base_op
 
     def make_node(self, *inputs):
-        inputs = [tt.as_tensor_variable(i) for i in inputs]
+        inputs = [pt.as_tensor_variable(i) for i in inputs]
         outputs = [i.type() for i in inputs[:5]]
         return Apply(self, inputs, outputs)
 
@@ -213,13 +213,13 @@ class sTOblateOp(Op):
         self._grad_op = sTOblateGradientOp(func)
 
     def make_node(self, *inputs):
-        inputs = [tt.as_tensor_variable(i) for i in inputs]
-        outputs = [tt.TensorType(inputs[-1].dtype, (False, False))()]
+        inputs = [pt.as_tensor_variable(i) for i in inputs]
+        outputs = [pt.TensorType(inputs[-1].dtype, (False, False))()]
         return Apply(self, inputs, outputs)
 
     def infer_shape(self, *args):
         shapes = args[-1]
-        return [shapes[1] + (tt.as_tensor(self.N),)]
+        return [shapes[1] + (pt.as_tensor(self.N),)]
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -240,7 +240,7 @@ class sTOblateGradientOp(Op):
         self.func = func
 
     def make_node(self, *inputs):
-        inputs = [tt.as_tensor_variable(i) for i in inputs]
+        inputs = [pt.as_tensor_variable(i) for i in inputs]
         outputs = [
             i.astype(floatX).type() for i in inputs[:4]
         ]  # TODO: Investigate why this is necessary sometimes

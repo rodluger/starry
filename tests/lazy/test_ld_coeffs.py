@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from starry.compat import theano
-from starry.compat import tt
+from starry.compat import pytensor
+from starry.compat import pt
 from starry._core.ops.limbdark.get_cl import GetClOp
 from starry._core.ops.limbdark.get_cl_rev import GetClRevOp
 
@@ -12,7 +12,7 @@ class InferShapeTester:
         # and it can be None
         mode = getattr(self, "mode", None)
         if mode is None:
-            mode = theano.compile.get_default_mode()
+            mode = pytensor.compile.get_default_mode()
         # This mode seems to be the minimal one including the shape_i
         # optimizations, if we don't want to enumerate them explicitly.
         self.mode = mode.including("canonicalize")
@@ -49,11 +49,11 @@ class InferShapeTester:
                 if len(set(shp)) != len(shp):
                     break
 
-        outputs_function = theano.function(inputs, outputs, mode=mode)
-        shapes_function = theano.function(
+        outputs_function = pytensor.function(inputs, outputs, mode=mode)
+        shapes_function = pytensor.function(
             inputs, [o.shape for o in outputs], mode=mode
         )
-        # theano.printing.debugprint(shapes_function)
+        # pytensor.printing.debugprint(shapes_function)
         # Check that the Op is removed from the compiled function.
         if check_topo:
             topo_shape = shapes_function.maker.fgraph.toposort()
@@ -74,8 +74,8 @@ class TestGetCl(InferShapeTester):
         self.op = GetClOp()
 
     def test_basic(self):
-        x = tt.dvector()
-        f = theano.function([x], self.op(x))
+        x = pt.dvector()
+        f = pytensor.function([x], self.op(x))
 
         inp = np.array([-1, 0.3, 0.2, 0.5])
         out = f(inp)
@@ -83,13 +83,13 @@ class TestGetCl(InferShapeTester):
         assert np.allclose(np.array([-0.85, 2.5, -0.425, 0.1]), out)
 
     def test_infer_shape(self):
-        x = tt.dvector()
+        x = pt.dvector()
         self._compile_and_check(
             [x], [self.op(x)], [np.asarray(np.random.rand(5))], self.op_class
         )
 
     def test_grad(self):
-        theano.gradient.verify_grad(
+        pytensor.gradient.verify_grad(
             self.op, [np.array([-1, 0.3, 0.2, 0.5])], rng=np.random
         )
 
@@ -101,8 +101,8 @@ class TestGetClRev(InferShapeTester):
         self.op = GetClRevOp()
 
     def test_basic(self):
-        x = tt.dvector()
-        f = theano.function([x], self.op(x))
+        x = pt.dvector()
+        f = pytensor.function([x], self.op(x))
 
         inp = np.array([-1, 0.3, 0.2, 0.5])
         out = f(inp)
@@ -110,7 +110,7 @@ class TestGetClRev(InferShapeTester):
         assert np.allclose(np.array([0, 1.3, 2.05, 3.53]), out)
 
     def test_infer_shape(self):
-        x = tt.dvector()
+        x = pt.dvector()
         self._compile_and_check(
             [x], [self.op(x)], [np.asarray(np.random.rand(5))], self.op_class
         )

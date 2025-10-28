@@ -2,7 +2,7 @@
 """Test Op utils.
 
 """
-from starry.compat import tt
+from starry.compat import pt
 from starry._core.math import lazy_math
 from scipy.linalg import block_diag as scipy_block_diag
 import numpy as np
@@ -14,8 +14,8 @@ def test_block_diag():
     C3 = np.ones((3, 3)) * 3
     C = scipy_block_diag(C1, C2, C3)
 
-    C1 = tt.as_tensor_variable(np.ones((2, 2)))
-    C2 = tt.as_tensor_variable(np.ones((3, 3)) * 2)
-    C3 = tt.as_tensor_variable(np.ones((3, 3)) * 3)
+    C1 = pt.as_tensor_variable(np.ones((2, 2)))
+    C2 = pt.as_tensor_variable(np.ones((3, 3)) * 2)
+    C3 = pt.as_tensor_variable(np.ones((3, 3)) * 3)
 
     assert np.allclose(C, lazy_math.block_diag(C1, C2, C3).eval())

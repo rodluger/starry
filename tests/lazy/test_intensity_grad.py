@@ -1,6 +1,6 @@
 import starry
-from starry.compat import theano
-from starry.compat import tt
+from starry.compat import pytensor
+from starry.compat import pt
 from starry.compat import change_flags
 import pytest
 import numpy as np
@@ -33,7 +33,7 @@ def test_zero_lat_lon(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
                     lat, lon, y, u, f, theta, np.array(True)
                 )
 
-            theano.gradient.verify_grad(
+            pytensor.gradient.verify_grad(
                 intensity,
                 (lat, lon, y, u, f, theta),
                 abs_tol=abs_tol,
