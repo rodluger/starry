@@ -18,8 +18,12 @@ try:
     _solve_upper = slinalg.Solve(A_structure="upper_triangular", lower=False)
 except TypeError:
     # aesara/pytensor (TODO: Check me)
-    _solve_lower = slinalg.Solve(assume_a="sym", lower=True)
-    _solve_upper = slinalg.Solve(assume_a="sym", lower=False)
+    # TODO: Check if this works and performance OK
+    # _solve_lower = slinalg.Solve(assume_a="sym", lower=True, b_ndim=1)
+    # _solve_upper = slinalg.Solve(assume_a="sym", lower=False, b_ndim=1)
+    _solve_lower = lambda a, b: slinalg.solve_triangular(a, b, lower=True)
+    _solve_upper = lambda a, b: slinalg.solve_triangular(a, b, lower=False)
+    # _solve_upper = slinalg.Solve(assume_a="sym", lower=False, b_ndim=1)
 
 
 def _cho_solve(cho_A, b):
@@ -228,7 +232,7 @@ class MathType(type):
 
     def __getattr__(cls, attr):
         if cls.lazy:
-            return getattr(tt, attr)
+            return getattr(pt, attr)
         else:
             return getattr(np, attr)
 
