@@ -203,6 +203,7 @@ def test_lightcurve(b, theta, ro, ydeg=1, ns=1000, nb=50, res=999, plot=False):
     # Compute analytic
     map = starry.Map(ydeg=ydeg, reflected=True)
     map[1:, :] = 1
+    # TODO: Shape 1000,4 vs shape 1, 4, specify broadcastable first dim
     flux = map.flux(xs=xs, ys=ys, zs=zs, xo=xo, yo=yo, ro=ro)
 
     # Compute numerical
