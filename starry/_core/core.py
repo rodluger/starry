@@ -1323,7 +1323,7 @@ class OpsReflected(OpsYlm):
 
         # Check for special cases
         cos_thetai = pt.switch(
-            pt.eq(pt.abs_(b), 1.0),
+            pt.eq(pt.abs(b), 1.0),
             pt.switch(
                 pt.eq(b, 1.0), pt.zeros_like(cos_thetai), z  # midnight  # noon
             ),
@@ -2226,7 +2226,7 @@ class OpsDoppler(OpsYlm):
         w = pt.ones_like(ATA[0])
 
         def step(w_prev):
-            absw = pt.abs_(w_prev)
+            absw = pt.abs(w_prev)
             absw = pt.switch(
                 pt.gt(absw, lam * eps), absw, lam * eps * pt.ones_like(absw)
             )
