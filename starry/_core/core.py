@@ -582,8 +582,8 @@ class OpsYlm(object):
         # return setMatrixOp()(matrix, i, j, vals)
         i = pt.as_tensor_variable(i)
         j = pt.as_tensor_variable(j)
-        i = pt.cast(pt.addbroadcast(i, 1), "int16")
-        j = pt.cast(pt.addbroadcast(j, 0), "int16")
+        i = pt.cast(pt.specify_broadcastable(i, 1), "int16")
+        j = pt.cast(pt.specify_broadcastable(j, 0), "int16")
         if vals.ndim == 0:
             res = pt.set_subtensor(
                 matrix[i, j], vals * pt.ones_like(matrix[i, j])
