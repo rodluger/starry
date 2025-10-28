@@ -2283,7 +2283,7 @@ class OpsSystem(object):
         sec_iorb,
     ):
         """Compute the Cartesian positions of all bodies."""
-        orbit = exoplanet.orbips.KeplerianOrbit(
+        orbit = exoplanet.orbits.KeplerianOrbit(
             period=sec_porb,
             t0=sec_t0,
             incl=sec_iorb,
@@ -2397,7 +2397,7 @@ class OpsSystem(object):
             t = pt.reshape(t, (-1,))
 
         # Compute the relative positions of all bodies
-        orbit = exoplanet.orbips.KeplerianOrbit(
+        orbit = exoplanet.orbits.KeplerianOrbit(
             period=sec_porb,
             t0=sec_t0,
             incl=sec_iorb,
@@ -2873,7 +2873,7 @@ class OpsSystem(object):
         rv = Iv * invI
 
         # Compute the Keplerian RV
-        orbit = exoplanet.orbips.KeplerianOrbit(
+        orbit = exoplanet.orbits.KeplerianOrbit(
             period=sec_porb,
             t0=sec_t0,
             incl=sec_iorb,
@@ -2932,7 +2932,7 @@ class OpsSystem(object):
     ):
         """Render all of the bodies in the system."""
         # Compute the relative positions of all bodies
-        orbit = exoplanet.orbips.KeplerianOrbit(
+        orbit = exoplanet.orbits.KeplerianOrbit(
             period=sec_porb,
             t0=sec_t0,
             incl=sec_iorb,
