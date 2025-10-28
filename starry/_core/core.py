@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from .. import config
 from ..compat import pytensor, pt, ps, ifelse, scan_until
+# TODO: Replace when PyTensor has better interface? Need to be careful with flipped kernels
+# See https://github.com/pymc-devs/pytensor/pull/1397 and related issues/PR
+from pytensor.tensor.conv.abstract_conv import conv2d, conv2d_grad_wrt_inputs
 from .._constants import *
 from .ops import (
     sTOp,
@@ -1995,7 +1998,9 @@ class OpsDoppler(OpsYlm):
         kT = self.get_kT(inc, theta, veq, u)
 
         # The dot product is just a 2d convolution!
-        product = pt.nnet.conv2d(
+        # TODO: 2D convolution efficient impl removed by accident (!!) from pytensor. See PRs and isues there.
+        # Best solution is probably to copy old function in starry until merged
+        product = conv2d(
             pt.reshape(spectrum, (self.nc, 1, 1, self.nwp)),
             pt.reshape(kT, (self.nt * self.Ny, 1, 1, self.nk)),
             border_mode="valid",
@@ -2050,7 +2055,7 @@ class OpsDoppler(OpsYlm):
             matrix = pt.shape_padright(matrix)
 
         # The dot product is just a 2d convolution!
-        product = pt.nnet.conv2d(
+        product = conv2d(
             pt.reshape(pt.transpose(matrix), (-1, self.nc, 1, self.nwp)),
             pt.reshape(kTy, (self.nt, self.nc, 1, self.nk)),
             border_mode="valid",
@@ -2083,12 +2088,12 @@ class OpsDoppler(OpsYlm):
             matrix = pt.shape_padright(matrix)
 
         # The dot product is just a 2d convolution!
-        product = pt.nnet.conv2d_transpose(
+        product = conv2d_grad_wrt_inputs(
             pt.reshape(pt.transpose(matrix), (-1, self.nt, 1, self.nw)),
             pt.reshape(kTy, (self.nt, 1, self.nc, self.nk)),
             border_mode="valid",
             filter_flip=False,
-            output_shape=(None, 1, self.nc, self.nwp),
+            input_shape=(None, 1, self.nc, self.nwp),
             filter_shape=(self.nt, 1, self.nc, self.nk),
         )
         product = pt.swapaxes(product, 2, 3)
@@ -2111,7 +2116,7 @@ class OpsDoppler(OpsYlm):
             matrix = pt.shape_padright(matrix)
 
         # The dot product is just a 2d convolution!
-        product = pt.nnet.conv2d(
+        product = conv2d(
             pt.reshape(pt.transpose(matrix), (-1, self.Ny, 1, self.nwp)),
             pt.reshape(kT, (self.nt, self.Ny, 1, self.nk)),
             border_mode="valid",
@@ -2138,12 +2143,12 @@ class OpsDoppler(OpsYlm):
             matrix = pt.shape_padright(matrix)
 
         # The dot product is just a 2d convolution!
-        product = pt.nnet.conv2d_transpose(
+        product = conv2d_grad_wrt_inputs(
             pt.reshape(pt.transpose(matrix), (-1, self.nt, 1, self.nw)),
             pt.reshape(kT, (self.nt, 1, self.Ny, self.nk)),
             border_mode="valid",
             filter_flip=False,
-            output_shape=(None, 1, self.Ny, self.nwp),
+            input_shape=(None, 1, self.Ny, self.nwp),
             filter_shape=(self.nt, 1, self.Ny, self.nk),
         )
         product = pt.swapaxes(product, 2, 3)
@@ -2173,7 +2178,7 @@ class OpsDoppler(OpsYlm):
         kT = self.get_kT(inc, theta, veq, u)
 
         # The flux is just a 2d convolution!
-        flux = pt.nnet.conv2d(
+        flux = conv2d(
             pt.reshape(a, (1, self.Ny, 1, self.nwp)),
             pt.reshape(kT, (self.nt, self.Ny, 1, self.nk)),
             border_mode="valid",
