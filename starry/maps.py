@@ -53,7 +53,7 @@ class Amplitude(object):
         return instance._amp
 
     def __set__(self, instance, value):
-        instance._amp = instance._math.cast(np.ones(instance.nw) * value)
+        instance._amp = instance._math.cast(np.ones(instance.nw or ()) * value)
 
 
 class MapBase(object):
@@ -365,7 +365,7 @@ class MapBase(object):
         f[0] = np.pi
         self._f = self._math.cast(f)
 
-        self._amp = self._math.cast(kwargs.get("amp", np.ones(self.nw)))
+        self._amp = self._math.cast(kwargs.get("amp", np.ones(self.nw or ())))
 
         # Reset data and priors
         self._flux = None
